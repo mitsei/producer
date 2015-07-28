@@ -1,0 +1,7 @@
+<span class="item-file-preview-modal">
+<% if (sourceType == 'remote') { %>
+    <iframe src="<%= source %>"></iframe>
+<% } else { %>
+    <p class="raw-latex"><%= source %></p>
+<% } %>
+</span>

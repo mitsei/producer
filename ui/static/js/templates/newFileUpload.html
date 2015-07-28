@@ -1,0 +1,17 @@
+<div>
+    <span class="filename-wrapper col-lg-5 col-md-5 col-sm-5 col-xs-5">
+
+    </span>
+    <label for="fileSelector">
+        <p class="sr-only">Upload new file:</p>
+        <button class="btn btn-warning btn-lg upload-new-file-button">
+            <i class="fa fa-cloud-upload" aria-hidden="true"></i>
+            <span> Upload New File</span>
+            <% if (latex) { %>
+                <input type="file" name="fileSelector" accept="application/x-tex"/>
+            <% } else { %>
+                <input type="file" name="fileSelector"/>
+            <% } %>
+        </button>
+    </label>
+</div>

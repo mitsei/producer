@@ -1,0 +1,3457 @@
+<!DOCTYPE html>
+<html lang='en' xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8">
+    <title>Documentation for MIT Assessment Service, V2</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MIT Assessment Service Documentation, V2">
+    <meta name="author" content="MIT ODL">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+
+    {% load i18n %}
+    {% load static %}
+
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="//ajax.aspnetcdn.com/ajax/jquery.ui/1.10.1/themes/ui-lightness/jquery-ui.min.css"/>
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css"/>
+    <link rel="stylesheet" href="{{ STATIC_URL }}css/vendor/jquery.tocify.css"/>
+    <link rel="stylesheet" href="{{ STATIC_URL }}css/assessments/style.css"/>
+
+    <script data-main="{{ STATIC_URL }}js/main" src="//cdnjs.cloudflare.com/ajax/libs/require.js/2.1.11/require.min.js"></script>
+</head>
+<body class="portal">
+    {% csrf_token %}
+    <div id="docs_container" class="container-fluid">
+        <div class="row-fluid">
+            <div class="col-lg-3 col-md-3 col-sm-3 col-xs-3">
+                <div id="docs_nav"></div>
+            </div>
+            <div class="col-lg-9 col-md-9 col-sm-9 col-xs-9">
+                <div id="docs_inner_wrapper">
+                    <h1>Introduction to the service, V2</h1>
+                    <h2>Changes</h2>
+                    <p>
+                        Several optimization changes were made to V2 of this API, to speed up
+                        delivery of data. As a result, the behavior of some endpoints changed
+                        significantly enough that the API has been up-versioned. Changes
+                        include:
+                        <ul>
+                            <li>
+                                Item files are no longer included in the item JSON for LIST
+                                responses (they are included in individual item responses).
+                                You can include a `?files` parameter in your LIST GET, and
+                                the service will add the file URLs to each item. However, you
+                                will take a performance hit...
+                            </li>
+                            <li>
+                                The production host has changed to `qbank.mit.edu`.
+                            </li>
+                            <li>
+                                You can request the <a href="#getStudentResponse">last student response</a>
+                                from a taken session.
+                            </li>
+                            <li>
+                                If an app wants to give the student the option of viewing an answer,
+                                it can call the <a href="#questionSurrender">surrender</a> endpoint.
+                            </li>
+                            <li>
+                                For files that are stored remotely, in AWS, they are given
+                                to you as expiring CloudFront URLs. Alternative file storage systems are
+                                also supported for legacy data (base64 encoded local files). This was enabled in
+                                V1 of the API, but explicitly called out here.
+                            </li>
+                            <li>
+                                Instructors can now <a href="#commenting">comment</a> on a student response.
+                                Students can also <a href="#getAllComments">view all comments</a> for one of
+                                their responses.
+                            </li>
+                            <li>
+                                Banks now carry a <code>color</code> attribute, to help persist UI designs. More
+                                detail can be found in the <a href="#bankColor">bank color</a> section.
+                            </li>
+                        </ul>
+                    </p>
+                    <h2>Servers</h2>
+                    <p>
+                        We currently support two servers, a production server and a
+                        development server. We encourage you to test your app against
+                        the development server before switching to the production service.
+                        Note that data on the development server has no permanence or
+                        guarantee against changes.
+                    </p>
+                    <p>
+                        Development server:
+                        <pre>https://assessments-dev.mit.edu/api/v2/assessment/</pre>
+                        Production server:
+                        <pre>https://qbank.mit.edu/api/v2/assessment/</pre>
+                    </p>
+                    <h2>Developer Notes</h2>
+                    <p>
+                        <ul>
+                            <li>You must end your URLs in a "/".</li>
+                            <li>Depending on how files were uploaded, they may be
+                                returned in a base64 encoded format.
+                                To use them, just base64 decode them and write them to disk / memory.</li>
+                            <li>
+                                If files were uploaded to remote storage (i.e. AWS), they will
+                                only be returned to you as expiring URLs, for security reasons.
+                            </li>
+                            <li>Calls should be made with Content-Type "application/json" if no
+                            files are involved. Otherwise multipart/form-data is appropriate.</li>
+                            <li>You must use one of the authentication methods outlined
+                            in this document. There is no guest access.</li>
+                            <li>If you need a public / private keypair, contact
+                            assessments-admin [at] mit [dot] edu.</li>
+                        </ul>
+                    </p>
+                    <h1 id="authentications">Authentication</h1>
+                    <h2>Introduction</h2>
+                    <p class="">
+                        RESTful API requires use of signature verfication via public / private key, like Amazon AWS.
+                        Currently, we use a library that follows the draft IETF standards for signing HTTP requests:
+                        <pre><a href="https://datatracker.ietf.org/doc/draft-cavage-http-signatures/">https://datatracker.ietf.org/doc/draft-cavage-http-signatures/</a></pre>
+                        Apps that will use a signed HTTP request will need to pass in the username of the
+                        user they with to authenticate. This should be in an 'X-Api-Proxy' header. The app's
+                        public key should go in the 'X-Api-Key' header.
+                    </p>
+                    <h2>Touchstone Authentication</h2>
+                    <p>
+                        In a web browser, if you have been granted permission, you may
+                        view an interactive version of the API. This can help with debugging
+                        and testing, as it lets you POST, PUT, GET, and DELETE objects
+                        within each endpoint of the service. To reach this endpoint,
+                        add "/touchstone/" to the root URL of any call.
+                        <pre>https://assessments-dev.mit.edu/api/v2/assessment/banks/</pre>
+                        Becomes:
+                        <pre>https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/</pre>
+                        <img class="doc_image" src="{{ STATIC_URL }}images/service_in_browser.png" alt="Screenshot of the API's UI in a browser."/>
+                    </p>
+                    <h2>Non-LTI Authentication</h2>
+                    <p>
+                        When signing an API request, the following headers MUST be included in the signature calculation:
+                        <pre>['request-line','accept','date','host','x-api-proxy']</pre>
+                        Where request-line include both method and path of the request, and x-api-proxy is the
+                        kerberos username of the student / user. They MUST also appear in that
+                        order. The HTTP_AUTHORIZATION header should look something like:
+                        <pre>'Signature headers="request-line accept date host x-api-proxy",keyId="some-key",algorithm="hmac-sha256",signature="5CUB27wqW+oPx0ZI/xMhCaU3v/3My4JMeeP5PbWO9Xg="'</pre>
+                        You can compare your hashing algorithm with the following input / output.
+                        <pre>Headers     : {'Date': 'Tue, 17 Jun 2014 19:26:25 GMT', 'Host': 'testserver:80', 'X-Api-Proxy': 'cjshaw@mit.edu', 'X-Api-Key': 'afakepublicKey!23', 'Accept': 'application/json'}
+Secret key  : mdnAf0vTHSU/Ap1qbzZDFblHdiepcPZZ7C7B6p98
+Method      : 'GET'
+Path        : '/api/v2/assessment/banks/'
+
+Output      : 'Signature headers="request-line accept date host x-api-proxy",keyId="afakepublicKey!23",algorithm="hmac-sha256",signature="tbxfhvEDF/XNvcKiGLLklBpj8ewVVoXfTqqYVwwGV9Q="'</pre>
+                        Note that the path requested must be un-encoded. Example:
+                        <pre>'/api/v2/assessment/banks/assessment.Bank:53a071c7ea061a0abff13681@birdland.mit.edu/'</pre>
+                        Instead of:
+                        <pre>'/api/v2/assessment/banks/assessment.Bank%3A53a071c7ea061a0abff13681%40birdland.mit.edu/'</pre>
+                    </p>
+                    <h2>LTI Authentication</h2>
+                    <p>
+                        If passing in LTI student data, a second set of parameters needs to be used in the
+                        signature calculation (in this order):
+                        <pre>['request-line','accept','date','host','x-api-proxy','lti-user-id','lti-tool-consumer-instance-guid','lti-user-role','lti-bank']</pre>
+                        Note that this is NOT needed for instructor actions -- do those with non-LTI
+                        headers (as above), and make sure that the X-Api-Proxy user is a staff / instructor
+                        in the Assessment Service.
+                    </p>
+                    <h3>Example Workflows</h3>
+                    <p>
+                        <p>You can see an example workflow from an LTI provider for an instructor
+                            <a href="http://ds5yycsj1acmu.cloudfront.net/docs/media/LTI_provider_workflow_instructor.pdf">here</a>.
+                        </p>
+                        <p>You can see an example workflow from an LTI provider for a learner
+                            <a href="http://ds5yycsj1acmu.cloudfront.net/docs/media/LTI_provider_workflow_learner.pdf">here</a>.
+                        </p>
+                    </p>
+                    <h1>Assessment Banks</h1>
+                    <h2>Introduction</h2>
+                    <p>
+                        Everything in the service is relative to an Assessment Bank.
+                        Items live inside of banks, assessments live inside of banks,
+                        and assessments taken live inside of banks. Banks symbolize
+                        a collection of assessments and a record of when they are
+                        presented to students.
+                    </p>
+                    <p>
+                        In an educational context, one could organize banks by class
+                        (i.e. Calc I has its own assessment bank), or by instructor
+                        (i.e. Professor X has her own assessment bank). Any
+                        collection of questions can be organized here.
+                    </p>
+                    <h2>Authorizations</h2>
+                    <p>
+                        Authorizations are managed at the bank level.
+                        A person can be given authorizations to specific actions
+                        inside of a bank, such as looking up assessments, or
+                        creating items. Typically, a faculty member would be given
+                        all permissions, while a learner requires (at a minimum)
+                        these three:
+                        <ul>
+                            <li>assessment.Bank%3Alookup%40birdland.mit.edu</li>
+                            <li>assessment.AssessmentTaken%3Acreate%40birdland.mit.edu</li>
+                            <li>assessment.AssessmentTaken%3Alookup%40birdland.mit.edu</li>
+                        </ul>
+                        These need to be built into a DL Kit extension and placed on
+                        the server-side code. Examples are available upon request.
+                    </p>
+                    <h2>Data Pagination</h2>
+                    <p>
+                        Note that all "LIST" type endpoints (banks, items, assessments,
+                        etc.) will return
+                        a list in the "data['results']" attribute, as well as a paginated
+                        set of data. "next" and "previous" links are included for your
+                        convenience. To get all data in a single page, you would append
+                        <code>?page=all</code> to your request URL. To get a specific page,
+                        you can include <code>?page=1</code>, substituting the desired
+                        page number. Examples are below, in each section. Note that by
+                        default, lists are returned in descending chronological order
+                        (newest record first).
+                    </p>
+                        For "LIST" endpoints, by default V2 of the QBank service does not
+                        include file URLs for item files. This is to optimize performance,
+                        because the file-signing process for AWS can take quite long for
+                        a large list of items. If you, as a developer, decide to get all the
+                        files up front with the list, you can include a <code>?files</code>
+                        parameter in your request.
+                    </p>
+                    <p>
+                        Any "DETAILS" type endpoints
+                        will return the attributes directly in the object. For example,
+                        the assessment banks list below shows two banks in the
+                        "data" attribute. Below, we will see that individual bank
+                        details are embedded directly in a return object.
+                    </p>
+                    <h2 id="assessmentBanksList">Listing all banks</h2>
+                    <p>
+                        <pre>GET /api/v2/assessment/banks/</pre>
+                        A list of all assessment banks on the server is returned.
+                        Where possible, the service will always return a "_links" attribute
+                        to indicate what other information is available.
+                        <pre>{
+    "_links": {
+        "assessment.Bank%3A53cec85833bb72730f66da92%40birdland.mit.edu": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank:53cec85833bb72730f66da92@birdland.mit.edu/",
+        "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank:53d671bc33bb72de9183ce2d@birdland.mit.edu/",
+        "self": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/"
+    },
+    "data": {
+        "count"     : 2,
+        "next"      : null,
+        "previous"  : null,
+        "results"   :  [
+            {
+                "displayName": {
+                    "text": "atestbank",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                    "scriptTypeId": "15924%3ALATN%40ISO"
+                },
+                "description": {
+                    "text": "for testing purposes only",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                    "scriptTypeId": "15924%3ALATN%40ISO"
+                },
+                "recordTypeIds": [],
+                "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+                "type": "Bank",
+                "id": "assessment.Bank%3A53cec85833bb72730f66da92%40birdland.mit.edu"
+            },
+            {
+                "displayName": {
+                    "text": "Ortho 3D",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                    "scriptTypeId": "15924%3ALATN%40ISO"
+                },
+                "description": {
+                    "text": "Ortho 3D Questions",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                    "scriptTypeId": "15924%3ALATN%40ISO"
+                },
+                "recordTypeIds": [],
+                "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+                "type": "Bank",
+                "id": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu"
+            }
+        ]
+    }
+}</pre>
+                    </p>
+                    <h3>Error Codes</h3>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to view assessment banks."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to view banks with this service. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <h2>Creating</h2>
+                    <p>
+                        <pre>POST /api/v2/assessment/banks/</pre>
+                        A simple JSON structure needs to be sent to this endpoint, with
+                        the bank name and description.
+                        <pre>{"name" : "a new bank","description" : "this is a test"}</pre>
+                        The new bank structure is returned, with the <code>bank_id</code>.
+                        <pre>{
+    "displayName": {
+        "text": "a new bank",
+        "languageTypeId": "639-2%3AENG%40ISO",
+        "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+        "scriptTypeId": "15924%3ALATN%40ISO"
+    },
+    "description": {
+        "text": "this is a test",
+        "languageTypeId": "639-2%3AENG%40ISO",
+        "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+        "scriptTypeId": "15924%3ALATN%40ISO"
+    },
+    "recordTypeIds": [],
+    "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+    "type": "Bank",
+    "id": "assessment.Bank%3A53d671bc33bb72de9183ce1d%40birdland.mit.edu"
+}</pre>
+                    </p>
+                    <h3 id="bankColor">Bank Color</h3>
+                    <p>
+                        To support UI persistence, we added a <code>bank color</code> attribute. You can set / modify
+                        this attribute via a standard RGB hex code, i.e. <code>0x00ff00</code> or <code>0000ff</code>. Just
+                        include it in your data bundle on create or update of banks. <pre>{
+    'color'     : '0x0000ff'
+}</pre>
+                    </p>
+                    <h3>Error Codes</h3>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to create new assessment banks."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to view banks with this service. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Poorly formatted input data."}</pre>
+                        Your input data is not in the expected format. Most likely
+                        it is not proper JSON or does not have both the "name"
+                        and "description" attributes.
+                    </p>
+                    <h2>Managing a specific bank</h2>
+                    <p>
+                        Once you have a <code>bank_id</code>, you can view and
+                        manipulate the specific bank.
+                    </p>
+                    <h3>Viewing</h3>
+                    <p>
+                        <pre>GET /api/v2/assessment/banks/&lt;bank_id&gt;/</pre>
+                        This returns the bank details. Note that the data is
+                        embedded directly in the returned object, not
+                        in a list or as a child of another attribute.
+                        <pre>{
+    "displayName": {
+        "text": "a new bank",
+        "languageTypeId": "639-2%3AENG%40ISO",
+        "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+        "scriptTypeId": "15924%3ALATN%40ISO"
+    },
+    "description": {
+        "text": "this is a test",
+        "languageTypeId": "639-2%3AENG%40ISO",
+        "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+        "scriptTypeId": "15924%3ALATN%40ISO"
+    },
+    "recordTypeIds": [],
+    "_links": {
+        "items": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank%3A53d671bc33bb72de9183ce1d%40birdland.mit.edu/items/",
+        "assessments": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank%3A53d671bc33bb72de9183ce1d%40birdland.mit.edu/assessments/",
+        "self": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank%3A53d671bc33bb72de9183ce1d%40birdland.mit.edu/"
+    },
+    "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+    "type": "Bank",
+    "id": "assessment.Bank%3A53d671bc33bb72de9183ce1d%40birdland.mit.edu"
+}</pre>
+                    </p>
+                    <h4>Error Codes</h4>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to view this bank's details."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to view individual banks with this service. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Bank not found"}</pre>
+                        An assessment bank with the specified <code>bank_id</code> was not
+                        found. Please verify it exists in the service through the
+                        <a href="#assessmentBanksList">banks</a> endpoint.
+                    </p>
+                    <h3>Deleting</h3>
+                    <p>
+                        <pre>DELETE /api/v2/assessment/banks/&lt;bank_id&gt;/</pre>
+                        An empty, 200 response is returned when this is successful.
+                    </p>
+                    <h4>Error Codes</h4>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to delete this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to delete this bank with this service. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>406: {"details": "Bank is not empty. Please delete its contents first."}</pre>
+                        This bank has items or assessments in it. You need to delete those first,
+                        before you can delete the entire bank.
+                    </p>
+                    <h3>Updating</h3>
+                    <p>
+                        <pre>PUT /api/v2/assessment/banks/&lt;bank_id&gt;/</pre>
+                        Include the parameter that you wish to change.
+                        <pre>{"name" : "My bank"}</pre>
+                        The updated bank structure is returned:
+                        <pre>{
+    "displayName": {
+        "text": "My bank",
+        "languageTypeId": "639-2%3AENG%40ISO",
+        "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+        "scriptTypeId": "15924%3ALATN%40ISO"
+    },
+    "description": {
+        "text": "this is a test",
+        "languageTypeId": "639-2%3AENG%40ISO",
+        "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+        "scriptTypeId": "15924%3ALATN%40ISO"
+    },
+    "recordTypeIds": [],
+    "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+    "type": "Bank",
+    "id": "assessment.Bank%3A53d671bc33bb72de9183ce1d%40birdland.mit.edu"
+}</pre>
+                    </p>
+                    <h4>Error Codes</h4>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to edit this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to edit the attributes of the bank with this service. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Poorly formatted input data."}</pre>
+                        Your input data is not in the expected format. Most likely
+                        it is not proper JSON.
+                    </p>
+                    <h1>Items</h1>
+                    <h2>Introduction</h2>
+                    <p class="">
+                        Items are commonly referred to as questions. They are composed of
+                        a question (Why is the sky blue?), an answer, and possibly
+                        hints or solutions (explanations to be shown after a student
+                        has responded). Each question should be standalone and include
+                        its own introductory text.
+                    </p>
+                    <p>
+                        Common item formats include multiple-choice, string response,
+                        and numerical response. Currently, this service supports
+                        the following item types:
+                        <ul id="supportedTypes">
+                            {% for supported_type in types %}
+                                <li>
+                                    {{ supported_type.displayName.text }} - {{ supported_type.id }}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </p>
+                    <p>
+                        Items must belong in banks, and this is reflected in their
+                        URL endpoints.
+                    </p>
+                    <h2 id="itemsList">Listing all items in a bank</h2>
+                    <p>
+                        Because items must belong to a bank, it is assumed that
+                        your app will know the <code>bank_id</code> of interest.
+                        <pre>GET /api/v2/assessment/banks/&lt;bank_id&gt;/items/</pre>
+                        Since this is a LIST type call, items are returned in the
+                        "data" attribute.
+                        <pre>{
+    "_links": {
+        "self": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu/items/",
+        "assessment.Item%3A53d6778633bb727ec57afcab%40birdland.mit.edu": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank:53d671bc33bb72de9183ce2d@birdland.mit.edu/items/assessment.Item:53d6778633bb727ec57afcab@birdland.mit.edu/",
+        "assessment.Item%3A53d91dda33bb72e98d9e5c23%40birdland.mit.edu": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank:53d671bc33bb72de9183ce2d@birdland.mit.edu/items/assessment.Item:53d91dda33bb72e98d9e5c23@birdland.mit.edu/"
+    },
+    "data": {
+        "count"     : 2,
+        "next"      : null,
+        "previous"  : null,
+        "results"   : [
+            {
+                "displayName": {
+                    "text": "Test item",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                    "scriptTypeId": "15924%3ALATN%40ISO"
+                },
+                "description": {
+                    "text": "My favorite question",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                    "scriptTypeId": "15924%3ALATN%40ISO"
+                },
+                "recordTypeIds": [],
+                "question": {
+                    "files": {
+                        "sideView": "==base64 encoded version of file==",
+                        "frontView": "==base64 encoded version of file==",
+                        "manip": "==base64 encoded version of file==",
+                        "topView": "==base64 encoded version of file=="
+                    },
+                    "displayName": {
+                        "text": "Test item",
+                        "languageTypeId": "639-2%3AENG%40ISO",
+                        "scriptTypeId": "15924%3ALATN%40ISO",
+                        "formatTypeId": "TextFormats%3APLAIN%40okapia.net"
+                    },
+                    "description": {
+                        "text": "My favorite question",
+                        "languageTypeId": "639-2%3AENG%40ISO",
+                        "scriptTypeId": "15924%3ALATN%40ISO",
+                        "formatTypeId": "TextFormats%3APLAIN%40okapia.net"
+                    },
+                    "recordTypeIds": [
+                        "question-record-type%3Alabel-ortho-faces%40ODL.MIT.EDU"
+                    ],
+                    "text": {
+                        "text": "Which face is best?",
+                        "languageTypeId": "639-2%3AENG%40ISO",
+                        "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                        "scriptTypeId": "15924%3ALATN%40ISO"
+                    },
+                    "id": "assessment.Item%3A53d6778633bb727ec57afcab%40birdland.mit.edu",
+                    "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+                    "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+                    "type": "Question",
+                    "firstAngle": false,
+                    "fileIds": {
+                        "sideView": "repository.Asset%3A53d6778833bb727ec57afcb5%40birdland.mit.edu",
+                        "manip": "repository.Asset%3A53d6778733bb727ec57afcad%40birdland.mit.edu",
+                        "topView": "repository.Asset%3A53d6778833bb727ec57afcb9%40birdland.mit.edu",
+                        "frontView": "repository.Asset%3A53d6778833bb727ec57afcb1%40birdland.mit.edu"
+                    }
+                },
+                "answers": [
+                    {
+                        "displayName": {
+                            "text": "",
+                            "languageTypeId": "639-2%3AENG%40ISO",
+                            "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                            "scriptTypeId": "15924%3ALATN%40ISO"
+                        },
+                        "description": {
+                            "text": "",
+                            "languageTypeId": "639-2%3AENG%40ISO",
+                            "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                            "scriptTypeId": "15924%3ALATN%40ISO"
+                        },
+                        "recordTypeIds": [
+                            "answer-record-type%3Alabel-ortho-faces%40ODL.MIT.EDU"
+                        ],
+                        "integerValues": {
+                            "frontFaceValue": 0,
+                            "sideFaceValue": 1,
+                            "topFaceValue": 2
+                        },
+                        "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+                        "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+                        "type": "Answer",
+                        "id": "assessment.Answer%3A53d6778833bb727ec57afcbe%40birdland.mit.edu"
+                    }
+                ],
+                "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+                "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+                "type": "Item",
+                "id": "assessment.Item%3A53d6778633bb727ec57afcab%40birdland.mit.edu",
+                "learningObjectiveIds": []
+            },
+            {
+                "displayName": {
+                    "text": "Second test item",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                    "scriptTypeId": "15924%3ALATN%40ISO"
+                },
+                "description": {
+                    "text": "To give some variety",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                    "scriptTypeId": "15924%3ALATN%40ISO"
+                },
+                "recordTypeIds": [],
+                "question": {
+                    "files": {
+                        "sideView": "==base64 encoded version of file==",
+                        "frontView": "==base64 encoded version of file==",
+                        "manip": "==base64 encoded version of file==",
+                        "topView": "==base64 encoded version of file=="
+                    },
+                    "displayName": {
+                        "text": "Second test item",
+                        "languageTypeId": "639-2%3AENG%40ISO",
+                        "scriptTypeId": "15924%3ALATN%40ISO",
+                        "formatTypeId": "TextFormats%3APLAIN%40okapia.net"
+                    },
+                    "description": {
+                        "text": "To give some variety",
+                        "languageTypeId": "639-2%3AENG%40ISO",
+                        "scriptTypeId": "15924%3ALATN%40ISO",
+                        "formatTypeId": "TextFormats%3APLAIN%40okapia.net"
+                    },
+                    "recordTypeIds": [
+                        "question-record-type%3Alabel-ortho-faces%40ODL.MIT.EDU"
+                    ],
+                    "text": {
+                        "text": "Which of these objects looks like a spoon?",
+                        "languageTypeId": "639-2%3AENG%40ISO",
+                        "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                        "scriptTypeId": "15924%3ALATN%40ISO"
+                    },
+                    "id": "assessment.Item%3A53d91dda33bb72e98d9e5c23%40birdland.mit.edu",
+                    "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+                    "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+                    "type": "Question",
+                    "firstAngle": false,
+                    "fileIds": {
+                        "sideView": "repository.Asset%3A53d91dda33bb72e98d9e5c2d%40birdland.mit.edu",
+                        "manip": "repository.Asset%3A53d91dda33bb72e98d9e5c25%40birdland.mit.edu",
+                        "topView": "repository.Asset%3A53d91dda33bb72e98d9e5c31%40birdland.mit.edu",
+                        "frontView": "repository.Asset%3A53d91dda33bb72e98d9e5c29%40birdland.mit.edu"
+                    }
+                },
+                "answers": [
+                    {
+                        "displayName": {
+                            "text": "",
+                            "languageTypeId": "639-2%3AENG%40ISO",
+                            "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                            "scriptTypeId": "15924%3ALATN%40ISO"
+                        },
+                        "description": {
+                            "text": "",
+                            "languageTypeId": "639-2%3AENG%40ISO",
+                            "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                            "scriptTypeId": "15924%3ALATN%40ISO"
+                        },
+                        "recordTypeIds": [
+                            "answer-record-type%3Alabel-ortho-faces%40ODL.MIT.EDU"
+                        ],
+                        "integerValues": {
+                            "frontFaceValue": 3,
+                            "sideFaceValue": 4,
+                            "topFaceValue": 5
+                        },
+                        "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+                        "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+                        "type": "Answer",
+                        "id": "assessment.Answer%3A53d91dda33bb72e98d9e5c36%40birdland.mit.edu"
+                    }
+                ],
+                "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+                "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+                "type": "Item",
+                "id": "assessment.Item%3A53d91dda33bb72e98d9e5c23%40birdland.mit.edu",
+                "learningObjectiveIds": []
+            }
+        ]
+    }
+}</pre>
+                    </p>
+                    <h3>Querying</h3>
+                    <p>
+                        Once you have an assessment bank, you can query the items in that bank.
+                        <pre>GET /api/v2/assessment/banks/&lt;bank_id&gt;/items/query/?&lt;query parameters&gt;</pre>
+                        Currently we support querying on four parameters, which you can stack together as AND:
+                        <ul>
+                            <li>IRT difficulty ==> <code>max_difficulty</code> and <code>min_difficulty</code></li>
+                            <li>IRT discrimination ==> <code>max_discrimination</code> and <code>min_discrimination</code></li>
+                            <li>Problem name ==> <code>display_name</code></li>
+                            <li>Learning objective ID ==> <code>learning_objective</code></li>
+                        </ul>
+                        An example query URL to get the problems with difficulty between 0 and 1would be:
+                        <pre>GET /api/v2/assessment/banks/&lt;bank_id&gt;/items/query/?min_difficulty=0&max_difficulty=1</pre>
+                    </p>
+                    <h3>Error Codes</h3>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to view items in this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to view items in this bank. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <h2 id="itemFormatExamples">Example Objects</h2>
+                    <h3>Label Ortho Faces</h3>
+                    <p>
+                        Many of the examples in this doc follow the format for
+                        the label ortho faces type. Questions require:
+                        <pre>{
+    "questionString": ==blahblah==,
+    "type"          : "question-record-type%3Alabel-ortho-faces%40ODL.MIT.EDU"
+}</pre>
+                        With files:
+                        <pre>{
+    "manip" : == *.unity3d file required ==,
+    "front" : == *.jpg optional ==,
+    "side"  : == *.jpg optional, but required if front present ==,
+    "top"   : == *.jpg optional, but required if other jpgs present ==
+}</pre>
+                        While answers require:
+                        <pre>{
+    "answers": [{
+        "type"          : "answer-record-type%3Alabel-ortho-faces%40ODL.MIT.EDU",
+        "integerValues" : {
+            "frontFaceValue" : == 0 to 5 ==,
+            "sideFaceValue"  : == 0 to 5 ==,
+            "topFaceValue"   : == 0 to 5 ==
+        }
+    }]
+}</pre>
+                        Student responses should be in similar format to answers:
+                        <pre>{
+    "integerValues" : {
+        "frontFaceValue" : == 0 to 5 ==,
+        "sideFaceValue"  : == 0 to 5 ==,
+        "topFaceValue"   : == 0 to 5 ==
+    }
+}</pre>
+                    </p>
+                    <h3>Multi Choice Ortho</h3>
+                    <p>
+                        Questions require:
+                        <pre>{
+    "questionString": ==blahblah==,
+    "type"          : "question-record-type%3Amulti-choice-ortho%40ODL.MIT.EDU"
+}</pre>
+                        With files, at least 2 choices are required. Additional choices
+                        need to follow the same naming format:
+                        <pre>{
+    "manip"         : == *.unity3d file required ==,
+    "choice0small"  : == *.jpg thumbnail required ==,
+    "choice0big"    : == *.jpg thumbnail required ==,
+    "choice1small"  : == *.jpg thumbnail required ==,
+    "choice1big"    : == *.jpg thumbnail required ==,
+}</pre>
+                        While answers require (for multiple answers, add to the "answers" list):
+                        <pre>{
+    "answers": [{
+        "type"     : "answer-record-type%3Amulti-choice-ortho%40ODL.MIT.EDU",
+        "choiceId" : [ # ]  -- this # should match the number given in the "choice" files
+    }]
+}</pre>
+                        Student responses should be in similar format to answers. However,
+                        since any consuming app should have the actual choice IDs at this
+                        point, those IDs need to be passed in as the student choices.
+                        Also note the use of "choiceIds" plural, even if only one
+                        answer is given:
+                        <pre>{
+    "choiceIds" : [ ######## ] -- this is a long, randomly generated string like 53d671bc33bb72de9183ce2d
+}</pre>
+                    </p>
+                    <h3>Multi Choice edX</h3>
+                    <p>
+                        Questions require:
+                        <pre>{
+    "questionString" : ==setup text== "Jack and Jill sit on a hill. Jack rolls off. Does Jill fall?",
+    "type"           : "question-record-type%3Amulti-choice-edx%40ODL.MIT.EDU",
+    "choices"        : [
+        "yes",
+        "no",
+        "maybe"
+    ]
+}</pre>
+                        Or:
+                    <pre>{
+    "questionString" : ==setup text== "Jack and Jill sit on a hill. Jack rolls off. Does Jill fall?",
+    "type"           : "question-record-type%3Amulti-choice-edx%40ODL.MIT.EDU",
+    "choices"        : [
+        {"text" :"Yes, she does",
+         "name" : "yes"},
+        {"text" : "Of course not!",
+         "name" : "no"},
+        {"text" : "I'm not sure. How closely are they sitting?",
+         "name" :"maybe"}
+    ]
+}</pre>
+                        At least 2 choices are required and at least 1 answer. The
+                        answers must be supplied as array indices, assuming choices
+                        are numbered 1, 2, ... X.
+
+                        Answer format is (for multiple answers, add to the "answers" list):
+                        <pre>{
+    "answers": [{
+        "type"     : "answer-record-type%3Amulti-choice-edx%40ODL.MIT.EDU",
+        "choiceId" : [ # ]  -- this # should match the "index" of the choice as supplied to the service
+    }]
+}</pre>
+                        Student responses should be in similar format to answers. However,
+                        since any consuming app should have the actual choice IDs at this
+                        point, those IDs need to be passed in as the student choices.
+                        Also note the use of "choiceIds" plural, even if only one
+                        answer is given:
+                        <pre>{
+    "choiceIds" : [ ######## ] -- this is a long, randomly generated string like 53d671bc33bb72de9183ce2d
+}</pre>
+                    </p>
+                    <p>
+                        You can also add files to edX questions, if they need to be part
+                        of the markup. For example, you might include image files or
+                        JavaScript libraries. To do this, you use a <code>multipart/form-data</code>
+                        POST and include the files. To ensure that files can be placed in the
+                        appropriate spot in the question text, client applications should
+                        match any src= tag filenames (or equivalent) with the input name in the
+                        POST data. For example, if the markup includes an image:
+                        <pre>Consider a conical pendulum below:
+<img src="/static/pendulum.png"/>
+</pre>
+                        You should replace this in the markup as: <pre>Consider a conical pendulum below:
+<img src="pendulum.png"/>
+</pre>
+                        Your POST data would then include an input with name <code>pendulum.png</code>
+                    </p>
+                    <p>
+                        A completed edX input object might look like the following:
+                        <pre>{
+    "name"          : "a really complicated item",
+    "description"   : "meant to differentiate students",
+    "question"      : {
+        "type"           : "question-record-type%3Amulti-choice-edx%40ODL.MIT.EDU",
+        "questionString" : "Jack and Jill sit on a hill. Jack rolls off. Does Jill fall?",
+        "choices"        : [
+            {"text" :"Yes, she does",
+             "name" : "yes"},
+            {"text" : "Of course not!",
+             "name" : "no"},
+            {"text" : "I'm not sure. How closely are they sitting?",
+             "name" :"maybe"}
+    ]
+    },
+    "answers"       : [{
+        "type"      : "answer-record-type%3Amulti-choice-edx%40ODL.MIT.EDU",
+        "choiceId"  : 1
+    }],
+}</pre>
+                    </p>
+                    <h4>Optional edX parameters</h4>
+                    <p>
+                        When creating edX problem types, you can include some of the optional
+                        edX parameters, like the maximum number of attempts allowed. The
+                        supported parameters are below -- include them in your POST data
+                        as part of the item's attributes:
+                        <ul>
+                            <li>edX max_attempts ==> <code>attempts</code></li>
+                            <li>edX markdown ==> <code>markdown</code></li>
+                            <li>edX rerandomize ==> <code>rerandomize</code></li>
+                            <li>edX showanswer ==> <code>showanswer</code></li>
+                            <li>edX weight ==> <code>weight</code></li>
+                            <li>IRT difficulty ==> <code>difficulty</code></li>
+                            <li>IRT discrimination ==> <code>discrimination</code></li>
+                        </ul>
+                    </p>
+                    <h2>Creating</h2>
+                    <p>
+                        <pre>POST /api/v2/assessment/banks/&lt;bank_id&gt;/items/</pre>
+                        To create a new item, you need to know what item types are
+                        supported on the server. An endpoint is provided for this,
+                        although currently only <a href="#supportedTypes">a subset of the
+                        items in the list are fully implemented</a>.
+                        <pre>GET /api/v2/assessment/types/items/</pre>
+                        Once the type is known, you can create an item with the appropriate
+                        attributes. Note that for Ortho-3D items, a <code>multipart/form-data</code>
+                        POST is acceptable, because of the files that need to be included.
+                        <pre>{
+    "name": "a hard question",
+    "description": "for advanced students",
+    "question": {
+        "type": "question-record-type%3Alabel-ortho-faces%40ODL.MIT.EDU",
+        "questionString": "Can you manipulate this thing?"
+    },
+    "answers": [{
+        "type": "answer-record-type%3Alabel-ortho-faces%40ODL.MIT.EDU",
+        "integerValues": {
+            "frontFaceValue": 4,
+            "sideFaceValue" : 5,
+            "topFaceValue"  : 0
+        }
+    }],
+}
+Files: manip = myAssetBundle.unity3d,
+       frontView = frontView.jpg,
+       sideView = sideView.jpg,
+       topView = topView.jpg</pre>
+                    </p>
+                    <h3>Answers</h3>
+                    <p>
+                        Items can have "right" answers and "wrong" answers, as well as student feedback
+                        for the wrong answers. By default, any answers provided are classified as "right"
+                        answers, unless specifically labelled as "wrong". To explicitly define an answer
+                        as correct, you can include a <code>genus</code> in the data payload when
+                        creating or editing the item answer. It might look like this: <pre>{
+    "answers": [{
+        "genus": "answer-type%3Aright-answer%40ODL.MIT.EDU",
+        "type": "answer-record-type%3Amulti-choice-edx%40ODL.MIT.EDU",
+    }]
+}</pre>
+                    </p>
+                    <p>
+                        Wrong answers can include an optional <code>feedback</code> value,
+                        which is a string that will be returned whenever a student responses with
+                        that incorrect answer. The create payload would look like: <pre>{
+    "answers": [{
+        "genus": "answer-type%3Awrong-answer%40ODL.MIT.EDU",
+        "feedback": "You forgot to divide your answer by the total number of people.",
+        "type": "answer-record-type%3Amulti-choice-edx%40ODL.MIT.EDU",
+    }]
+}</pre>
+                    </p>
+                    <h3>Error Codes</h3>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to create items in this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to create items in this bank. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Unsupported question or answer type."}</pre>
+                        You specified an item type that we do not currently support.
+                        Please check the <a href="supportedTypes">list of supported types</a>.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Poorly formatted input data."}</pre>
+                        Your input data is not in the expected format. Most likely
+                        it is not proper JSON. You should check the required
+                        attributes for your specific question type. For example,
+                        the Ortho-3D label faces type uses <code>integerValues</code> in its
+                        answer object, instead of <code>text</code> (for a string response).
+                    </p>
+                    <p>
+                        <pre>500: {"details": "\\"<key>\\" required in input parameters but not provided."}</pre>
+                        You need to supply the missing <code><key></code> parameter in your
+                        input parameters.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "\\"<key>\\" is shorter than <some #>."}</pre>
+                        The <code><key></code> list provided in your input data must be at least # elements long.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "X attribute(s) required for Ortho-3D items."}</pre>
+                        Your input data is missing some information. For example, X could be
+                        <code>manip</code>, which means that a manipulatable Unity asset bundle
+                        is required for this type of question.
+                    </p>
+                    <h2>Managing a specific item</h2>
+                    <p>
+                        Once you have a <code>bank_id</code> and an <code>item_id</code>,
+                        you can view and manipulate the specific item.
+                    </p>
+                    <h3>Viewing</h3>
+                    <p>
+                        <pre>GET /api/v2/assessment/banks/&lt;bank_id&gt;/items/&lt;item_id&gt;/</pre>
+                        This returns the item details.
+                        <pre>{
+    "displayName": {
+        "text": "Second test item",
+        "languageTypeId": "639-2%3AENG%40ISO",
+        "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+        "scriptTypeId": "15924%3ALATN%40ISO"
+    },
+    "description": {
+        "text": "To give some variety",
+        "languageTypeId": "639-2%3AENG%40ISO",
+        "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+        "scriptTypeId": "15924%3ALATN%40ISO"
+    },
+    "recordTypeIds": [],
+    "question": {
+        "files": {
+            "sideView": "==base64 encoded version of file==",
+            "frontView": "==base64 encoded version of file==",
+            "manip": "==base64 encoded version of file==",
+            "topView": "==base64 encoded version of file=="
+        },
+        "displayName": {
+            "text": "Second test item",
+            "languageTypeId": "639-2%3AENG%40ISO",
+            "scriptTypeId": "15924%3ALATN%40ISO",
+            "formatTypeId": "TextFormats%3APLAIN%40okapia.net"
+        },
+        "description": {
+            "text": "To give some variety",
+            "languageTypeId": "639-2%3AENG%40ISO",
+            "scriptTypeId": "15924%3ALATN%40ISO",
+            "formatTypeId": "TextFormats%3APLAIN%40okapia.net"
+        },
+        "recordTypeIds": [
+            "question-record-type%3Alabel-ortho-faces%40ODL.MIT.EDU"
+        ],
+        "text": {
+            "text": "Which of these objects looks like a spoon?",
+            "languageTypeId": "639-2%3AENG%40ISO",
+            "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+            "scriptTypeId": "15924%3ALATN%40ISO"
+        },
+        "id": "assessment.Item%3A53d91dda33bb72e98d9e5c23%40birdland.mit.edu",
+        "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+        "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+        "type": "Question",
+        "firstAngle": false,
+        "fileIds": {
+            "sideView": "repository.Asset%3A53d91dda33bb72e98d9e5c2d%40birdland.mit.edu",
+            "manip": "repository.Asset%3A53d91dda33bb72e98d9e5c25%40birdland.mit.edu",
+            "topView": "repository.Asset%3A53d91dda33bb72e98d9e5c31%40birdland.mit.edu",
+            "frontView": "repository.Asset%3A53d91dda33bb72e98d9e5c29%40birdland.mit.edu"
+        }
+    },
+    "answers": [
+        {
+            "displayName": {
+                "text": "",
+                "languageTypeId": "639-2%3AENG%40ISO",
+                "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                "scriptTypeId": "15924%3ALATN%40ISO"
+            },
+            "description": {
+                "text": "",
+                "languageTypeId": "639-2%3AENG%40ISO",
+                "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                "scriptTypeId": "15924%3ALATN%40ISO"
+            },
+            "recordTypeIds": [
+                "answer-record-type%3Alabel-ortho-faces%40ODL.MIT.EDU"
+            ],
+            "integerValues": {
+                "frontFaceValue": 3,
+                "sideFaceValue": 4,
+                "topFaceValue": 5
+            },
+            "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+            "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+            "type": "Answer",
+            "id": "assessment.Answer%3A53d91dda33bb72e98d9e5c36%40birdland.mit.edu"
+        }
+    ],
+    "_links": {
+        "files": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu/items/assessment.Item%3A53d91dda33bb72e98d9e5c23%40birdland.mit.edu/files/",
+        "self": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu/items/assessment.Item%3A53d91dda33bb72e98d9e5c23%40birdland.mit.edu/",
+        "question": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu/items/assessment.Item%3A53d91dda33bb72e98d9e5c23%40birdland.mit.edu/question/",
+        "answers": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu/items/assessment.Item%3A53d91dda33bb72e98d9e5c23%40birdland.mit.edu/answers/"
+    },
+    "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+    "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+    "type": "Item",
+    "id": "assessment.Item%3A53d91dda33bb72e98d9e5c23%40birdland.mit.edu",
+    "learningObjectiveIds": []
+}</pre>
+                    </p>
+                    <h4>Output Formats</h4>
+                    <p>
+                        We offer convenience methods to output individual items in different formats. Currently,
+                        we only support edXml (OLX -- Open Learning XML).
+                        <pre>GET /api/v2/assessment/banks/&lt;bank_id&gt;/items/&lt;item_id&gt;/edxml/</pre>
+                        This should return a structure like the following:
+                        <pre>{
+    "files": {
+        "car1.png": "==base64 encoded version of file==",
+        "rolling_translation_slipping_4_answerB.png": "==base64 encoded version of file=="
+    },
+    "data": "&lt;problem display_name=\"CAR STOP GO, AGGRESSIVE DRIVER\" markdown=\"null\" max_attempts=\"3\" showanswer=\"always\" weight=\"1.0\"&gt;\n &lt;p&gt;\n  The engine and brake pads in a car are able to exert torque on car wheels.\n &lt;/p&gt;\n &lt;p&gt;\n  In each situation below the driver agressively starts/stops\n  &lt;strong&gt;\n   causing the tires to skid\n  &lt;/strong&gt;\n &lt;/p&gt;\n &lt;center&gt;\n  &lt;img src=\"/static/car1.png\"/&gt;\n &lt;/center&gt;\n &lt;p&gt;\n  For both cars, choose the appropriate direction for the torque exerted by the engine or brakes on the orange wheel as well as the direction and type of the frictional force at the orange wheel's point of contact.\n &lt;/p&gt;\n &lt;table&gt;\n  &lt;tr&gt;\n   &lt;td&gt;\n    &lt;p&gt;\n     Choose the correct statement about \\(\\tau\\):\n    &lt;/p&gt;\n    &lt;p&gt;\n     Green light:\n    &lt;/p&gt;\n    &lt;optionresponse&gt;\n     &lt;optioninput correct=\"\\(\\tau\\) is into the page.\" label=\"Choose the correct statement about \\(\\tau\\).\" options=\"('\\(\\tau\\) is into the page.','\\(\\tau\\) is out of the page.','\\(\\tau\\) = 0.')\"/&gt;\n    &lt;/optionresponse&gt;\n    &lt;p&gt;\n     Choose the correct statement about \\(f\\):\n    &lt;/p&gt;\n    &lt;p&gt;\n     Green light:\n    &lt;/p&gt;\n    &lt;optionresponse&gt;\n     &lt;optioninput correct=\"kinetic friction points right\" label=\"Choose the correct statement about \\(f\\).\" options=\"('static friction points right','static friction points left','kinetic friction points right,', 'kinetic friction points left','\\(f\\) = 0.')\"/&gt;\n    &lt;/optionresponse&gt;\n   &lt;/td&gt;\n   &lt;td&gt;\n    &lt;p&gt;\n     &lt;span style=\"color: white\"&gt;\n      physics is\n     &lt;/span&gt;\n    &lt;/p&gt;\n    &lt;p&gt;\n     Red light:\n    &lt;/p&gt;\n    &lt;optionresponse&gt;\n     &lt;optioninput correct=\"\\(\\tau\\) is out of the page.\" label=\"Choose the correct statement about \\(\\tau\\).\" options=\"('\\(\\tau\\) is into the page.','\\(\\tau\\) is out of the page.','\\(\\tau\\) = 0.')\"/&gt;\n    &lt;/optionresponse&gt;\n    &lt;p&gt;\n     &lt;span style=\"color: white\"&gt;\n      confusing\n     &lt;/span&gt;\n    &lt;/p&gt;\n    &lt;p&gt;\n     Red light:\n    &lt;/p&gt;\n    &lt;optionresponse&gt;\n     &lt;optioninput correct=\"kinetic friction points left\" label=\"Choose the correct statement about \\(f\\).\" options=\"('static friction points right','static friction points left','kinetic friction points right,', 'kinetic friction points left','\\(f\\) = 0.')\"/&gt;\n    &lt;/optionresponse&gt;\n   &lt;/td&gt;\n  &lt;/tr&gt;\n &lt;/table&gt;\n &lt;solution&gt;\n  The only difference between this problem and the previous problem is that the tires skid instead of roll without slipping. Because there is relative motion between the road and the tires, the friction force is kinetic in nature.\n  &lt;p style=\"padding-left: 120px;\"&gt;\n   &lt;strong&gt;\n    &lt;img alt=\"\" src=\"/static/rolling_translation_slipping_4_answerB.png\" width=\"500\"/&gt;\n   &lt;/strong&gt;\n  &lt;/p&gt;\n &lt;/solution&gt;\n&lt;/problem&gt;"
+}</pre>
+                        <h5>Error Codes</h5>
+                        <p>
+                            <pre>500: {"details": "\" + output_format + \" is not a supported item text format."}</pre>
+                            We only support a subset of standardized formats. The one you selected is not one of them.
+                        </p>
+                    </p>
+                    <h4>Error Codes</h4>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to view item details in this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to view item details for the specific bank. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Item or bank not found"}</pre>
+                        An item with the specified <code>item_id</code> (or a bank with its
+                        <code>bank_id</code>) was not
+                        found. Please verify it exists in the current bank through the
+                        <a href="#itemsList">items</a> endpoint (or the
+                        <a href="#assessmentBanksList">banks</a> endpoint).
+                    </p>
+                    <h3>Deleting</h3>
+                    <p>
+                        <pre>DELETE /api/v2/assessment/banks/&lt;bank_id&gt;/items/&lt;item_id&gt;/</pre>
+                        An empty, 200 response is returned when this is successful.
+                    </p>
+                    <h4>Error Codes</h4>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to delete items in this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to delete items in this bank. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>406: {"details": "This Item is being used in one or more Assessments. Delink it first, before deleting it."}</pre>
+                        This item has been put into at least one assessment. You need to
+                        remove the item from the assessments before you can delete the
+                        item itself.
+                    </p>
+                    <h3>Updating</h3>
+                    <p>
+                        <pre>PUT /api/v2/assessment/banks/&lt;bank_id&gt;/items/&lt;item_id&gt;/</pre>
+                        Include the parameter that you wish to change.
+                        <pre>{
+    "question": {
+        "id" : "assessment.Item%3A53d91dda33bb72e98d9e5c23%40birdland.mit.edu",
+        "questionString": "Which of these objects looks like a fork?",
+        "type": question_type
+    }
+}</pre>
+                        The updated item is returned.
+                        <pre>{
+    "displayName": {
+        "text": "Second test item",
+        "languageTypeId": "639-2%3AENG%40ISO",
+        "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+        "scriptTypeId": "15924%3ALATN%40ISO"
+    },
+    "description": {
+        "text": "To give some variety",
+        "languageTypeId": "639-2%3AENG%40ISO",
+        "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+        "scriptTypeId": "15924%3ALATN%40ISO"
+    },
+    "recordTypeIds": [],
+    "question": {
+        "files": {
+            "sideView": "==base64 encoded version of file==",
+            "frontView": "==base64 encoded version of file==",
+            "manip": "==base64 encoded version of file==",
+            "topView": "==base64 encoded version of file=="
+        },
+        "displayName": {
+            "text": "Second test item",
+            "languageTypeId": "639-2%3AENG%40ISO",
+            "scriptTypeId": "15924%3ALATN%40ISO",
+            "formatTypeId": "TextFormats%3APLAIN%40okapia.net"
+        },
+        "description": {
+            "text": "To give some variety",
+            "languageTypeId": "639-2%3AENG%40ISO",
+            "scriptTypeId": "15924%3ALATN%40ISO",
+            "formatTypeId": "TextFormats%3APLAIN%40okapia.net"
+        },
+        "recordTypeIds": [
+            "question-record-type%3Alabel-ortho-faces%40ODL.MIT.EDU"
+        ],
+        "text": {
+            "text": "Which of these objects looks like a fork?",
+            "languageTypeId": "639-2%3AENG%40ISO",
+            "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+            "scriptTypeId": "15924%3ALATN%40ISO"
+        },
+        "id": "assessment.Item%3A53d91dda33bb72e98d9e5c23%40birdland.mit.edu",
+        "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+        "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+        "type": "Question",
+        "firstAngle": false,
+        "fileIds": {
+            "sideView": "repository.Asset%3A53d91dda33bb72e98d9e5c2d%40birdland.mit.edu",
+            "manip": "repository.Asset%3A53d91dda33bb72e98d9e5c25%40birdland.mit.edu",
+            "topView": "repository.Asset%3A53d91dda33bb72e98d9e5c31%40birdland.mit.edu",
+            "frontView": "repository.Asset%3A53d91dda33bb72e98d9e5c29%40birdland.mit.edu"
+        }
+    },
+    "answers": [
+        {
+            "displayName": {
+                "text": "",
+                "languageTypeId": "639-2%3AENG%40ISO",
+                "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                "scriptTypeId": "15924%3ALATN%40ISO"
+            },
+            "description": {
+                "text": "",
+                "languageTypeId": "639-2%3AENG%40ISO",
+                "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                "scriptTypeId": "15924%3ALATN%40ISO"
+            },
+            "recordTypeIds": [
+                "answer-record-type%3Alabel-ortho-faces%40ODL.MIT.EDU"
+            ],
+            "integerValues": {
+                "frontFaceValue": 3,
+                "sideFaceValue": 4,
+                "topFaceValue": 5
+            },
+            "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+            "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+            "type": "Answer",
+            "id": "assessment.Answer%3A53d91dda33bb72e98d9e5c36%40birdland.mit.edu"
+        }
+    ],
+    "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+    "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+    "type": "Item",
+    "id": "assessment.Item%3A53d91dda33bb72e98d9e5c23%40birdland.mit.edu",
+    "learningObjectiveIds": []
+}</pre>
+                    </p>
+                    <h4>Error Codes</h4>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to edit item details in this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to edit items in the bank. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Unsupported question or answer type."}</pre>
+                        You specified an item type that we do not currently support.
+                        Please check the <a href="supportedTypes">list of supported types</a>.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Poorly formatted input data."}</pre>
+                        Your input data is not in the expected format. Most likely
+                        it is not proper JSON. You should check the required
+                        attributes for your specific question type. For example,
+                        the Ortho-3D label faces type uses <code>integerValues</code> in its
+                        answer object, instead of <code>text</code> (for a string response).
+                    </p>
+                    <h2>Linking to Assessments</h2>
+                    <p>
+                        After items are created, they can be linked to an
+                        assessment. Note that items added to an assessment
+                        <strong>after</strong> an offering is created
+                        will <strong>not</strong> appear in that offering!
+                    </p>
+                    <p>
+                        To link an item(s) to an assessment, you need to know
+                        the list of <code>item_id</code>s, plus the
+                        <code>assessment_id</code>. Please see the
+                        <a href="#linkToItems">Linking Items</a> section
+                        for more details.
+                    </p>
+                    <h1>Assessments</h1>
+                    <h2>Introduction</h2>
+                    <p>
+                        Assessments are collections of items. They are offered to students
+                        at specific times during a course, and usually include a feedback
+                        mechanism (right / wrong).
+                    </p>
+                    <p>
+                        This set of endpoints lets you manage the canonical assessments. They
+                        are, by themselves, devoid of any time knowledge (due date, start date),
+                        and devoid of student responses.
+                    </p>
+                    <p>
+                        Once an instructor uses an assessment in a class, and assigns a
+                        start date, due date, duration, etc., that becomes a "clone" of
+                        this assessment, or an <a href="#assessmentOffered">Assessment Offered</a>.
+                        Once a student attempts to answer the assessment offered,
+                        an <a href="#assessmentTaken">Assessment Taken</a> is created and
+                        associated with their response.
+                    </p>
+                    <h2 id="assessmentsList">Listing all assessments in a bank</h2>
+                    <p>
+                        Like items, assessments are always associated with a bank. So
+                        it is assumed that you know the <code>bank_id</code> of interest.
+                        <pre>GET /api/v2/assessment/banks/&lt;bank_id&gt;/assessments/</pre>
+                        Since this is a "LIST" type call, assessments are returned
+                        in the "data" attribute.
+                        <pre>{
+    "_links": {
+        "self": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu/assessments/",
+        "assessment.Assessment%3A53d67d2633bb727ecf4a00ca%40birdland.mit.edu": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank:53d671bc33bb72de9183ce2d@birdland.mit.edu/assessments/assessment.Assessment:53d67d2633bb727ecf4a00ca@birdland.mit.edu/",
+        "assessment.Assessment%3A53e8c04b33bb72ffb35df883%40birdland.mit.edu": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank:53d671bc33bb72de9183ce2d@birdland.mit.edu/assessments/assessment.Assessment:53e8c04b33bb72ffb35df883@birdland.mit.edu/",
+        "assessment.Assessment%3A53e8e37233bb72e2ac5748ee%40birdland.mit.edu": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank:53d671bc33bb72de9183ce2d@birdland.mit.edu/assessments/assessment.Assessment:53e8e37233bb72e2ac5748ee@birdland.mit.edu/"
+    },
+    "data": {
+        "count"     : 3,
+        "next"      : null,
+        "previous"  : null,
+        "results"   : [
+            {
+                "displayName": {
+                    "text": "Easy shape",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                    "scriptTypeId": "15924%3ALATN%40ISO"
+                },
+                "description": {
+                    "text": "A simple shape to label",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                    "scriptTypeId": "15924%3ALATN%40ISO"
+                },
+                "recordTypeIds": [],
+                "type": "Assessment",
+                "levelId": "",
+                "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+                "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+                "rubricId": "",
+                "id": "assessment.Assessment%3A53d67d2633bb727ecf4a00ca%40birdland.mit.edu"
+            },
+            {
+                "displayName": {
+                    "text": "A5",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                    "scriptTypeId": "15924%3ALATN%40ISO"
+                },
+                "description": {
+                    "text": "difficult",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                    "scriptTypeId": "15924%3ALATN%40ISO"
+                },
+                "recordTypeIds": [],
+                "type": "Assessment",
+                "levelId": "",
+                "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+                "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+                "rubricId": "",
+                "id": "assessment.Assessment%3A53e8c04b33bb72ffb35df883%40birdland.mit.edu"
+            },
+            {
+                "displayName": {
+                    "text": "Assessment3",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                    "scriptTypeId": "15924%3ALATN%40ISO"
+                },
+                "description": {
+                    "text": "difficult",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                    "scriptTypeId": "15924%3ALATN%40ISO"
+                },
+                "recordTypeIds": [],
+                "type": "Assessment",
+                "levelId": "",
+                "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+                "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+                "rubricId": "",
+                "id": "assessment.Assessment%3A53e8e37233bb72e2ac5748ee%40birdland.mit.edu"
+            }
+        ]
+    }
+}</pre>
+                    </p>
+                    <h3>Error Codes</h3>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to view assessments in this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to view assessments in this bank. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <h2 id="assessmentsCreate">Creating</h2>
+                    <p>
+                        <pre>POST /api/v2/assessment/banks/&lt;bank_id&gt;/assessments/</pre>
+                        A JSON data package sent to this endpoint can include <code>item_id</code>s,
+                        or those can be added later.
+                        <pre>{
+    "name" : "an assessment",
+    "description" : "this is a hard pset",
+    "itemIds" : ["assessment.Item%3A539ef3a3ea061a0cb4fba0a3%40birdland.mit.edu"]
+}</pre>
+                    </p>
+                    <h3>Error Codes</h3>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to create new assessments in this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to create assessments in the bank. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Item ID(s) or bank were not found."}</pre>
+                        One of the supplied <code>item_id</code>s (or a bank with its
+                        <code>bank_id</code>) was not
+                        found. Please verify it exists in the current bank through the
+                        <a href="#itemsList">items</a> endpoint (or the
+                        <a href="#assessmentBanksList">banks</a> endpoint).
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Poorly formatted input data."}</pre>
+                        Your input data is not in the expected format. Most likely
+                        it is not proper JSON or did not structure the itemIds
+                        attribute as a list.
+                    </p>
+                    <h2 id="assessmentGetOne">Managing a specific assessment</h2>
+                    <p>
+                        Once you have a <code>bank_id</code> and an <code>assessment_id</code>,
+                        you can view and manipulate the specific assessment.
+                    </p>
+                    <h3>Viewing</h3>
+                    <p>
+                        <pre>GET /api/v2/assessment/banks/&lt;bank_id&gt;/assessments/&lt;assessment_id&gt;/</pre>
+                        This returns the assessment details.
+                        <pre>{
+    "displayName": {
+        "text": "Easy shape",
+        "languageTypeId": "639-2%3AENG%40ISO",
+        "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+        "scriptTypeId": "15924%3ALATN%40ISO"
+    },
+    "description": {
+        "text": "A simple shape to label",
+        "languageTypeId": "639-2%3AENG%40ISO",
+        "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+        "scriptTypeId": "15924%3ALATN%40ISO"
+    },
+    "recordTypeIds": [],
+    "rubricId": "",
+    "levelId": "",
+    "_links": {
+        "offerings": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu/assessments/assessment.Assessment%3A53d67d2633bb727ecf4a00ca%40birdland.mit.edu/assessmentsoffered/",
+        "items": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu/assessments/assessment.Assessment%3A53d67d2633bb727ecf4a00ca%40birdland.mit.edu/items/",
+        "self": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu/assessments/assessment.Assessment%3A53d67d2633bb727ecf4a00ca%40birdland.mit.edu/",
+        "takens": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu/assessments/assessment.Assessment%3A53d67d2633bb727ecf4a00ca%40birdland.mit.edu/assessmentstaken/"
+    },
+    "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+    "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+    "type": "Assessment",
+    "id": "assessment.Assessment%3A53d67d2633bb727ecf4a00ca%40birdland.mit.edu"
+}</pre>
+                    </p>
+                    <h4>Error Codes</h4>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to view assessment details in this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to view assessment details for the specific bank. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Assessment or bank not found"}</pre>
+                        An assessment with the specified <code>assessment_id</code> (or a bank with its
+                        <code>bank_id</code>) was not
+                        found. Please verify it exists in the current bank through the
+                        <a href="#assessmentsList">assessments</a> endpoint (or the
+                        <a href="#assessmentBanksList">banks</a> endpoint).
+                    </p>
+                    <h3>Deleting</h3>
+                    <p>
+                        <pre>DELETE /api/v2/assessment/banks/&lt;bank_id&gt;/assessments/&lt;assessment_id%gt;/</pre>
+                        An empty, 200 response is returned when this is successful.
+                    </p>
+                    <h4>Error Codes</h4>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to delete assessments in this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to delete assessments in the bank. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>406: {"details": "Assessment still has AssessmentOffered. Delete the offerings first."}</pre>
+                        This assessment has assessments offered attached to it. You need to delete those first,
+                        before you can delete the assessment -- you allow instructors to do this
+                        <strong>at their own risk</strong>! If an assessment has been
+                        offered, students may have accessed it already.
+                    </p>
+                    <h3>Items</h3>
+                    <h4>View current items</h4>
+                    <p>
+                        <pre>GET /api/v2/assessment/banks/&lt;bank_id&gt;/assessments/&lt;assessment_id&gt;/items/</pre>
+                        Returns a list of items currently linked to this assessment.
+                        <pre>{
+    "_links": {
+        "assessment.Item%3A53e508cc33bb720772f67931%40birdland.mit.edu": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank:53d671bc33bb72de9183ce2d@birdland.mit.edu/assessments/assessment.Assessment:53d67d2633bb727ecf4a00ca@birdland.mit.edu/items/assessment.Item:53e508cc33bb720772f67931@birdland.mit.edu/",
+        "self": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu/assessments/assessment.Assessment%3A53d67d2633bb727ecf4a00ca%40birdland.mit.edu/items/",
+        "assessment.Item%3A53d6778633bb727ec57afcab%40birdland.mit.edu": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank:53d671bc33bb72de9183ce2d@birdland.mit.edu/assessments/assessment.Assessment:53d67d2633bb727ecf4a00ca@birdland.mit.edu/items/assessment.Item:53d6778633bb727ec57afcab@birdland.mit.edu/"
+    },
+    "data": {
+        "count"     : 2,
+        "next"      : null,
+        "previous"  : null,
+        "results"   : [
+            {
+                "displayName": {
+                    "text": "Test item",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                    "scriptTypeId": "15924%3ALATN%40ISO"
+                },
+                "description": {
+                    "text": "My favorite question",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                    "scriptTypeId": "15924%3ALATN%40ISO"
+                },
+                "recordTypeIds": [],
+                "question": {
+                    "files": {
+                        "sideView": "==base64 encoded version of file==",
+                        "frontView": "==base64 encoded version of file==",
+                        "manip": "==base64 encoded version of file==",
+                        "topView": "==base64 encoded version of file=="
+                    },
+                    "displayName": {
+                        "text": "Test item",
+                        "languageTypeId": "639-2%3AENG%40ISO",
+                        "scriptTypeId": "15924%3ALATN%40ISO",
+                        "formatTypeId": "TextFormats%3APLAIN%40okapia.net"
+                    },
+                    "description": {
+                        "text": "My favorite question",
+                        "languageTypeId": "639-2%3AENG%40ISO",
+                        "scriptTypeId": "15924%3ALATN%40ISO",
+                        "formatTypeId": "TextFormats%3APLAIN%40okapia.net"
+                    },
+                    "recordTypeIds": [
+                        "question-record-type%3Alabel-ortho-faces%40ODL.MIT.EDU"
+                    ],
+                    "text": {
+                        "text": "Which face is best?",
+                        "languageTypeId": "639-2%3AENG%40ISO",
+                        "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                        "scriptTypeId": "15924%3ALATN%40ISO"
+                    },
+                    "id": "assessment.Item%3A53d6778633bb727ec57afcab%40birdland.mit.edu",
+                    "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+                    "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+                    "type": "Question",
+                    "firstAngle": false,
+                    "fileIds": {
+                        "sideView": "repository.Asset%3A53d6778833bb727ec57afcb5%40birdland.mit.edu",
+                        "manip": "repository.Asset%3A53d6778733bb727ec57afcad%40birdland.mit.edu",
+                        "topView": "repository.Asset%3A53d6778833bb727ec57afcb9%40birdland.mit.edu",
+                        "frontView": "repository.Asset%3A53d6778833bb727ec57afcb1%40birdland.mit.edu"
+                    }
+                },
+                "answers": [
+                    {
+                        "displayName": {
+                            "text": "",
+                            "languageTypeId": "639-2%3AENG%40ISO",
+                            "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                            "scriptTypeId": "15924%3ALATN%40ISO"
+                        },
+                        "description": {
+                            "text": "",
+                            "languageTypeId": "639-2%3AENG%40ISO",
+                            "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                            "scriptTypeId": "15924%3ALATN%40ISO"
+                        },
+                        "recordTypeIds": [
+                            "answer-record-type%3Alabel-ortho-faces%40ODL.MIT.EDU"
+                        ],
+                        "integerValues": {
+                            "frontFaceValue": 0,
+                            "sideFaceValue": 1,
+                            "topFaceValue": 2
+                        },
+                        "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+                        "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+                        "type": "Answer",
+                        "id": "assessment.Answer%3A53d6778833bb727ec57afcbe%40birdland.mit.edu"
+                    }
+                ],
+                "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+                "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+                "type": "Item",
+                "id": "assessment.Item%3A53d6778633bb727ec57afcab%40birdland.mit.edu",
+                "learningObjectiveIds": []
+            },
+            {
+                "displayName": {
+                    "text": "Basic1",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                    "scriptTypeId": "15924%3ALATN%40ISO"
+                },
+                "description": {
+                    "text": "A simple bracket",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                    "scriptTypeId": "15924%3ALATN%40ISO"
+                },
+                "recordTypeIds": [],
+                "question": {
+                    "files": {
+                        "sideView": "==base64 encoded version of file==",
+                        "frontView": "==base64 encoded version of file==",
+                        "manip": "==base64 encoded version of file==",
+                        "topView": "==base64 encoded version of file=="
+                    },
+                    "displayName": {
+                        "text": "Basic1",
+                        "languageTypeId": "639-2%3AENG%40ISO",
+                        "scriptTypeId": "15924%3ALATN%40ISO",
+                        "formatTypeId": "TextFormats%3APLAIN%40okapia.net"
+                    },
+                    "description": {
+                        "text": "A simple bracket",
+                        "languageTypeId": "639-2%3AENG%40ISO",
+                        "scriptTypeId": "15924%3ALATN%40ISO",
+                        "formatTypeId": "TextFormats%3APLAIN%40okapia.net"
+                    },
+                    "recordTypeIds": [
+                        "question-record-type%3Alabel-ortho-faces%40ODL.MIT.EDU"
+                    ],
+                    "text": {
+                        "text": "Label the faces",
+                        "languageTypeId": "639-2%3AENG%40ISO",
+                        "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                        "scriptTypeId": "15924%3ALATN%40ISO"
+                    },
+                    "id": "assessment.Item%3A53e508cc33bb720772f67931%40birdland.mit.edu",
+                    "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+                    "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+                    "type": "Question",
+                    "firstAngle": false,
+                    "fileIds": {
+                        "sideView": "repository.Asset%3A53e508cc33bb720772f6793b%40birdland.mit.edu",
+                        "manip": "repository.Asset%3A53e508cc33bb720772f67933%40birdland.mit.edu",
+                        "topView": "repository.Asset%3A53e508cc33bb720772f6793f%40birdland.mit.edu",
+                        "frontView": "repository.Asset%3A53e508cc33bb720772f67937%40birdland.mit.edu"
+                    }
+                },
+                "answers": [
+                    {
+                        "displayName": {
+                            "text": "",
+                            "languageTypeId": "639-2%3AENG%40ISO",
+                            "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                            "scriptTypeId": "15924%3ALATN%40ISO"
+                        },
+                        "description": {
+                            "text": "",
+                            "languageTypeId": "639-2%3AENG%40ISO",
+                            "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                            "scriptTypeId": "15924%3ALATN%40ISO"
+                        },
+                        "recordTypeIds": [
+                            "answer-record-type%3Alabel-ortho-faces%40ODL.MIT.EDU"
+                        ],
+                        "integerValues": {
+                            "frontFaceValue": 4,
+                            "sideFaceValue": 3,
+                            "topFaceValue": 1
+                        },
+                        "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+                        "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+                        "type": "Answer",
+                        "id": "assessment.Answer%3A53e508cc33bb720772f67944%40birdland.mit.edu"
+                    }
+                ],
+                "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+                "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+                "type": "Item",
+                "id": "assessment.Item%3A53e508cc33bb720772f67931%40birdland.mit.edu",
+                "learningObjectiveIds": []
+            }
+        ]
+    }
+}</pre>
+                    </p>
+                    <h5>Error Codes</h5>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to view assessment items in this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to view assessment items for the specific bank. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Assessment or bank not found"}</pre>
+                        An assessment with the specified <code>assessment_id</code> (or a bank with its
+                        <code>bank_id</code>) was not
+                        found. Please verify it exists in the current bank through the
+                        <a href="#assessmentsList">assessments</a> endpoint (or the
+                        <a href="#assessmentBanksList">banks</a> endpoint).
+                    </p>
+                    <h4 id="assessmentItemsPost">Link new item</h4>
+                    <p>
+                        <pre>POST /api/v2/assessment/banks/&lt;bank_id&gt;/assessments/&lt;assessment_id&gt;/items/</pre>
+                        Include a list of <code>item_id</code>s -- this will be appended to the current
+                        list of items. Even if adding a single item, include a list structure.
+                        <pre>{
+    "itemIds" : ["assessment.Item%3A539ef3a3ea061a0cb4fba0a3%40birdland.mit.edu"]
+}</pre>
+                    </p>
+                    <h5>Error Codes</h5>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to assign items to assessments in this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to link items and assessments in the bank. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Poorly formatted input data."}</pre>
+                        Your input data is not in the expected format. Most likely
+                        it is not proper JSON.
+                    </p>
+                    <h4 id="assessmentItemsDelete">Delete item link</h4>
+                    <p>
+                        <pre>DELETE /api/v2/assessment/banks/&lt;bank_id&gt;/assessments/&lt;assessment_id&gt;/items/&lt;item_id&gt;/</pre>
+                        Note that this does not delete the original item from the
+                        repository -- it only removes the linkage between the item
+                        and the assessment.
+                    </p>
+                    <h5>Error Codes</h5>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to delete an assessment's items in this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to delink items and assessments in the bank. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <h3>Updating</h3>
+                    <p>
+                        <pre>PUT /api/v2/assessment/banks/&lt;bank_id&gt;/assessments/&lt;assessment_id&gt;/</pre>
+                        Include the parameter that you wish to change.
+                        <pre>{
+    "description" : "an improved version"
+}</pre>
+                        The updated assessment is returned.
+                        <pre>{
+    "displayName": {
+        "text": "Easy shape",
+        "languageTypeId": "639-2%3AENG%40ISO",
+        "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+        "scriptTypeId": "15924%3ALATN%40ISO"
+    },
+    "description": {
+        "text": "an improved version",
+        "languageTypeId": "639-2%3AENG%40ISO",
+        "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+        "scriptTypeId": "15924%3ALATN%40ISO"
+    },
+    "recordTypeIds": [],
+    "rubricId": "",
+    "levelId": "",
+    "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+    "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+    "type": "Assessment",
+    "id": "assessment.Assessment%3A53d67d2633bb727ecf4a00ca%40birdland.mit.edu"
+}</pre>
+                    </p>
+                    <h4>Error Codes</h4>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to edit assessments in this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to edit assessments in the bank. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Poorly formatted input data."}</pre>
+                        Your input data is not in the expected format. Most likely
+                        it is not proper JSON.
+                    </p>
+                    <h2 id="linkToItems">Linking Items</h2>
+                    <p>
+                        Note that the <code>item_id</code>s <strong>must</strong> appear
+                        in a list structure, even if you are adding
+                        only a single item.
+                    </p>
+                    <h3>On assessment creation</h3>
+                    <p>
+                        An assessment can be created with <code>item_id</code>s as part
+                        of the initial data. This is demonstrated in the section
+                        on <a href="#assessmentsCreate">assessment creation</a>.
+                    </p>
+                    <h3>On assessment update</h3>
+                    <p>
+                        If you do not care about the order of the items, you
+                        can just append the items to the assessment items endpoint.
+                        <pre>POST /api/v2/assessment/banks/&lt;bank_id&gt;/</pre>
+                        A list of <code>item_id</code>s (even if it is just one item)
+                        is required.
+                        <pre>{
+    "itemIds" : ["assessment.Item%3A539ef3a3ea061a0cb4fba0a3%40birdland.mit.edu"]
+}</pre>
+                    </p>
+                    <p>
+                        If you care about the order of items, you will have to
+                        explicitly <code>delete</code> the items and then
+                        re-add them in the expected order.
+                        <ol>
+                            <li><a href="#assessmentItemsList">GET the current items from this service</a></li>
+                            <li>Delete any or all old items from the list (in your code)</li>
+                            <li>Add the new items in the appropriate indices, in the list (in your code)</li>
+                            <li><a href="#assessmentItemsDelete">Delink all old items in this service</a></li>
+                            <li><a href="#assessmentItemsPost">Add a list of items to the assessment in this service</a></li>
+                        </ol>
+                    </p>
+                    <h1 id="assessmentOffered">Assessments Offered</h1>
+                    <h2>Introduction</h2>
+                    <p>
+                        An Assessment Offered is a single instance of an Assessment,
+                        typically associated with a start time and duration. Think of
+                        it as "this semester's copy" of an assessment.
+                    </p>
+                    <h2 id="assessmentsOfferedList">Listing all assessments offered</h2>
+                    <p>
+                        <pre>GET /api/v2/assessment/banks/&lt;bank_id&gt;/assessments/&tl;assessment_id&gt;/assessmentsoffered/</pre>
+                        Because assessments offered must be associated with a bank and
+                        a specific assessment, it is assumed that you know both the
+                        <code>bank_id</code> and the <code>assessment_id</code>.
+                    </p>
+                    <p>
+                        This LIST type call returns the assessments offered in the "data"
+                        attribute. Note that "time" related attributes like
+                        <code>startTime</code> and <code>duration</code>
+                        are structured as dictionary objects.
+                        <pre>{
+    "_links": {
+        "self": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu/assessments/assessment.Assessment%3A53e8c04b33bb72ffb35df883%40birdland.mit.edu/assessmentsoffered/",
+        "assessment.AssessmentOffered%3A53e8c04b33bb72e2b7a3809c%40birdland.mit.edu": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank:53d671bc33bb72de9183ce2d@birdland.mit.edu/assessments/assessment.Assessment:53e8c04b33bb72ffb35df883@birdland.mit.edu/assessmentsoffered/../../../assessmentsoffered/assessment.AssessmentOffered%3A53e8c04b33bb72e2b7a3809c%40birdland.mit.edu/"
+    },
+    "data": {
+        "count"     : 1,
+        "next"      : null,
+        "previous"  : null,
+        "results"   : [
+            {
+                "scored": null,
+                "gradeSystemId": "",
+                "description": {
+                    "text": "",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                    "scriptTypeId": "15924%3ALATN%40ISO"
+                },
+                "recordTypeIds": [],
+                "assessmentId": "assessment.Assessment%3A53e8c04b33bb72ffb35df883%40birdland.mit.edu",
+                "levelId": "",
+                "scoreSystemId": "",
+                "type": "AssessmentOffered",
+                "deadline": null,
+                "startTime": {
+                    "year":2015,
+                    "month":1,
+                    "day":15
+                },
+                "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+                "duration": {"days":1},
+                "displayName": {
+                    "text": "",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                    "scriptTypeId": "15924%3ALATN%40ISO"
+                },
+                "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+                "rubricId": "",
+                "id": "assessment.AssessmentOffered%3A53e8c04b33bb72e2b7a3809c%40birdland.mit.edu",
+                "graded": null
+            }
+        ]
+    }
+}</pre>
+                    </p>
+                    <h5>Error Codes</h5>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to view assessment offerings in this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to view assessments offered for the specific bank. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Assessment or bank not found"}</pre>
+                        An assessment with the specified <code>assessment_id</code> (or a bank with its
+                        <code>bank_id</code>) was not
+                        found. Please verify it exists in the current bank through the
+                        <a href="#assessmentsList">assessments</a> endpoint (or the
+                        <a href="#assessmentBanksList">banks</a> endpoint).
+                    </p>
+                    <h2>Creating</h2>
+                    <p>
+                        <pre>POST /api/v2/assessment/banks/&lt;bank_id&gt;/assessments/&lt;assessment_id/assessmentsoffered/</pre>
+                        A JSON data package sent to this endpoint should be an object, even if it is blank.
+                        If you do not want to include a startTime or duration, then you should pass an empty
+                        object <code>{}</code>. Otherwise, you can pass any time parameter as a dictionary
+                        object.
+
+                        Note that you can either pass a single object, or also concurrently create
+                        multiple Assessments Offered in a LIST format.
+                        <pre>[{
+    "startTime" : {
+        "year":2015,
+        "month":1,
+        "day":15
+    },
+    "duration": {
+        "days":1
+    }},
+    {"startTime" : {
+        "year":2015,
+        "month":9,
+        "day":15
+    },
+    "duration": {
+        "days":1
+    }
+}]</pre>
+                        This returns the objects created. If a single object is passed in,
+                        a single, created object will be returned. If a list of objects is
+                        passed in, a list of created objects will be returned.
+                        <pre>[
+    {
+        "scored": null,
+        "gradeSystemId": "",
+        "description": {
+            "text": "",
+            "languageTypeId": "639-2%3AENG%40ISO",
+            "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+            "scriptTypeId": "15924%3ALATN%40ISO"
+        },
+        "recordTypeIds": [],
+        "assessmentId": "assessment.Assessment%3A53d67d2633bb727ecf4a00ca%40birdland.mit.edu",
+        "levelId": "",
+        "scoreSystemId": "",
+        "type": "AssessmentOffered",
+        "deadline": null,
+        "startTime": {
+            "year":2015,
+            "month":1,
+            "day":15
+        },
+        "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+        "duration": {
+            "days":1
+        },
+        "displayName": {
+            "text": "",
+            "languageTypeId": "639-2%3AENG%40ISO",
+            "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+            "scriptTypeId": "15924%3ALATN%40ISO"
+        },
+        "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+        "rubricId": "",
+        "id": "assessment.AssessmentOffered%3A53d67d3733bb727ecbd52576%40birdland.mit.edu",
+        "graded": null
+    },
+    {
+        "scored": null,
+        "gradeSystemId": "",
+        "description": {
+            "text": "",
+            "languageTypeId": "639-2%3AENG%40ISO",
+            "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+            "scriptTypeId": "15924%3ALATN%40ISO"
+        },
+        "recordTypeIds": [],
+        "assessmentId": "assessment.Assessment%3A53d67d2633bb727ecf4a00ca%40birdland.mit.edu",
+        "levelId": "",
+        "scoreSystemId": "",
+        "type": "AssessmentOffered",
+        "deadline": null,
+        "startTime": {
+            "year":2015,
+            "month":9,
+            "day":15
+        },
+        "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+        "duration": {
+            "days":1
+        },
+        "displayName": {
+            "text": "",
+            "languageTypeId": "639-2%3AENG%40ISO",
+            "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+            "scriptTypeId": "15924%3ALATN%40ISO"
+        },
+        "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+        "rubricId": "",
+        "id": "assessment.AssessmentOffered%3A53d67d3733bb727ecbdaf12g%40birdland.mit.edu",
+        "graded": null
+    }
+]</pre>
+                    </p>
+                    <p>
+                        Note that you can include <code>reviewOptions</code> for when students
+                        can view results in an AssessmentTaken. These options include during an
+                        attempt, after an attempt, before the deadline, and after the deadline.
+                        Depending on which flags are set and the state of the assessment taken,
+                        a <code>reviewWhetherCorrect</code> flag is set to <code>True</code> or
+                        <code>False</code> in the taken. Example is below, to only let students
+                        see "correct" or "incorrect" after the entire assessment is completed
+                        (default is all <code>True</code>, so consuming apps assume they can
+                        always show the students their results): <pre>{
+    "startTime" : {
+        "year":2015,
+        "month":1,
+        "day":15
+    },
+    "duration" : {
+        "days":1
+    },
+    "reviewOptions" : {
+        "whetherCorrect" : {
+            "afterAttempt"      : True,
+            "afterDeadline"     : True,
+            "beforeDeadline"    : True,
+            "duringAttempt"     : False
+        }
+    }
+}</pre>
+                        Note that "afterAttempt" only occurs after a consuming app
+                        "finishes" an assessment section. This can be done from
+                        an <a href="#finishAssessmentTaken">Assessment Taken
+                        endpoint</a>.
+                    </p>
+                    <p>
+                        You can also submit a maximum number of attempts that assignment
+                        takers can use, for the given offering. This is passed in as
+                        a <code>maxAttempts</code> attribute, as below. <code>None</code>
+                        (or infinite attempts) is the default:<pre>{
+    "startTime" : {
+        "year":2015,
+        "month":1,
+        "day":15
+    },
+    "duration" : {
+        "days":1
+    },
+    "maxAttempts" : 3
+}</pre>
+                    </p>
+                    <h3>Error Codes</h3>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to create assessment offerings in this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to create assessment offerings with this service. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Poorly formatted input data."}</pre>
+                        Your input data is not in the expected format. Most likely
+                        it is not proper JSON or does not have the right data structure
+                        for the time elements.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Cannot create an assessment offering for an assessment with no items."}</pre>
+                        Because items added to an assessment <strong>after</strong> an
+                        offering is created will not appear in the offering, you
+                        must add the items to an assessment <strong>before</strong>
+                        creating the offering.
+                    </p>
+                    <h2>Managing a specific offering</h2>
+                    <p>
+                        Once you have a <code>bank_id</code> and an <code>assessment_offered_id</code>,
+                        you can view and manipulate the specific offering.
+                    </p>
+                    <h3>Viewing</h3>
+                    <p>
+                        <pre>GET /api/v2/assessment/banks/&lt;bank_id&gt;/assessmentsoffered/&lt;assessment_offered_id&gt;/</pre>
+                        This returns the details of the offering:
+                        <pre>{
+    "scored": null,
+    "gradeSystemId": "",
+    "description": {
+        "text": "",
+        "languageTypeId": "639-2%3AENG%40ISO",
+        "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+        "scriptTypeId": "15924%3ALATN%40ISO"
+    },
+    "recordTypeIds": [],
+    "assessmentId": "assessment.Assessment%3A53d67d2633bb727ecf4a00ca%40birdland.mit.edu",
+    "id": "assessment.AssessmentOffered%3A53d67d3733bb727ecbd52576%40birdland.mit.edu",
+    "levelId": "",
+    "scoreSystemId": "",
+    "rubricId": "",
+    "_links": {
+        "items": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu/assessmentsoffered/assessment.AssessmentOffered%3A53d67d3733bb727ecbd52576%40birdland.mit.edu/../../items/",
+        "self": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu/assessmentsoffered/assessment.AssessmentOffered%3A53d67d3733bb727ecbd52576%40birdland.mit.edu/",
+        "takens": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu/assessmentsoffered/assessment.AssessmentOffered%3A53d67d3733bb727ecbd52576%40birdland.mit.edu/assessmentstaken/"
+    },
+    "startTime": null,
+    "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+    "duration": null,
+    "deadline": null,
+    "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+    "type": "AssessmentOffered",
+    "displayName": {
+        "text": "",
+        "languageTypeId": "639-2%3AENG%40ISO",
+        "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+        "scriptTypeId": "15924%3ALATN%40ISO"
+    },
+    "graded": null
+}</pre>
+                    </p>
+                    <h4>Error Codes</h4>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to view assessment offerings in this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to view assessment offerings for the specific bank. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "AssessmentOffering not found"}</pre>
+                        An assessment offering with the specified <code>assessment_offered_id</code>
+                        was not found. Please verify it exists in the current bank through the
+                        appropriate <a href="#assessmentGetOne">assessment</a> endpoint.
+                    </p>
+                    <h3>Deleting</h3>
+                    <p>
+                        <pre>DELETE /api/v2/assessment/banks/&lt;bank_id&gt;/assessmentsoffered/&lt;assessment_offered_id&gt;/</pre>
+                        An empty, 200 response is returned when this is successful.
+                    </p>
+                    <h4>Error Codes</h4>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to delete assessment offerings in this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to delete assessment offerings in the bank. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>406: {"details": "There are still AssessmentTakens associated with this AssessmentOffered. Delete them first."}</pre>
+                        This assessment offered has assessments taken attached to it. You need to delete those first,
+                        before you can delete the assessment offered -- you allow instructors to do this
+                        <strong>at their own risk</strong>! Student records associated with this
+                        offering and taken will be inaccessible / removed when
+                        they are deleted.
+                    </p>
+                    <h3>Updating</h3>
+                    <p>
+                        <pre>PUT /api/v2/assessment/banks/&lt;bank_id&gt;/assessmentsoffered/&lt;assessment_offered_id&gt;/</pre>
+                        Include the parameter(s) that you want to change, in a single object.
+                        You can send the object directly or include it in a list format.
+                        However, you can only send a single object in that list.
+                        <pre>{
+    "startTime" : {
+        "year":2015,
+        "month":1,
+        "day":15
+    },
+    "duration": {
+        "days":5
+    }
+}</pre>
+                        This returns the updated object. If you send an object,
+                        an object is returned. If you embedded the object in a list,
+                        a list with length 1 is returned.
+                        <pre>{
+    "scored": null,
+    "gradeSystemId": "",
+    "description": {
+        "text": "",
+        "languageTypeId": "639-2%3AENG%40ISO",
+        "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+        "scriptTypeId": "15924%3ALATN%40ISO"
+    },
+    "recordTypeIds": [],
+    "assessmentId": "assessment.Assessment%3A53d67d2633bb727ecf4a00ca%40birdland.mit.edu",
+    "levelId": "",
+    "scoreSystemId": "",
+    "type": "AssessmentOffered",
+    "deadline": null,
+    "startTime": {
+        "year":2015,
+        "month":1,
+        "day":15
+    },
+    "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+    "duration": {
+        "days":5
+    },
+    "displayName": {
+        "text": "",
+        "languageTypeId": "639-2%3AENG%40ISO",
+        "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+        "scriptTypeId": "15924%3ALATN%40ISO"
+    },
+    "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+    "rubricId": "",
+    "id": "assessment.AssessmentOffered%3A53d67d3733bb727ecbdaf12g%40birdland.mit.edu",
+    "graded": null
+}</pre>
+                    </p>
+                    <h4>Error Codes</h4>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to edit assessment offerings in this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to edit assessment offerings in the bank. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Poorly formatted input data."}</pre>
+                        Your input data is not in the expected format. Most likely
+                        it is not proper JSON. Also, check the format of any time
+                        fields you supplied.
+                    </p>
+                    <h1 id="assessmentTaken">Assessments Taken</h1>
+                    <h2>Introduction</h2>
+                    <p>
+                        Assessments taken are a record for each individual student's
+                        history of interacting with the assessment. It tracks
+                        their response and the time they responded. It is possible
+                        for a service consumer to create multiple assessments taken
+                        for a single student, but the service will only create a new
+                        taken when the previous taken has been responded to / completed.
+                        However, this is hidden from RESTful consumers -- which only
+                        need to <a href="#assessmentTakenCreate">request a new taken</a>.
+                    </p>
+                    <h2 id="assessmentsTakenList">Listing all assessments taken</h2>
+                    <p>
+                        Because assessments taken are associated with a specific offering, it
+                        is assumed that the consumer knows the <code>bank_id</code> and
+                        an <code>assessment_offered_id</code>.
+                        <pre>GET /api/v2/assessment/banks/&lt;bank_id&gt;/assessmentsoffered/&lt;assessment_offered_id&gt;/assessmentstaken/</pre>
+                        This returns a list of all the assessments taken recorded for
+                        the specific offering.
+                        <pre>{
+    "_links": {
+        "self": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu/assessmentsoffered/assessment.AssessmentOffered%3A53d67d3733bb727ecbd52576%40birdland.mit.edu/assessmentstaken/",
+        "assessment.AssessmentTaken%3A53e4cfb033bb72a2f40ece67%40birdland.mit.edu": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank:53d671bc33bb72de9183ce2d@birdland.mit.edu/assessmentsoffered/assessment.AssessmentOffered:53d67d3733bb727ecbd52576@birdland.mit.edu/assessmentstaken/../../../assessmentstaken/assessment.AssessmentTaken%3A53e4cfb033bb72a2f40ece67%40birdland.mit.edu/",
+        "assessment.AssessmentTaken%3A53d67d4833bb727ecbd52577%40birdland.mit.edu": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank:53d671bc33bb72de9183ce2d@birdland.mit.edu/assessmentsoffered/assessment.AssessmentOffered:53d67d3733bb727ecbd52576@birdland.mit.edu/assessmentstaken/../../../assessmentstaken/assessment.AssessmentTaken%3A53d67d4833bb727ecbd52577%40birdland.mit.edu/"
+    },
+    "data": {
+        "count"     : 2,
+        "next"      : null,
+        "previous"  : null,
+        "results" : [
+            {
+                "reviewWhetherCorrect": true,
+                "feedback": {
+                    "text": "",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                    "scriptTypeId": "15924%3ALATN%40ISO"
+                },
+                "ended": true,
+                "timeSpent": null,
+                "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+                "id": "assessment.AssessmentTaken%3A53e4cfb033bb72a2f40ece67%40birdland.mit.edu",
+                "graded": null,
+                "completion": "",
+                "score": "",
+                "actualStartTime": {
+                    "hour": 9,
+                    "month": 8,
+                    "second": 4,
+                    "microsecond": 849000,
+                    "year": 2014,
+                    "day": 8,
+                    "minute": 25
+                },
+                "type": "AssessmentTaken",
+                "scored": null,
+                "assessmentOfferedId": "assessment.AssessmentOffered%3A53d67d3733bb727ecbd52576%40birdland.mit.edu",
+                "description": {
+                    "text": "",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "scriptTypeId": "15924%3ALATN%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net"
+                },
+                "started": true,
+                "synchronousResponses": false,
+                "scoreSystemId": "",
+                "completionTime": {
+                    "hour": 9,
+                    "month": 8,
+                    "second": 5,
+                    "microsecond": 746000,
+                    "year": 2014,
+                    "day": 8,
+                    "minute": 29
+                },
+                "takingAgentId": "agent.Agent%3Afbdb30ca6dbd4241b8238c1597e108d7%404b0e0031d8e549b58515a9a74682c060",
+                "takerId": "",
+                "displayName": {
+                    "text": "",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "scriptTypeId": "15924%3ALATN%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net"
+                },
+                "recordTypeIds": [],
+                "gradeId": "",
+                "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+                "rubricId": ""
+            },
+            {
+                "reviewWhetherCorrect": false,
+                "feedback": {
+                    "text": "",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                    "scriptTypeId": "15924%3ALATN%40ISO"
+                },
+                "ended": true,
+                "timeSpent": null,
+                "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+                "id": "assessment.AssessmentTaken%3A53d67d4833bb727ecbd52577%40birdland.mit.edu",
+                "graded": null,
+                "completion": "",
+                "score": "",
+                "actualStartTime": {
+                    "hour": 12,
+                    "month": 7,
+                    "second": 44,
+                    "microsecond": 615000,
+                    "year": 2014,
+                    "day": 28,
+                    "minute": 41
+                },
+                "type": "AssessmentTaken",
+                "scored": null,
+                "assessmentOfferedId": "assessment.AssessmentOffered%3A53d67d3733bb727ecbd52576%40birdland.mit.edu",
+                "description": {
+                    "text": "",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "scriptTypeId": "15924%3ALATN%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net"
+                },
+                "started": true,
+                "synchronousResponses": false,
+                "scoreSystemId": "",
+                "completionTime": {
+                    "hour": 9,
+                    "month": 8,
+                    "second": 38,
+                    "microsecond": 463000,
+                    "year": 2014,
+                    "day": 8,
+                    "minute": 56
+                },
+                "takingAgentId": "agent.Agent%3Aa49ae47a924a4217af8e5f0adf7608e1%404b0e0031d8e549b58515a9a74682c060",
+                "takerId": "",
+                "displayName": {
+                    "text": "",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "scriptTypeId": "15924%3ALATN%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net"
+                },
+                "recordTypeIds": [],
+                "gradeId": "",
+                "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+                "rubricId": ""
+            }
+        ]
+    }
+}</pre>
+                    </p>
+                    <h3>Showing Student Correctness</h3>
+                    <p>
+                        The <code>reviewWhetherCorrect</code> flag in each assessment
+                        taken indicates to consuming apps if they should show students
+                        the correctness of each response, or under what conditions
+                        the assessment author wanted students to view correctness. It
+                        is up to consuming apps to honor this flag or not. For high-stakes
+                        assessments, most authors do not want students sharing answers,
+                        and this flag will be <code>False</code> until after some
+                        deadline.
+                    </p>
+                    <h3>Error Codes</h3>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to view assessment takens in this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to view assessments taken for the specific bank. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "AssessmentOffering or bank not found"}</pre>
+                        An assessment offering with the specified <code>assessment_offering_id</code> (or a bank with its
+                        <code>bank_id</code>) was not
+                        found. Please verify it exists in the current bank through the
+                        <a href="#assessmentsOfferedList">assessments offered</a> endpoint (or the
+                        <a href="#assessmentBanksList">banks</a> endpoint).
+                    </p>
+                    <h2 id="assessmentTakenCreate">Creating</h2>
+                    <p>
+                        <pre>POST /api/v2/assessment/banks/&lt;bank_id&gt;/assessmentsoffered/&lt;assessment_offered_id&gt;/assessmentstaken/</pre>
+                        An empty POST should be sent to this endpoint -- no data is needed. The taken object
+                        is returned.
+                        <pre>{
+    "reviewWhetherCorrect": true,
+    "graded": null,
+    "ended": null,
+    "timeSpent": null,
+    "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+    "id": "assessment.AssessmentTaken%3A53e4da5b33bb72752dd32622%40birdland.mit.edu",
+    "feedback": {
+        "text": "",
+        "languageTypeId": "639-2%3AENG%40ISO",
+        "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+        "scriptTypeId": "15924%3ALATN%40ISO"
+    },
+    "completion": "",
+    "score": "",
+    "actualStartTime": {
+        "hour": 10,
+        "month": 8,
+        "second": 35,
+        "microsecond": 679000,
+        "year": 2014,
+        "day": 8,
+        "minute": 10
+    },
+    "type": "AssessmentTaken",
+    "scored": null,
+    "assessmentOfferedId": "assessment.AssessmentOffered%3A53d67d3733bb727ecbd52576%40birdland.mit.edu",
+    "description": {
+        "text": "",
+        "languageTypeId": "639-2%3AENG%40ISO",
+        "scriptTypeId": "15924%3ALATN%40ISO",
+        "formatTypeId": "TextFormats%3APLAIN%40okapia.net"
+    },
+    "started": true,
+    "synchronousResponses": false,
+    "scoreSystemId": "",
+    "completionTime": null,
+    "takingAgentId": "agent.Agent%3Aa49ae47a924a4217af8e5f0adf7608e1%404b0e0031d8e549b58515a9a74682c060",
+    "takerId": "",
+    "displayName": {
+        "text": "",
+        "languageTypeId": "639-2%3AENG%40ISO",
+        "scriptTypeId": "15924%3ALATN%40ISO",
+        "formatTypeId": "TextFormats%3APLAIN%40okapia.net"
+    },
+    "recordTypeIds": [],
+    "gradeId": "",
+    "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+    "rubricId": ""
+}</pre>
+                    </p>
+                    <h3>Error Codes</h3>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to create assessment takens in this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to create assessments taken with this service. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Poorly formatted input data."}</pre>
+                        Your input data is not in the expected format. Most likely
+                        it is not proper JSON or does not have the right data structure
+                        for the time elements.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Can only create AssessmentTaken from an AssessmentOffered root URL."}</pre>
+                        There is an endpoint planned to view Assessments Taken from
+                        a base <code>assessments</code> endpoint, however that is
+                        currently not enabled. After that is enabled, consumers
+                        will only be allowed to create takens from the
+                        <code>assessmentsoffered</code> endpoint -- a taken <strong>must</strong>
+                        be associated with an offering, so the endpoints are
+                        restricted in their behavior (even though they display
+                        similar information).
+                    </p>
+                    <h2>Managing a specific assessment taken</h2>
+                    <p>
+                        Once you have the <code>assessment_taken_id</code> and the
+                        <code>bank_id</code>, you can view and manipulate the
+                        specific assessment taken. Using these endpoints, consumers
+                        can get the questions to present to a learner, as well as
+                        submit student responses.
+                    </p>
+                    <h3>Viewing</h3>
+                    <p>
+                        <pre>GET /api/v2/assessment/banks/&lt;bank_id&gt;/assessmentstaken/&lt;assessment_taken_id&gt;/</pre>
+                        This returns the details of the assessment taken.
+                        <pre>{
+    "reviewWhetherCorrect": true,
+    "graded": null,
+    "ended": null,
+    "timeSpent": null,
+    "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+    "id": "assessment.AssessmentTaken%3A53e4da5b33bb72752dd32622%40birdland.mit.edu",
+    "feedback": {
+        "text": "",
+        "languageTypeId": "639-2%3AENG%40ISO",
+        "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+        "scriptTypeId": "15924%3ALATN%40ISO"
+    },
+    "completion": "",
+    "score": "",
+    "_links": {
+        "self": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu/assessmentstaken/assessment.AssessmentTaken%3A53e4da5b33bb72752dd32622%40birdland.mit.edu/",
+        "questions": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu/assessmentstaken/assessment.AssessmentTaken%3A53e4da5b33bb72752dd32622%40birdland.mit.edu/questions/"
+    },
+    "actualStartTime": {
+        "hour": 10,
+        "month": 8,
+        "second": 35,
+        "microsecond": 679000,
+        "year": 2014,
+        "day": 8,
+        "minute": 10
+    },
+    "type": "AssessmentTaken",
+    "scored": null,
+    "assessmentOfferedId": "assessment.AssessmentOffered%3A53d67d3733bb727ecbd52576%40birdland.mit.edu",
+    "description": {
+        "text": "",
+        "languageTypeId": "639-2%3AENG%40ISO",
+        "scriptTypeId": "15924%3ALATN%40ISO",
+        "formatTypeId": "TextFormats%3APLAIN%40okapia.net"
+    },
+    "started": true,
+    "synchronousResponses": false,
+    "scoreSystemId": "",
+    "completionTime": null,
+    "takingAgentId": "agent.Agent%3Aa49ae47a924a4217af8e5f0adf7608e1%404b0e0031d8e549b58515a9a74682c060",
+    "takerId": "",
+    "displayName": {
+        "text": "",
+        "languageTypeId": "639-2%3AENG%40ISO",
+        "scriptTypeId": "15924%3ALATN%40ISO",
+        "formatTypeId": "TextFormats%3APLAIN%40okapia.net"
+    },
+    "recordTypeIds": [],
+    "gradeId": "",
+    "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+    "rubricId": ""
+}</pre>
+                    </p>
+                    <h4>Error Codes</h4>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to view assessment takens in this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to view individual banks with this service. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "AssessmentTaken or bank not found"}</pre>
+                        An assessment taken with the specified <code>assessment_taken_id</code>
+                        (or a bank with its <code>bank_id</code>) was not
+                        found. Please verify it exists in the current bank through the
+                        <a href="#assessmentsTakenList">assessments taken</a> endpoint (or the
+                        <a href="#assessmentBanksList">banks</a> endpoint).
+                    </p>
+                    <h3>Deleting</h3>
+                    <p>
+                        <pre>DELETE /api/v2/assessment/banks/&lt;bank_id&gt;/assessmentstaken/&lt;assessment_taken_id&gt;/</pre>
+                        An empty, 200 response is returned when this is successful.
+                    </p>
+                    <h4>Error Codes</h4>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to delete assessment takens in this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to delete assessment takens in the bank. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "AssessmentTaken not found."}</pre>
+                        The supplied <code>assessment_taken_id</code> was not found in the
+                        bank. Please check that it exists, in the
+                        <a href="#assessmentTakenList">assessment taken</a> list for an
+                        assessment.
+                    </p>
+                    <h3>Updating</h3>
+                    <p>
+                        Assessments Taken <strong>cannot</strong> be updated.
+                    </p>
+                    <h3 id="assessmentTakenQuestionList">Questions</h3>
+                    <p>
+                        <pre>GET /api/v2/assessment/banks/&lt;bank_id&gt;/assessmentstaken/&lt;assessment_taken_id&gt;/questions/</pre>
+                        This endpoint lists all of the questions for a single assessment.
+                        This should be used for a consuming app to display the questions to
+                        students. The consuming app should determine the exact UI / UX,
+                        i.e. show all questions at once, show one at a time, etc. Some
+                        assessments may have flags that indicate how they should be
+                        displayed -- for those that do not, consuming apps should use
+                        their best judgment.
+                        <pre>{
+    "data": {
+        "count"     : 2,
+        "next"      : null,
+        "previous"  : null,
+        "results"   : [
+            {
+                "files": {
+                    "sideView": "==base64 encoded version of file==",
+                    "frontView": "==base64 encoded version of file==",
+                    "manip": "==base64 encoded version of file==",
+                    "topView": "==base64 encoded version of file=="
+                },
+                "displayName": {
+                    "text": "Item 1",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "scriptTypeId": "15924%3ALATN%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net"
+                },
+                "description": {
+                    "text": "First quiz, first problem",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "scriptTypeId": "15924%3ALATN%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net"
+                },
+                "recordTypeIds": [
+                    "question-record-type%3Alabel-ortho-faces%40ODL.MIT.EDU"
+                ],
+                "text": {
+                    "text": "Which of these objects looks like a spoon?",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                    "scriptTypeId": "15924%3ALATN%40ISO"
+                },
+                "id": "assessment.Item%3A53d91dda33bb72e98d9e5c23%40birdland.mit.edu",
+                "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+                "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+                "type": "Question",
+                "firstAngle": false,
+                "fileIds": {
+                    "sideView": "repository.Asset%3A53d91dda33bb72e98d9e5c2d%40birdland.mit.edu",
+                    "manip": "repository.Asset%3A53d91dda33bb72e98d9e5c25%40birdland.mit.edu",
+                    "topView": "repository.Asset%3A53d91dda33bb72e98d9e5c31%40birdland.mit.edu",
+                    "frontView": "repository.Asset%3A53d91dda33bb72e98d9e5c29%40birdland.mit.edu"
+                }
+            },
+            {
+                "files": {
+                    "sideView": "==base64 encoded version of file==",
+                    "frontView": "==base64 encoded version of file==",
+                    "manip": "==base64 encoded version of file==",
+                    "topView": "==base64 encoded version of file=="
+                },
+                "displayName": {
+                    "text": "Item 2",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "scriptTypeId": "15924%3ALATN%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net"
+                },
+                "description": {
+                    "text": "First quiz, second problem",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "scriptTypeId": "15924%3ALATN%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net"
+                },
+                "recordTypeIds": [
+                    "question-record-type%3Alabel-ortho-faces%40ODL.MIT.EDU"
+                ],
+                "text": {
+                    "text": "Does this work?",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                    "scriptTypeId": "15924%3ALATN%40ISO"
+                },
+                "id": "assessment.Item%3A53e292ac33bb727231153b81%40birdland.mit.edu",
+                "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+                "bankId": "assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu",
+                "type": "Question",
+                "firstAngle": true,
+                "fileIds": {
+                    "sideView": "repository.Asset%3A53e292ac33bb727231153b8b%40birdland.mit.edu",
+                    "manip": "repository.Asset%3A53e292ac33bb727231153b83%40birdland.mit.edu",
+                    "topView": "repository.Asset%3A53e292ac33bb727231153b8f%40birdland.mit.edu",
+                    "frontView": "repository.Asset%3A53e292ac33bb727231153b87%40birdland.mit.edu"
+                }
+            }
+        ]
+    },
+    "_links": {
+        "self": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank%3A53d671bc33bb72de9183ce2d%40birdland.mit.edu/assessmentstaken/assessment.AssessmentTaken%3A53e4da5b33bb72752dd32622%40birdland.mit.edu/questions/",
+        "assessment.Item%3A53d91dda33bb72e98d9e5c23%40birdland.mit.edu": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank:53d671bc33bb72de9183ce2d@birdland.mit.edu/assessmentstaken/assessment.AssessmentTaken:53e4da5b33bb72752dd32622@birdland.mit.edu/questions/assessment.Item:53d91dda33bb72e98d9e5c23@birdland.mit.edu/",
+        "assessment.Item%3A53e292ac33bb727231153b81%40birdland.mit.edu": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/banks/assessment.Bank:53d671bc33bb72de9183ce2d@birdland.mit.edu/assessmentstaken/assessment.AssessmentTaken:53e4da5b33bb72752dd32622@birdland.mit.edu/questions/assessment.Item:53e292ac33bb727231153b81@birdland.mit.edu/"
+    }
+}</pre>
+                    </p>
+                    <h4>Error Codes</h4>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to take assessments in this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to take assessments in the bank. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "AssessmentTaken or bank not found."}</pre>
+                        The supplied <code>assessment_taken_id</code> was not found in the
+                        bank (or the bank <code>bank_id</code> was not found).
+                        Please check that it exists, in the
+                        <a href="#assessmentTakenList">assessment taken</a> list for an
+                        assessment (or in the <a href="#assessmentBanksList">banks</a> list).
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Assessment already completed."}</pre>
+                        The given assessment taken has been flagged as completed.
+                        Students cannot submit a new response to it -- consuming apps
+                        should create a <strong>new</strong> assessment taken for
+                        the student, if he or she wishes to re-submit a response
+                        to the same assessment offering.
+                    </p>
+                    <h3>Question Status</h3>
+                    <p>
+                        <pre>GET /api/v2/assessment/banks/&lt;bank_id&gt;/assessmentstaken/&lt;assessment_taken_id&gt;/questions/&lt;question_id&gt;/status/</pre>
+                        Sometimes a consuming app may want to check if a student has responded
+                        to a specific question, and if so, if the response was correct or not.
+                        This endpoint returns the data for the specific question.
+                        <pre>{
+    "responded": false
+}</pre>
+                        Or:
+                        <pre>{
+    "responded": true,
+    "correct": false
+}</pre>
+                        Or:
+                        <pre>{
+    "responded": true,
+    "correct": true
+}</pre>
+                    </p>
+                    <h4>Error Codes</h4>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to take assessments in this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to take assessments in the bank. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "AssessmentTaken, bank, or question not found."}</pre>
+                        The supplied <code>assessment_taken_id</code> was not found in the
+                        bank (or the bank <code>bank_id</code> / question <code>question_id</code>
+                        was not found). Please check that it exists, in the
+                        <a href="#assessmentTakenList">assessment taken</a> list for an
+                        assessment (or in the <a href="#assessmentBanksList">banks</a> list /
+                        <a href="#assessmentTakenQuestionList">questions</a>).
+                    </p>
+                    <h3>Submitting a Response</h3>
+                    <p>
+                        <pre>POST /api/v2/assessment/banks/&lt;bank_id&gt;/assessmentstaken/&lt;assessment_taken_id&gt;/questions/&lt;question_id&gt;/submit/</pre>
+                        This should be a JSON package that matches the specific assessment type...
+                        for example, a string response may expect a different object
+                        structure compared to an Ortho-3D response.
+                    </p>
+                    <p>
+                        To see additional examples of response objects, refer to
+                        <a href="#itemFormatExamples">the item format examples</a>.
+                    </p>
+                    <p>
+                        For example, an Ortho-3D label faces student response might look like
+                        the following.
+                        <pre>{
+    "integerValues":{
+        "frontFaceValue" : 0,
+        "sideFaceValue"  : 1,
+        "topFaceValue"   : 2
+    }
+}</pre>
+                    </p>
+                    <p>
+                        The service will respond with a simple object declaring if the
+                        student response is correct or not. When available, it will also provide
+                        feedback in the form of a solution explanation or wrong-answer
+                        explanation. For example:
+                        <pre>{
+    "correct": true,
+    "feedback": "Yes, the blue bucket has a higher probability of existing."
+}</pre>
+                        Or:
+                        <pre>{
+    "correct": false,
+    "feedback": "No feedback available."
+}</pre>
+                    </p>
+
+                    <h4>Error Codes</h4>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to take assessments in this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to take assessments in the bank. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "AssessmentTaken or bank not found."}</pre>
+                        The supplied <code>assessment_taken_id</code> was not found in the
+                        bank (or the bank <code>bank_id</code> was not found).
+                        Please check that it exists, in the
+                        <a href="#assessmentTakenList">assessment taken</a> list for an
+                        assessment (or in the <a href="#assessmentBanksList">banks</a> list).
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Assessment already completed."}</pre>
+                        The given assessment taken has been flagged as completed.
+                        Students cannot submit a new response to it -- consuming apps
+                        should create a <strong>new</strong> assessment taken for
+                        the student, if he or she wishes to re-submit a response
+                        to the same assessment offering.
+                    </p>
+                    <h3 id="getStudentResponse">Getting the last response</h3>
+                    <p>
+                        <pre>GET /api/v2/assessment/banks/&lt;bank_id&gt;/assessmentstaken/&lt;assessment_taken_id&gt;/questions/&lt;question_id&gt;/responses/</pre>
+                        Currently we only support getting the last 1 response from the student. It will
+                        be returned to you with files, because only a single response is stored.
+                    </p>
+                    <h4>Error Codes</h4>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to take assessments in this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to take assessments in the bank. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "AssessmentTaken, bank, or question not found."}</pre>
+                        The supplied <code>assessment_taken_id</code> was not found in the
+                        bank (or the bank <code>bank_id</code> or <code>question_id</code>
+                        was not found).
+                        Please check that it exists, in the
+                        <a href="#assessmentTakenList">assessment taken</a> list for an
+                        assessment (or in the <a href="#assessmentBanksList">banks</a> list).
+                    </p>
+
+                    <h3 id="commenting">Giving students feedback</h3>
+                    <p>
+                        <pre>POST /api/v2/assessment/banks/&lt;bank_id&gt;/assessmentstaken/&lt;assessment_taken_id&gt;/questions/&lt;question_id&gt;/comments/</pre>
+                        Instructors can provide feedback to the students in the form of
+                        a comment. These comments can be text or text + a file, and should
+                        only be provided after a student has responded to a question.
+                        Text comments should be of the form:
+                    <pre>{
+    'text'   : 'A+'
+}</pre>
+                        Comments with files should send a multipart-encoded form with a single
+                        file.
+                    </p>
+                    <p>
+                        On successful comment, the comment object is returned to you and should
+                        look like: <pre>{
+    'startDate': {
+        'hour': 12,
+        'month': 3,
+        'second': 58,
+        'microsecond': 882885,
+        'year': 2015,
+        'day': 20,
+        'minute': 42
+    },
+    'referenceId': 'assessment.Answer%3A550c4e12ea061ac2f9511514%40cs-macbook-pro',
+    'endDate': {
+        'hour': 23,
+        'month': 12,
+        'second': 59,
+        'microsecond': 999999,
+        'year': 9999,
+        'day': 31,
+        'minute': 59
+    },
+    'description': {
+        'text': '',
+        'languageTypeId': '639-2%3AENG%40ISO',
+        'scriptTypeId': '15924%3ALATN%40ISO',
+        'formatTypeId': 'TextFormats%3APLAIN%40okapia.net'
+    },
+    'recordTypeIds': ['comment-type%3Afile-comment%40ODL.MIT.EDU'],
+    'text': {
+        'text': 'Good job',
+        'languageTypeId': '639-2%3AENG%40ISO',
+        'scriptTypeId': '15924%3ALATN%40ISO',
+        'formatTypeId': 'TextFormats%3APLAIN%40okapia.net'
+    },
+    'commentorId': 'osid.agent.Agent%3Ataaccct_instructor%40MIT-ODL',
+    'bookId': 'commenting.Book%3A550c4e12ea061ac2f951150a%40cs-macbook-pro',
+    'genusTypeId': 'GenusType%3ADEFAULT%40dlkit.mit.edu',
+    'ratingId': '',
+    'displayName': {
+        'text': '',
+        'languageTypeId': '639-2%3AENG%40ISO',
+        'scriptTypeId': '15924%3ALATN%40ISO',
+        'formatTypeId': 'TextFormats%3APLAIN%40okapia.net'
+    },
+    'type': 'Comment',
+    'id': 'commenting.Comment%3A550c4e13ea061ac2f9511517%40cs-macbook-pro',
+    'commentingAgentId': 'osid.agent.Agent%3Ataaccct_instructor%40MIT-ODL',
+    'fileId': {
+        'assetId': 'repository.Asset%3A550c4e12ea061ac2f9511515%40cs-macbook-pro',
+        'assetContentTypeId': ''
+    }
+}</pre>
+                    </p>
+                    <h4>Error Codes</h4>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to create comments."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to create comments. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Student has not responded -- you cannot comment yet."}</pre>
+                        Instructors can only comment after a student has responded.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Only one file per comment allowed. Create multiple comments if you need to upload multiple files."}</pre>
+                        Each comment can only house a single file. If multiple files are needed,
+                        you should create a separate comment per each file.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "\\"text\\" required in input parameters but not provided."}</pre>
+                        To create a comment, you must provide at least a <code>text</code> field and value.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "AssessmentTaken, bank, question, or response not found."}</pre>
+                        One of the ID values you provided is invalid. Please check them.
+                    </p>
+
+
+                    <h3 id="getAllComments">Displaying feedback comments</h3>
+                    <p>
+                        <pre>GET /api/v2/assessment/banks/&lt;bank_id&gt;/assessmentstaken/&lt;assessment_taken_id&gt;/questions/&lt;question_id&gt;/comments/</pre>
+                        Some apps may wish to show all the feedback a student has received, for
+                        a particular question. They can use this endpoint. If files are included
+                        in the comments, you can include the optional <code>?files</code> parameter
+                        to get a URL pointing to each comment file. Note that student users can get all the comments
+                        (whereas to create a comment, users must be instructors).
+                    </p>
+                    <p>
+                        The list of comments should look like: <pre>{
+    '_links': {
+        'self': 'http://testserver:80/api/v2/assessment/banks/assessment.Bank%3A550c574cea061ac8105600f9%40cs-macbook-pro/assessmentstaken/assessment.AssessmentTaken%3A550c574cea061ac8105600ff%40cs-macbook-pro/questions/assessment.Item%3A550c574cea061ac8105600fa%40cs-macbook-pro/comments/%3Ffiles', u 'commenting.Comment%3A550c574dea061ac810560106%40cs-macbook-pro': u 'http://testserver:80/api/v2/assessment/banks/assessment.Bank:550c574cea061ac8105600f9@cs-macbook-pro/assessmentstaken/assessment.AssessmentTaken:550c574cea061ac8105600ff@cs-macbook-pro/questions/assessment.Item:550c574cea061ac8105600fa@cs-macbook-pro/comments/commenting.Comment:550c574dea061ac810560106@cs-macbook-pro/'
+    },
+    'data': {
+        'count': 1,
+        'previous': None,
+        'results': [{
+            'startDate': {
+                'hour': 13,
+                'month': 3,
+                'second': 21,
+                'microsecond': 145859,
+                'year': 2015,
+                'day': 20,
+                'minute': 22
+            },
+            'referenceId': 'assessment.Answer%3A550c574dea061ac810560103%40cs-macbook-pro',
+            'endDate': {
+                'hour': 23,
+                'month': 12,
+                'second': 59,
+                'microsecond': 999999,
+                'year': 9999,
+                'day': 31,
+                'minute': 59
+            },
+            'description': {
+                'text': '',
+                'languageTypeId': '639-2%3AENG%40ISO',
+                'scriptTypeId': '15924%3ALATN%40ISO',
+                'formatTypeId': 'TextFormats%3APLAIN%40okapia.net'
+            },
+            'recordTypeIds': ['comment-type%3Afile-comment%40ODL.MIT.EDU'],
+            'text': {
+                'text': 'Good job',
+                'languageTypeId': '639-2%3AENG%40ISO',
+                'scriptTypeId': '15924%3ALATN%40ISO',
+                'formatTypeId': 'TextFormats%3APLAIN%40okapia.net'
+            },
+            'commentorId': 'osid.agent.Agent%3Ataaccct_instructor%40MIT-ODL',
+            'bookId': 'commenting.Book%3A550c574cea061ac8105600f9%40cs-macbook-pro',
+            'file': 'https://d1v4o60a4yrgi8.cloudfront.net/550c574cea061ac8105600f9/Workplanfor2.002QBank.pdf?Expires=1426879341&Signature=b2XsT4bbB4jnKJxB-UnULrWKXZ6Yp-W0E-OJKSuUgHiaaV5MVjrNrjOSfFhOkv~Sg~kBX9faDsWQvgvu0T9gbC7UjaEYrz1cuHOi~HpUEyqtBgJoAJmk8Q8nRA1zTe4gJrkiwTYM0W0vh8URNYrwRSCAJu0~qEPN6FiyQ8t59GWpHVKL-qRiWs4kXqBP6tdNZC8KhDxccX83jBD-LSIbWMfCkWbLTC6jrpHIQlCEpntmTy9Y5VFH1H4~Pu~ow1vTLBCAZjvsT51KfJ1Wz2Jk2g5MR3auwJSSa3C5z1f--Yn0ywxoYPVoX7D311JQ-7wBg8rzzE-OkY1bVCi7Lw0pDA__&Key-Pair-Id=APKAIGRK7FPIAJR675NA',
+            'ratingId': '',
+            'displayName': {
+                'text': '',
+                'languageTypeId': '639-2%3AENG%40ISO',
+                'scriptTypeId': '15924%3ALATN%40ISO',
+                'formatTypeId': 'TextFormats%3APLAIN%40okapia.net'
+            },
+            'genusTypeId': 'GenusType%3ADEFAULT%40dlkit.mit.edu',
+            'type': 'Comment',
+            'id': 'commenting.Comment%3A550c574dea061ac810560106%40cs-macbook-pro',
+            'commentingAgentId': 'osid.agent.Agent%3Ataaccct_instructor%40MIT-ODL',
+            'fileId': {
+                'assetId': 'repository.Asset%3A550c574dea061ac810560104%40cs-macbook-pro',
+                'assetContentTypeId': ''
+            }
+        }],
+        'next': None
+    }
+}</pre>
+                    </p>
+                    <h4>Error Codes</h4>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to view comments."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to view comments. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Student has not responded -- no comments yet."}</pre>
+                        No comments to get, because no response!
+                    </p>
+                    <p>
+                        <pre>500: {"details": "AssessmentTaken, bank, question, or response not found."}</pre>
+                        One of the ID values you provided is invalid. Please check them.
+                    </p>
+
+                    <h3 id="questionSurrender">Giving Up</h3>
+                    <p>
+                        <pre>GET /api/v2/assessment/banks/&lt;bank_id&gt;/assessmentstaken/&lt;assessment_taken_id&gt;/questions/&lt;question_id&gt;/surrender/</pre>
+                        An app may want to give students the option to "give up" and just see the answer. They can use
+                        this endpoint to achieve that -- the student response is logged in the system as "I surrendered.",
+                        and the correct answer is returned.
+                    </p>
+                    <h4>Error Codes</h4>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to take assessments in this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to take assessments in the bank. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "AssessmentTaken or bank not found."}</pre>
+                        The supplied <code>assessment_taken_id</code> was not found in the
+                        bank (or the bank <code>bank_id</code> was not found).
+                        Please check that it exists, in the
+                        <a href="#assessmentTakenList">assessment taken</a> list for an
+                        assessment (or in the <a href="#assessmentBanksList">banks</a> list).
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Assessment already completed."}</pre>
+                        The given assessment taken has been flagged as completed.
+                        Students cannot submit a new response to it -- consuming apps
+                        should create a <strong>new</strong> assessment taken for
+                        the student, if he or she wishes to re-submit a response
+                        to the same assessment offering.
+                    </p>
+                    <h3 id="finishAssessmentTaken">Finishing Assessments</h3>
+                    <p>
+                        <pre>POST /api/v2/assessment/banks/&lt;bank_id&gt;/assessmentstaken/&lt;assessment_taken_id&gt;/finish/</pre>
+                        An empty <code>POST</code> with no data should be sent to this URI. This
+                        closes out an assessment taken and triggers the <code>afterAttempt</code>
+                        flag in the taken for whether or not students should be able to view the
+                        correctness of their answers.
+
+                        Consuming apps should trigger this URI when students have submitted
+                        responses to all questions in the taken or otherwise indicated that
+                        they are finished submitting their answers.
+                    </p>
+
+                    <h4>Error Codes</h4>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to take assessments in this bank."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to take assessments in the bank. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "AssessmentTaken not found."}</pre>
+                        The supplied <code>assessment_taken_id</code> was not found in the
+                        bank (or the bank <code>bank_id</code> was not found).
+                        Please check that it exists, in the
+                        <a href="#assessmentTakenList">assessment taken</a> list for an
+                        assessment (or in the <a href="#assessmentBanksList">banks</a> list).
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Assessment already completed."}</pre>
+                        The given assessment taken has been flagged as completed.
+                        Students cannot submit a new response to it -- consuming apps
+                        should create a <strong>new</strong> assessment taken for
+                        the student, if he or she wishes to re-submit a response
+                        to the same assessment offering.
+                    </p>
+
+                    <h1>Assessment Hierarchies</h1>
+                    <h2>Introduction</h2>
+                    <p>
+                        Once banks have been created, they can be organized into hierarchies.
+                        These start out with "root" banks, and then have children attached.
+                        Currently only two levels of hierarchy are supported in this service.
+                    </p>
+                    <p>
+                        In an educational context (and when more levels are supported),
+                        one can imagine this used to organize
+                        data for a university -> department -> degree program -> class.
+                    </p>
+                    <h2 id="assessmentHierarchiesList">Listing all hierarchies</h2>
+                    <p>
+                        <pre>GET /api/v2/assessment/hierarchies/</pre>
+                        A list of all roots on the server is returned.
+
+                        <pre>{
+    "_links": {
+        "self": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/hierarchies/",
+        "assessment.Bank%3A54f9e39833bb7293e9da5b44%40oki-dev.MIT.EDU": "https://assessments-dev.mit.edu/touchstone/api/v2/assessment/hierarchies/assessment.Bank:54f9e39833bb7293e9da5b44@oki-dev.MIT.EDU/"
+    },
+    "data": {
+        "count": 1,
+        "next": null,
+        "previous": null,
+        "results": [
+            {
+                "displayName": {
+                    "text": "Differential Equations, 2014_Fall",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                    "scriptTypeId": "15924%3ALATN%40ISO"
+                },
+                "description": {
+                    "text": "Assessment bank for Differential Equations, 2014_Fall",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                    "scriptTypeId": "15924%3ALATN%40ISO"
+                },
+                "recordTypeIds": [],
+                "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+                "type": "Bank",
+                "id": "assessment.Bank%3A54f9e39833bb7293e9da5b44%40oki-dev.MIT.EDU"
+            }
+        ]
+    }
+}</pre>
+                    </p>
+                    <h3>Error Codes</h3>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to view root assessment banks."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to view banks with this service. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <h2>Adding Roots</h2>
+                    <p>
+                        <pre>POST /api/v2/assessment/hierarchies/</pre>
+                        A simple JSON structure needs to be sent to this endpoint, with
+                        the bank ID.
+                        <pre>{"id": "assessment.Bank:54f9e39833bb7293e9da5b44@oki-dev.MIT.EDU"}</pre>
+                        A successful call results in an empty <code>201</code> response.
+                    </p>
+                    <h3>Error Codes</h3>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to add root assessment banks."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to view banks with this service. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Poorly formatted input data."}</pre>
+                        Your input data is not in the expected format. Most likely
+                        it is not proper JSON or does not have both the "name"
+                        and "description" attributes.
+                    </p>
+                    <h2>Viewing Root Details</h2>
+                    <p>
+                        <pre>GET /api/v2/assessment/hierarchies/&lt;root_id&gt;/</pre>
+                        You can see a single root bank, accessed via this URL.
+                        <pre>{
+    "displayName": {
+        "text": "another test bank",
+        "languageTypeId": "639-2%3AENG%40ISO",
+        "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+        "scriptTypeId": "15924%3ALATN%40ISO"
+    },
+    "description": {
+        "text": "is here!",
+        "languageTypeId": "639-2%3AENG%40ISO",
+        "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+        "scriptTypeId": "15924%3ALATN%40ISO"
+    },
+    "recordTypeIds": [],
+    "_links": {
+        "self": "http://127.0.0.1:8000/api/v2/assessment/hierarchies/assessment.Bank%3A54ff100eea061a5746d5983b%40cs-macbook-pro/",
+        "children": "http://127.0.0.1:8000/api/v2/assessment/hierarchies/assessment.Bank:54ff100eea061a5746d5983b@cs-macbook-pro/items/assessment.Bank:54ff100eea061a5746d5983b@cs-macbook-pro/children/"
+    },
+    "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+    "type": "Bank",
+    "id": "assessment.Bank%3A54ff100eea061a5746d5983b%40cs-macbook-pro"
+}</pre>
+                    </p>
+                    <h3>Error Codes</h3>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to view children assessment banks."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to view banks with this service. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <h2>Removing a Root</h2>
+                    <p>
+                        <pre>DELETE /api/v2/assessment/hierarchies/&lt;root_id&gt;/</pre>
+                        You can also remove a root bank from the hierarchy. Doing this
+                        may lead to orphaned banks...which automatically become roots.
+                        NOTE: this only removes the bank from the hierarchy. The bank
+                        itself still exists, with its items and assessments.
+                    </p>
+                    <h3>Error Codes</h3>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to remove root assessment banks."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to remove root banks with this service. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <h2>Viewing Children</h2>
+                    <p>
+                        <pre>GET /api/v2/assessment/hierarchies/&lt;root_id&gt;/children/</pre>
+                        Root banks can have children banks, accessed via this URL.
+                        <pre>{
+    "_links": {
+        "self": "http://127.0.0.1:8000/api/v2/assessment/hierarchies/assessment.Bank%3A54ff100eea061a5746d5983b%40cs-macbook-pro/children/",
+        "assessment.Bank%3A54ff100cea061a5746d59825%40cs-macbook-pro": "http://127.0.0.1:8000/api/v2/assessment/hierarchies/assessment.Bank:54ff100eea061a5746d5983b@cs-macbook-pro/children/assessment.Bank:54ff100cea061a5746d59825@cs-macbook-pro/"
+    },
+    "data": {
+        "count": 1,
+        "next": null,
+        "previous": null,
+        "results": [
+            {
+                "displayName": {
+                    "text": "another test bank",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                    "scriptTypeId": "15924%3ALATN%40ISO"
+                },
+                "description": {
+                    "text": "is here!",
+                    "languageTypeId": "639-2%3AENG%40ISO",
+                    "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+                    "scriptTypeId": "15924%3ALATN%40ISO"
+                },
+                "recordTypeIds": [],
+                "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+                "type": "Bank",
+                "id": "assessment.Bank%3A54ff100cea061a5746d59825%40cs-macbook-pro"
+            }
+        ]
+    }
+}</pre>
+                    </p>
+                    <h3>Error Codes</h3>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to view children assessment banks."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to view banks with this service. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <h2>Adding Children</h2>
+                    <p>
+                        <pre>POST /api/v2/assessment/hierarchies/&lt;root_id&gt;/children/</pre>
+                        A simple JSON structure needs to be sent to this endpoint, with
+                        the bank ID.
+                        <pre>{"childId":"assessment.Bank:54ff100cea061a5746d59825@cs-macbook-pro"}</pre>
+                        A successful call results in an empty <code>201</code> response.
+                    </p>
+                    <h3>Error Codes</h3>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to add root assessment banks."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to view banks with this service. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <p>
+                        <pre>500: {"details": "Poorly formatted input data."}</pre>
+                        Your input data is not in the expected format. Most likely
+                        it is not proper JSON or does not have both the "name"
+                        and "description" attributes.
+                    </p>
+                    <h2>Viewing Child Details</h2>
+                    <p>
+                        <pre>POST /api/v2/assessment/hierarchies/&lt;root_id&gt;/children/&lt;child_id&gt;/</pre>
+                        You can view the child bank's details.
+                        <pre>{
+    "displayName": {
+        "text": "another test bank",
+        "languageTypeId": "639-2%3AENG%40ISO",
+        "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+        "scriptTypeId": "15924%3ALATN%40ISO"
+    },
+    "description": {
+        "text": "is here!",
+        "languageTypeId": "639-2%3AENG%40ISO",
+        "formatTypeId": "TextFormats%3APLAIN%40okapia.net",
+        "scriptTypeId": "15924%3ALATN%40ISO"
+    },
+    "recordTypeIds": [],
+    "_links": {
+        "self": "http://127.0.0.1:8000/api/v2/assessment/hierarchies/assessment.Bank%3A54ff100eea061a5746d5983b%40cs-macbook-pro/children/assessment.Bank%3A54ff100cea061a5746d59825%40cs-macbook-pro/"
+    },
+    "genusTypeId": "GenusType%3ADEFAULT%40dlkit.mit.edu",
+    "type": "Bank",
+    "id": "assessment.Bank%3A54ff100cea061a5746d59825%40cs-macbook-pro"
+}</pre>
+                    </p>
+                    <h3>Error Codes</h3>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to view children assessment banks."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to view banks with this service. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+                    <h2>Removing a Child Bank</h2>
+                    <p>
+                        <pre>DELETE /api/v2/assessment/hierarchies/&lt;root_id&gt;/children/&lt;child_id&gt;/</pre>
+                        You can also remove a child bank from its position in the hierarchy.
+                        NOTE: this only removes the bank from the hierarchy. The bank
+                        itself still exists, with its items and assessments.
+                    </p>
+                    <h3>Error Codes</h3>
+                    <p>
+                        <pre>403: {"details": "Permission denied. You do not have rights to remove children assessment banks."}</pre>
+                        You have authenticated to the server, but your username is not configured
+                        to view banks with this service. Please contact an administrator.
+                    </p>
+                    <p>
+                        <pre>404: {"details": "Not found"}</pre>
+                        This usually indicates a problem with the server-side view.
+                        Contact an administrator.
+                    </p>
+
+                    <p>
+                        <pre>406: {"details": "That bank is not a root."}</pre>
+                        The root bank supplied is not a root in the hierarchy.
+                    </p>
+                    <p>
+                        <pre>406: {"details": "That child bank is not a child of the root."}</pre>
+                        The child bank does not currently exist as a child of the given root bank.
+                    </p>
+
+                    <h1>Help</h1>
+                    <h2>Contact</h2>
+                    Please reach out to assessments-admin [at] mit [dot] edu if you have
+                    any issues or questions about this service.
+                    <h6>v0.3 March 2015</h6>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

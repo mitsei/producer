@@ -1,0 +1,38 @@
+<div class="new-term-offered-wrapper">
+    <div>
+        <span class="modalStatusBox statusBox red"></span>
+    </div>
+
+    <div class="form-group">
+        <label for="termSelector" class="new-offered-row">
+            Term
+            <select name="termSelector">
+                <option value="ia">IAP</option>
+                <option value="sp">Spring</option>
+                <option value="su">Summer</option>
+                <option value="fa">Fall</option>
+            </select>
+        </label>
+
+        <label for="yearSelector" class="new-offered-row">
+            Year
+            <input type="number" min="1999" max="2100" value="2014" name="yearSelector"/>
+        </label>
+    </div>
+
+    <div class="form-group">
+        <label for="psetSelector" class="new-offered-row">
+            Pset / Quiz
+            <select name="psetSelector">
+                <option value="nil">N/A</option>
+                <option value="pset">PSet</option>
+                <option value="quiz">Quiz</option>
+            </select>
+        </label>
+
+        <label for="psetNumberSelector" class="new-offered-row">
+            #
+            <input type="number" min="1" max="15" name="psetNumberSelector"/>
+        </label>
+    </div>
+</div>

@@ -1,0 +1,76 @@
+<section>
+    <h4>Quick Guide to MecQBank</h4>
+    <p>
+        This page gives you a quick overview of how to use MecQBank to manage
+        your subject's assessment problems and assemble assignments from them.
+        MecQBank will provide you a searchable, traceable way to see what problems
+        were used when, as well as what learning objectives they assess.
+    </p>
+</section>
+<section>
+    <h4>Subject Selection</h4>
+    <p>
+        On the left-hand side of this page, you see the subjects available to you, under
+        the heading <strong>My Subjects</strong>.
+        <div class="text-center">
+            <img src="/static/img/left_hand_nav.png" alt="Arrow pointing out your subjects in the left-hand nav menu.">
+        </div>
+        Clicking on one of those subjects allows you access to its items, to be explained below in
+        <a href="#item-assignment-actions">Item and Assignment Actions</a>.
+    </p>
+    <p>
+        If you want access to another subject (<strong>Other Subjects</strong>), you need
+        to request permission from one of its current owners. Clicking the subject brings
+        up a list of users you can ask.
+    </p>
+</section>
+<section>
+    <h4 id="item-assignment-actions">Item and Assignment Actions</h4>
+    <p>
+        Once you are working with a specific subject, the top of the page will show
+        menu items for managing items and assessments within the subject. By default
+        the <strong>Upload Items</strong> option is selected.
+        <div class="text-center">
+            <img src="/static/img/top_nav.png" alt="Top navigational bar for managing items, assessments, and users.">
+        </div>
+    </p>
+    <section>
+        <h5>Uploading Items</h5>
+        <p>
+            You can use the browser's file selector or drag & drop the files into the
+            target area. Item files are expected to match the LaTeX and PDF formats
+            outlined in <a hreaf="https://docs.google.com/document/d/1yA4W5XZn4cbbmXkK_aQK7lr7i6ATMMaKfmcj-wf-XEY/edit?pli=1">this Google document</a>.
+            Problem LaTeX and PDF files should be named consistently...for example:
+            <div class="row">
+                <ul class="list-group col-lg-2 col-lg-offset-5">
+                    <li class="list-group-item">CONT0001.tex</li>
+                    <li class="list-group-item">CONT0001.pdf</li>
+                    <li class="list-group-item">CONT0001_Sol.tex</li>
+                    <li class="list-group-item">CONT0001_Sol.pdf</li>
+                    <li class="list-group-item">CONT0001.meta</li>
+                </ul>
+            </div>
+            Along with any referenced image files.
+        </p>
+        <p>
+            The app automatically groups the files according to item name and does some
+            basic validation on the uploaded data. If all the files and metadata seem
+            to be present, you will have the option to <strong>Submit Item</strong>.
+            <div class="text-center">
+                <img src="/static/img/items_uploaded.png" alt="Grouped items ready for upload or with warnings.">
+            </div>
+        </p>
+        <p>
+            If the item was created correctly, you receive a verification message.
+            <div class="text-center">
+                <img src="/static/img/item_uploaded_correctly.png" alt="Success message when item is uploaded correctly.">
+            </div>
+        </p>
+        <p>
+            Otherwise, you see an error message with a brief description at the top of the page.
+            <div class="text-center">
+                <img src="/static/img/item_upload_error.png" alt="Error message when item fails to upload.">
+            </div>
+        </p>
+    </section>
+</section>

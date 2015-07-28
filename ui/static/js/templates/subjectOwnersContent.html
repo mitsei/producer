@@ -1,0 +1,10 @@
+<div>
+    <p>To gain access to this subject, please contact one of its current owners:</p>
+    <ul class="list-group">
+        <% _.each(owners, function (owner) { %>
+            <li class="list-group-item">
+                <%= owner %>
+            </li>
+        <% }); %>
+    </ul>
+</div>

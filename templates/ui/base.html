@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang='en' xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8">
+    <title>{% block title %} {% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MecQBank">
+    <meta name="author" content="MIT ODL">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+
+    {% load i18n %}
+    {% load static %}
+
+    <link rel="stylesheet" href="{{ STATIC_URL }}js/vendor/bootstrap/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ STATIC_URL }}js/vendor/fontawesome/css/font-awesome.min.css">
+    <link rel="stylesheet" href="{{ STATIC_URL }}js/vendor/jqueryui/themes/smoothness/jquery-ui.min.css">
+    <link rel="stylesheet" href="{{ STATIC_URL }}css/mecqbank_ui_base.css">
+    <script data-main="{{ STATIC_URL }}js/main" src="{{ STATIC_URL }}js/vendor/requirejs/require.js"></script>
+    {% block header_script %} {% endblock %}
+</head>
+<body class="portal">
+    {% csrf_token %}
+    <div class="container reset-left">
+        <div class="row">
+            <div id="home_navbar" class="col-lg-2 col-md-2 col-sm-3 col-xs-3 mecqbank-home">
+                {% block home_navbar_content %} {% endblock %}
+            </div>
+            <div id="content_navbar" class="col-lg-10 col-md-10 col-sm-9 col-xs-9 mecqbank-navbar">
+                {% block navbar_content %}{% endblock %}
+            </div>
+        </div>
+        <div class="row">
+            <div id="sidebar" class="col-lg-2 col-md-2 col-sm-3 col-xs-3 mecqbank-sidebar">
+                {% block sidebar_content %} {% endblock %}
+            </div>
+            <div id="container" class="col-lg-10 col-md-10 col-sm-9 col-xs-9 mecqbank-container">
+                {% block main_content %} {% endblock %}
+            </div>
+        </div>
+        <div class="row">
+            <div id="sidebar" class="col-lg-2 col-md-2 col-sm-3 col-xs-3 mecqbank-sidebar">
+            </div>
+            <div id="footer" class="col-lg-10 col-md-10 col-sm-9 col-xs-9">
+                {% block footer_content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

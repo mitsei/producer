@@ -1,0 +1,36 @@
+<% if (!locked && !published) { %>
+    <label class="delete-assignment pull-left">
+        <button type="button" class="btn btn-danger">
+            <span class="sr-only">Delete this assignment.</span>
+            <i aria-hidden="true" class="fa fa-trash-o"> </i>
+            Delete Assignment
+        </button>
+    </label>
+    <label class="add-item">
+        <button type="button" class="btn btn-success">
+            <span class="sr-only">Add item to assignment.</span>
+            <i aria-hidden="true" class="fa fa-plus-circle"> </i>
+            Add Item
+        </button>
+    </label>
+    <label class="publish-assignment pull-right">
+        <button type="button" class="btn btn-primary">
+            <span class="sr-only">Publish this assignment -- it cannot be changed later.</span>
+            Publish
+            <i aria-hidden="true" class="fa fa-info-circle"
+               title="Publishing this assignment means it will be offered to students -- and it cannot be changed later!"></i>
+        </button>
+    </label>
+<% } else if (published) { %>
+    <label class="download-assignment pull-right">
+        <button type="button" class="btn btn-primary">
+            <span class="sr-only">Download the files for this assignment.</span>
+            Download
+            <i aria-hidden="true" class="fa fa-cloud-download"
+               title="Download the files for this assignment"></i>
+        </button>
+    </label>
+<% } else if (locked) { %>
+    <span class="red">Assessment is locked for editing --
+        please check back later if you wish to make changes.</span>
+<% } %>

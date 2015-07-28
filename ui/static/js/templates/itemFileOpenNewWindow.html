@@ -1,0 +1,16 @@
+<% if (thumbnail) { %>
+    <span class="thumbnail item-file-preview pointer" >
+<% } else { %>
+    <span class="item-file-preview pointer">
+<% } %>
+    <% if (latex) { %>
+        <span class="text-center file-label"><%= fileLabel %></span>
+        <img src="/static/img/LaTeX_logo.svg" alt="Latex document"/>
+    <% } else { %>
+        <a href="<%= itemUrl %>" target="_blank">
+            <span class="text-center file-label"><%= fileLabel %></span>
+            <i class="fa fa-file-text-o fa-2x" title="Preview" aria-hidden="true"></i>
+            <span class="sr-only">Preview of the question</span>
+        </a>
+    <% } %>
+</span>

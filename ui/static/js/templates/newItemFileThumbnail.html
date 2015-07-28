@@ -1,0 +1,9 @@
+<span class="thumbnail item-file-preview">
+    <span class="text-center file-label"><%= fileLabel %></span>
+    <% if (latex) { %>
+        <img src="/static/img/LaTeX_logo.svg" alt="Latex document"/>
+    <% } else { %>
+        <i class="fa fa-file-text-o fa-2x" title="Preview" aria-hidden="true"></i>
+        <span class="sr-only">Preview</span>
+    <% } %>
+</span>

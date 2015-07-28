@@ -1,0 +1,18 @@
+<section class="other-classes">
+    <div class="sidebar-header">
+        Other Subjects
+    </div>
+    <ul class="list-group">
+        <% if (otherSubjects.length > 0) { %>
+            <% _.each(otherSubjects, function(subject) { %>
+                <li class="list-group-item view-subject-owners" data-raw-object="<%= subject.rawObject%>">
+                    <%= subject.displayName %>
+                </li>
+            <% }); %>
+        <% } else { %>
+            <li class="list-group-item" aria-label="No other subjects found.">
+                None Found
+            </li>
+        <% }; %>
+    </ul>
+</section>

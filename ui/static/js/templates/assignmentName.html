@@ -1,0 +1,11 @@
+<li class="list-group-item assignment-name" data-raw-object="<%= rawObject %>">
+    <span class="display-name"><%= displayName %></span>
+    <% if (locked) { %>
+        <i aria-hidden="true" class="fa fa-lock" title="Assignment is locked for editing by someone else. Please check back later if you wish to make changes."></i>
+        <span class="sr-only">Assignment locked for editing by someone else. Please check back later if you want to make changes.</span>
+    <% } %>
+    <% if (published) { %>
+        <i aria-hidden="true" class="fa fa-book" title="Assignment has been published. You can only download it."></i>
+        <span class="sr-only">Assignment has been published and released to students. You can only download it.</span>
+    <% } %>
+</li>

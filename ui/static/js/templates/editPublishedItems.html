@@ -1,0 +1,93 @@
+<div class="container">
+    <div class="row">
+        <div class="col-lg-2 col-md-2 col-sm-4 col-xs-4 item-filter-wrapper">
+            <h4>Filters (AND)</h4>
+            <ul class="item-filters list-group">
+                <li class="list-group-item">
+                    <h4 class="list-group-item-heading">Terms</h4>
+                    <div class="terms-filter filter form-group">
+                        <!-- Want NONE to always be a default option -->
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <h4 class="list-group-item-heading">Assignment Type</h4>
+                    <div class="pset-filter filter form-group">
+                        <!-- Want NONE to always be a default option -->
+
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <h4 class="list-group-item-heading">Difficulties</h4>
+                    <div class="difficulty-filter filter form-group">
+
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <h4 class="list-group-item-heading">Types</h4>
+                    <div class="types-filter filter form-group">
+
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <h4 class="list-group-item-heading">SN / Keywords</h4>
+                    <div class="form-group">
+                        <input type="text" class="form-control" name="keyword-search" placeholder="Search"/>
+                        <i class="fa fa-search keyword-search-icon" aria-hidden="true"></i>
+                    </div>
+                </li>
+            </ul>
+        </div>
+        <div class="col-lg-8 col-md-8 col-sm-6 col-xs-6 item-list-wrapper">
+            <div class="item-list row">
+                <table class="table-striped table-bordered table-condensed table-hover">
+                    <thead>
+                        <tr>
+                            <th>SN</th>
+                            <th>Keywords</th>
+                            <th>Type</th>
+                            <th>Diff.</th>
+                            <th>Terms</th>
+                            <th>PSet</th>
+                            <th>Prev.</th>
+                            <th>Sol Prev.</th>
+                            <th>Meta.</th>
+                            <th>Down.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                    </tbody>
+                </table>
+            </div>
+            <div class="item-action-bar row">
+                <section class="hidden locked-warning text-center">
+                    <span class="red">
+                        Item is locked for editing by someone else. Please check back later if you
+                        want to make changes to it.
+                    </span>
+                </section>
+                <section class="item-actions hidden text-center">
+                    <label class="item-delete pull-left hidden">
+                        <span class="sr-only">Remove a published item from the library.</span>
+                        <button type="button" class="btn btn-danger">
+                            Delete <i class="fa fa-info-circle helptip" aria-hidden="true" title="Delete this item from the library -- it cannot be used in an assignment."></i>
+                        </button>
+                    </label>
+
+                    <label class="item-minor-edit">
+                        <span class="sr-only">Make a minor edit to the selected item.</span>
+                        <button type="button" class="btn btn-default">
+                            Minor Edit <i class="fa fa-info-circle helptip" aria-hidden="true" title="Make a minor edit -- no version change."></i>
+                        </button>
+                    </label>
+                    <label class="item-major-edit pull-right">
+                        <span class="sr-only">Make a new version of this item via a significant change to its contents.</span>
+                        <button type="button" class="btn btn-primary">
+                            Major Edit <i class="fa fa-info-circle helptip" aria-hidden="true" title="Make a major edit -- will get a new serial number."></i>
+                        </button>
+                    </label>
+                </section>
+            </div>
+        </div>
+    </div>
+</div>

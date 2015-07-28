@@ -1,0 +1,10 @@
+<% _.each(figureNames, function (figureName) { %>
+    <% if (imageFiles.hasOwnProperty(figureName.replace('.pdf', ''))) { %>
+        <li class="list-group-item">
+            <span><%= figureName %></span>
+        </li>
+    <% } else { %>
+        <div class="alert alert-danger" role="alert"><%= figureName %> is in the LaTeX files, but
+        was not uploaded.</div>
+    <% } %>
+<% }); %>

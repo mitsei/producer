@@ -1,0 +1,21 @@
+<% if (metadataAttrs.length > 0) { %>
+    <% _.each(metadataAttrs, function (attr) { %>
+        <% if (attr.attr !== 'latex' && attr.attr !== 'solutionLatex') { %>
+            <% if (attr.error) { %>
+                <div class="alert alert-danger">
+                    <span class="label label-info"><%= attr.attr %>:</span>
+                    <span><%= attr.value %></span>
+                </div>
+            <% } else { %>
+                <li class="list-group-item">
+                    <span class="label label-info"><%= attr.attr %>:</span>
+                    <span><%= attr.value %></span>
+                </li>
+            <% } %>
+        <% } %>
+    <% }); %>
+<% } else { %>
+    <div class="alert alert-danger" role="alert">
+        None found in the file.
+    </div>
+<% } %>

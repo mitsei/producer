@@ -1,0 +1,45 @@
+<div class="new-term-offered-wrapper">
+    <label for="termSelector" class="new-offered-row">
+        Term
+        <select name="termSelector">
+            <option value="ia">IAP</option>
+            <option value="sp">Spring</option>
+            <option value="su">Summer</option>
+            <option value="fa">Fall</option>
+        </select>
+    </label>
+
+    <label for="yearSelector" class="new-offered-row">
+        Year
+        <input type="number" min="1999" max="2100" value="2014" name="yearSelector"/>
+    </label>
+
+    <div class="vertical-divider new-offered-row"></div>
+
+    <span>
+        (optional)
+    </span>
+
+    <label for="psetSelector" class="new-offered-row">
+        Pset / Quiz
+        <select name="psetSelector">
+            <option value="nil">N/A</option>
+            <option value="pset">PSet</option>
+            <option value="quiz">Quiz</option>
+        </select>
+    </label>
+
+    <label for="psetNumberSelector" class="new-offered-row">
+        #
+        <input type="number" min="1" max="15" name="psetNumberSelector"/>
+    </label>
+
+    <div class="vertical-divider new-offered-row"></div>
+
+    <div class="pull-right new-offered-row">
+        <button class="btn btn-danger remove-new-offered">
+            <i aria-hidden="true" class="fa fa-times-circle-o"></i>
+            <p class="sr-only">Remove this new offered</p>
+        </button>
+    </div>
+</div>

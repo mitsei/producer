@@ -1,0 +1,18 @@
+<section class="my-classes">
+    <div class="sidebar-header">
+        <p>My Subjects</p>
+    </div>
+    <ul class="list-group">
+        <% _.each(mySubjects, function(subject) { %>
+            <li class="list-group-item edit-subject" aria-label="Open subject <%= subject.displayName %>" data-raw-object="<%= subject.rawObject %>">
+                <%= subject.displayName %>
+            </li>
+        <% }); %>
+
+        <li class="list-group-item add-subject">
+            <button class="btn btn-success" title="Add a new subject" aria-label="Add a new subject to the system">
+                <i class="fa fa-plus-circle" aria-hidden="true"></i> Add Subject
+            </button>
+        </li>
+    </ul>
+</section>

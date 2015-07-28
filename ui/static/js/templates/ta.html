@@ -1,0 +1,11 @@
+<li class="list-group-item ta" data-raw-object="<%= rawObject %>">
+    <div class="checkbox">
+        <label class="subject-ta">
+            <% if (active) { %>
+                <input type="checkbox" name="ta[]" checked class="ta-selector"> <%= displayName %>
+            <% } else { %>
+                <input type="checkbox" name="ta[]" class="ta-selector"> <%= displayName %>
+            <% } %>
+        </label>
+    </div>
+</li>

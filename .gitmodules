@@ -1,0 +1,6 @@
+[submodule "dlkit"]
+	path = dlkit
+	url = ./dlkit
+[submodule "dlkit_django"]
+	path = dlkit_django
+	url = ./dlkit_django/

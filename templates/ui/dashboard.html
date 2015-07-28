@@ -1,0 +1,30 @@
+{% extends 'mecqbank_ui/base.html' %}
+
+{% block title %}MecQBank: Dashboard{% endblock %}
+
+{% block header_script %}
+    <link rel="stylesheet" href="{{ STATIC_URL }}js/vendor/bootstrap3-dialog/dist/css/bootstrap-dialog.min.css">
+    <link rel="stylesheet" href="{{ STATIC_URL }}js/vendor/bootstrap-switch/dist/css/bootstrap3/bootstrap-switch.min.css">
+    <link rel="stylesheet" href="{{ STATIC_URL }}js/vendor/select2/select2.4rc2.min.css">
+{#    <link rel="stylesheet" href="{{ STATIC_URL }}js/vendor/select2/select2.css">#}
+    <link rel="stylesheet" href="{{ STATIC_URL }}css/vendor/select2-bootstrap.css">
+    <link rel="stylesheet" href="{{ STATIC_URL }}css/typeahead_dropdown.css">
+    <link rel="stylesheet" href="{{ STATIC_URL }}css/vendor/typeaheadjs.css">
+    <link rel="stylesheet" href="{{ STATIC_URL }}css/mecqbank_ui_dashboard.css">
+    <link rel="stylesheet" href="{{ STATIC_URL }}css/mecqbank_ui_content_navbar.css">
+    <link rel="stylesheet" href="{{ STATIC_URL }}css/mecqbank_ui_dashboard_content.css">
+{% endblock %}
+
+{% block navbar_content %}
+    <span id="dashboard_content_navbar"></span>
+{% endblock %}
+
+{% block sidebar_content %}
+    <span id="dashboard_sidebar_content"></span>
+{% endblock %}
+
+{% block main_content %}
+    <span id="dashboard_main_content">
+
+    </span>
+{% endblock %}

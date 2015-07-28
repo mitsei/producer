@@ -1,0 +1,52 @@
+<tr data-raw-object="<%= rawObject %>" class="assignment-item-row default">
+    <td class="serial-number-col assignment-item-col">
+        <span class="display-name"><%= displayName %></span>
+    </td>
+    <td class="keywords-col assignment-item-col">
+        <span><%= description %></span>
+    </td>
+    <td class="type-col assignment-item-col">
+        <span><%= questionType %></span>
+    </td>
+    <td class="difficulty-col assignment-item-col">
+        <span><%= questionDifficulty %></span>
+    </td>
+    <td class="term-col assignment-item-col">
+        <span><%= terms %></span>
+    </td>
+    <td class="pset-col assignment-item-col">
+        <span><%= pset %></span>
+    </td>
+    <td class="preview-col text-center assignment-item-col pointer">
+        <span>
+            <i class="fa fa-file-text-o fa-2x" title="Preview" aria-hidden="true"></i>
+            <span class="sr-only">Preview of the question</span>
+        </span>
+    </td>
+    <td class="solution-preview-col text-center assignment-item-col pointer">
+        <span>
+            <i class="fa fa-file-text-o fa-2x" title="Solution Preview" aria-hidden="true"></i>
+            <span class="sr-only">Preview of the solution</span>
+        </span>
+    </td>
+    <td class="metadata-col text-center assignment-item-col pointer">
+        <span>
+            <p class="sr-only">Metadata</p>
+            <i class="fa fa-database fa-2x" aria-hidden="true"></i>
+        </span>
+    </td>
+    <% if (!(locked || published)) { %>
+        <td class="delete-col text-center assignment-item-col pointer">
+            <span>
+                <p class="sr-only">Delete</p>
+                <i class="fa fa-trash-o fa-2x" aria-hidden="true"></i>
+            </span>
+        </td>
+        <td class="upload-col text-center assignment-item-col pointer">
+            <span>
+                <p class="sr-only">Upload new version</p>
+                <i class="fa fa-cloud-upload fa-2x" aria-hidden="true"></i>
+            </span>
+        </td>
+    <% } %>
+</tr>

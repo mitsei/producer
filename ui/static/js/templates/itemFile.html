@@ -1,0 +1,8 @@
+<span class="thumbnail item-file-preview" data-source="<%= itemSource %>" data-source-type="<%= sourceType %>">
+    <span class="text-center file-label"><%= fileLabel %></span>
+    <% if (latex) { %>
+        <img src="/static/img/LaTeX_logo.svg" alt="Latex document"/>
+    <% } else { %>
+        <img src="/static/img/pdf.png" alt="PDF document"/>
+    <% } %>
+</span>

@@ -1,0 +1,96 @@
+<!--Five column view with Metadata file / Metadata attributes,
+Question files, Solution files, Figures, and Commands (upload / status).-->
+<div class="panel panel-default <%= itemName %>">
+    <div class="container panel-body">
+        <div class="row">
+            <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+                <span class="label label-default">Item:</span>
+                <span class="item-name"><%= itemName %></span>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-2 col-md-2 col-sm-6 col-xs-6">
+                <h5>Metadata</h5>
+                <ul class="list-group">
+                    <% if (metadataFileName) { %>
+                        <li class="list-group-item">
+                            <span class="metadata-file-name"><%= metadataFileName %></span>
+                        </li>
+                    <% } else { %>
+                        <div class="alert alert-danger" role="alert">
+                            Missing metadata file.
+                        </div>
+                    <% } %>
+                </ul>
+                <ul class="list-group metadata-attrs-list">
+                </ul>
+            </div>
+            <div class="col-lg-2 col-md-2 col-sm-6 col-xs-6">
+                <h5>Question Files</h5>
+                <ul class="list-group">
+                    <% if (questionLatex) { %>
+                        <li class="list-group-item">
+                            <span class="question-file-latex"><%= questionLatex %></span>
+                        </li>
+                    <% } else { %>
+                        <div class="alert alert-warning" role="alert">
+                            Missing question LaTeX.
+                        </div>
+                    <% } %>
+
+                    <% if (questionPreview) { %>
+                        <li class="list-group-item">
+                            <span class="question-file-preview"><%= questionPreview %></span>
+                        </li>
+                    <% } else { %>
+                        <div class="alert alert-danger" role="alert">
+                            Missing question preview.
+                        </div>
+                    <% } %>
+                </ul>
+            </div>
+            <div class="col-lg-2 col-md-2 col-sm-6 col-xs-6">
+                <h5>Solution Files</h5>
+                <ul class="list-group">
+                    <% if (solutionLatex) { %>
+                        <li class="list-group-item">
+                            <span class="solution-file-latex"><%= solutionLatex %></span>
+                        </li>
+                    <% } else { %>
+                        <div class="alert alert-warning" role="alert">
+                            Missing solution LaTeX.
+                        </div>
+                    <% } %>
+
+                    <% if (solutionPreview) { %>
+                        <li class="list-group-item">
+                            <span class="solution-file-preview"><%= solutionPreview %></span>
+                        </li>
+                    <% } else { %>
+                        <div class="alert alert-danger" role="alert">
+                            Missing solution preview.
+                        </div>
+                    <% } %>
+                </ul>
+            </div>
+            <div class="col-lg-2 col-md-2 col-sm-6 col-xs-6">
+                <h5>Figures</h5>
+                <ul class="list-group figures-list">
+                    <div class="alert alert-info" role="alert">
+                        No figures found in the file.
+                    </div>
+                </ul>
+            </div>
+            <div class="col-lg-2 col-md-2 col-sm-6 col-xs-6 item-actions hidden">
+                <h5>Actions</h5>
+                <div class="submit-this-item">
+                    <p class="sr">Submit item</p>
+                    <button class="btn btn-warning btn-lg upload-item-button" aria-label="Submit the data for this item.">
+                        <i class="fa fa-send-o" aria-hidden="true"></i>
+                        <span> Submit Item</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

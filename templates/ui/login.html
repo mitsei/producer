@@ -1,0 +1,70 @@
+{% extends 'mecqbank_ui/base.html' %}
+
+{% block title %}MecQBank: Login{% endblock %}
+
+{% block header_script %}
+    <link rel="stylesheet" href="{{ STATIC_URL }}css/mecqbank_ui_login.css">
+{% endblock %}
+
+{% block main_content %}
+    <div id="login_container">
+        <div class="text-center">
+            <h3>MecQBank</h3>
+        </div>
+        <div class="row">
+            <div id="tech_warning" class="text-center">
+                <p class="text_bold red">Please note that this website is only
+                    compatible with the latest versions of FF / Chrome / Safari
+                    on Mac OS or FF / Chrome on Windows. It has not been tested
+                    on other combinations.
+                </p>
+            </div>
+        </div>
+        <div class="row">
+            <div id="status" class="red">
+            </div>
+            <div class="text-center">
+                <p class="logintxt"> {{ state }} </p>
+            </div>
+            <div class="" id="login_tabs">
+                <ul>
+                    <li><a href='#touchstone_div'>Touchstone</a></li>
+                    <li><a href='#email_div'>Login with Email</a></li>
+                </ul>
+                <div id="touchstone_div" class="login-box text-center">
+                    <form action="{% url 'touchstone_ui:dashboard' %}" method="POST" enctype="multipart/form-data" class="form-signin">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ next }}"/>
+                        <button id="login" class="btn btn-large btn-primary touchstone-login" type="submit">Touchstone Login</button>
+                    </form>
+                </div>
+                <div id="email_div" class="login-box">
+                    <form action="{% url 'mecqbank_ui:check' %}" method="POST" enctype="multipart/form-data" class="form-signin">
+                        {% csrf_token %}
+                        <label for="login_username" class="input-group">
+                            <span class="input-group-addon" id="user_addon"><i class="fa fa-user"></i></span>
+                            <input type="text" class="input-block-level" name="username" aria-label="username" aria-describedby="user_addon" placeholder="E-mail"/>
+                        </label>
+                        <label for="login_password" class="input-group">
+                            <span class="input-group-addon" id="pwd_addon"><i class="fa fa-lock"></i></span>
+                            <input type="password" class="input-block-level" name="password" aria-label="password" aria-describedby="pwd_addon" placeholder="Password"/>
+                        </label>
+                        <input type="hidden" name="next" value="{{ next }}"/>
+                        <div class="text-center">
+                            <button id="login_btn" class="btn btn-large btn-inverse" type="submit">Sign in</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div id="tos_pp" class="row text-center">
+            <div class="text-center">
+                <p>
+                    Use of this site means that you agree to the
+                    <a href="{% url 'mecqbank_ui:tos' %}" target="_blank">Terms of Service</a> and
+                    <a href="{% url 'mecqbank_ui:privacy' %}" target="_blank">Privacy Policy</a>
+                </p>
+            </div>
+        </div>
+    </div>
+{% endblock %}

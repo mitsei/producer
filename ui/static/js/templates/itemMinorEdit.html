@@ -1,0 +1,114 @@
+<div class="edit-wrapper">
+    <div>
+        <span class="modalStatusBox statusBox red"></span>
+    </div>
+
+    <label for="keywords" class="input-group row item-edit-input-row">
+        <p class="col-lg-3 col-md-3 col-sm-4 col-xs-4">Keywords: </p>
+        <input type="text" class="col-lg-9 col-md-9 col-sm-8 col-xs-8 input-block-level" name="keywords" aria-label="Keywords" placeholder="Topic keywords, like beam bending or area moment of inertia" value="<%= itemKeywords %>"/>
+    </label>
+
+    <label for="source" class="input-group row item-edit-input-row">
+        <p class="col-lg-3 col-md-3 col-sm-4 col-xs-4">Source: </p>
+        <input type="text" class="col-lg-9 col-md-9 col-sm-8 col-xs-8 input-block-level" name="source" aria-label="Source" placeholder="Question source, like Ashby & Jones, 3rd ed., pp124" value="<%= itemSource %>"/>
+    </label>
+
+    <label for="branches" class="input-group row item-edit-input-row">
+        <p class="col-lg-3 col-md-3 col-sm-4 col-xs-4">Branches: </p>
+        <select multiple class="col-lg-9 col-md-9 col-sm-8 col-xs-8" name="branches" id="itemBranchSelector">
+        </select>
+    </label>
+
+    <label for="item-type" class="input-group row item-edit-input-row">
+        <p class="col-lg-3 col-md-3 col-sm-4 col-xs-4">Item type: </p>
+        <select class="col-lg-9 col-md-9 col-sm-8 col-xs-8" name="item-type">
+            <option value="long">Long format question</option>
+            <option value="concept">Conceptual question</option>
+            <option value="true/false">True / False question</option>
+            <option value="mcq">Multiple choice question</option>
+            <option value="code">Coding question</option>
+            <option value="unknown">Unknown format</option>
+        </select>
+    </label>
+
+    <label for="item-difficulty" class="input-group row item-edit-input-row">
+        <p class="col-lg-3 col-md-3 col-sm-4 col-xs-4">Item difficulty: </p>
+        <select class="col-lg-9 col-md-9 col-sm-8 col-xs-8" name="item-difficulty">
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+        </select>
+    </label>
+
+    <label for="item-terms" class="input-group row item-edit-input-row">
+        <p class="col-lg-3 col-md-3 col-sm-4 col-xs-4">Offered terms: </p>
+        <div class="col-lg-9 col-md-9 col-sm-8 col-xs-8 offered-terms-wrapper">
+            <% _.each(offeredTerms, function (term) { %>
+                <input type="text" readonly value="<%= term %>" class="readonly col-lg-12 col-md-12 col-sm-12 col-xs-12 input-block-level"/>
+            <% }); %>
+            <div>
+                <button class="btn btn-success add-new-term" aria-label="Add a new offered term">
+                    <i aria-hidden="true" class="fa fa-plus-circle"></i>
+                    Add offered term
+                </button>
+            </div>
+        </div>
+    </label>
+
+    <label for="item-question-latex" class="input-group row item-edit-input-row">
+        <p class="col-lg-3 col-md-3 col-sm-4 col-xs-4">Question LaTeX: </p>
+        <div class="col-lg-3 col-md-3 col-sm-4 col-xs-4 item-question-latex-current">
+        </div>
+        <div class="col-lg-6 col-md-6 col-sm-6 col-xs-6 item-question-latex-new new-file-wrapper">
+
+        </div>
+    </label>
+
+    <label for="item-question-preview" class="input-group row item-edit-input-row">
+        <p class="col-lg-3 col-md-3 col-sm-4 col-xs-4">Question Preview: </p>
+        <div class="col-lg-3 col-md-3 col-sm-4 col-xs-4 item-question-preview-current">
+        </div>
+        <div class="col-lg-6 col-md-6 col-sm-6 col-xs-6 item-question-preview-new new-file-wrapper">
+
+        </div>
+    </label>
+
+    <label for="item-solution-latex" class="input-group row item-edit-input-row">
+        <p class="col-lg-3 col-md-3 col-sm-4 col-xs-4">Solution LaTeX: </p>
+        <div class="col-lg-3 col-md-3 col-sm-4 col-xs-4 item-solution-latex-current">
+
+        </div>
+        <div class="col-lg-6 col-md-6 col-sm-6 col-xs-6 item-solution-latex-new new-file-wrapper">
+
+        </div>
+    </label>
+
+    <label for="item-solution-preview" class="input-group row item-edit-input-row">
+        <p class="col-lg-3 col-md-3 col-sm-4 col-xs-4">Solution Preview: </p>
+        <div class="col-lg-3 col-md-3 col-sm-4 col-xs-4 item-solution-preview-current">
+
+        </div>
+        <div class="col-lg-6 col-md-6 col-sm-6 col-xs-6 item-solution-preview-new new-file-wrapper">
+
+        </div>
+    </label>
+
+    <label for="item-images" class="input-group row item-edit-input-row">
+        <p class="col-lg-3 col-md-3 col-sm-4 col-xs-4">Images: </p>
+        <div class="col-lg-9 col-md-9 col-sm-8 col-xs-8 image-files-wrapper">
+
+            <div class="col-lg-4 col-md-4 col-sm-5 col-xs-5">
+                <button class="btn btn-success add-new-images" aria-label="Add or remove new image files">
+                    <i aria-hidden="true" class="fa fa-plus-circle"></i>
+                    Add / Remove image files (*.pdf only)
+                    <input type="file" name="addNewImages" accept="application/pdf" multiple/>
+                </button>
+            </div>
+        </div>
+    </label>
+
+    <label for="comment" class="input-group row item-edit-input-row comment-input">
+        <p class="col-lg-3 col-md-3 col-sm-4 col-xs-4">Comment: </p>
+        <input type="text" class="col-lg-9 col-md-9 col-sm-8 col-xs-8 input-block-level" name="comment" aria-label="Save comment" placeholder="Save comment, like 'updated image files with colors'." value=""/>
+    </label>
+</div>
