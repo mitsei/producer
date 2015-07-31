@@ -3,15 +3,16 @@ import pickle
 import random
 import string
 import traceback
-import simplejson as json
 
 from bson.errors import InvalidId
+from copy import deepcopy
 
 from django.http import QueryDict
 from django.db import IntegrityError
 from django.utils.http import unquote, quote
-
-from copy import deepcopy
+# http://www.django-rest-framework.org/api-guide/pagination
+from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
+from django.contrib.auth.models import User
 
 from dlkit.abstract_osid.assessment import objects as abc_assessment_objects
 from dlkit.abstract_osid.learning import objects as abc_learning_objects
@@ -19,66 +20,50 @@ from dlkit.abstract_osid.repository import objects as abc_repository_objects
 from dlkit.abstract_osid.type import objects as abc_type_objects
 from dlkit.abstract_osid.grading import objects as abc_grading_objects
 from dlkit.abstract_osid.resource import objects as abc_resource_objects
+from dlkit.mongo.locale.types import String
 
-from dlkit_django.primordium import Id
-from dlkit_django.errors import PermissionDenied, InvalidArgument, NotFound, NoAccess
+from dlkit_django import PROXY_SESSION, RUNTIME
+from dlkit_django.primordium import Id, Type
+from dlkit_django.errors import (
+    PermissionDenied, InvalidArgument, NotFound, NoAccess, Unsupported, IllegalState
+)
 
-# http://www.django-rest-framework.org/api-guide/pagination
-from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
+from inflection import underscore
 
-from rest_framework import exceptions
-from rest_framework.pagination import PaginationSerializer,\
-    DefaultObjectSerializer
+from rest_framework import exceptions, status
+from rest_framework.pagination import (
+    PaginationSerializer, DefaultObjectSerializer
+)
+from rest_framework.views import APIView
+from rest_framework.response import Response
 
-from assessments_users.models import APIUser
 
-class DLEncoder(json.JSONEncoder):
+WORDIGNORECASE_STRING_MATCH_TYPE = Type(**String().get_type_data('WORDIGNORECASE'))
+
+
+class CreatedResponse(Response):
+    def __init__(self, *args, **kwargs):
+        super(CreatedResponse, self).__init__(status=status.HTTP_201_CREATED, *args, **kwargs)
+
+
+class DeletedResponse(Response):
+    def __init__(self, *args, **kwargs):
+        super(DeletedResponse, self).__init__(status=status.HTTP_204_NO_CONTENT, *args, **kwargs)
+
+
+class UpdatedResponse(Response):
+    def __init__(self, *args, **kwargs):
+        super(UpdatedResponse, self).__init__(status=status.HTTP_202_ACCEPTED, *args, **kwargs)
+
+
+class DLKitSessionsManager(APIView):
+    """ base class to handle all the dlkit session management
     """
-    Custom JSON encoder for DLKit objects
-    """
-    def default(self, obj):
-        if (isinstance(obj, abc_repository_objects.Asset) or
-            isinstance(obj, abc_learning_objects.Activity) or
-            isinstance(obj, abc_learning_objects.Objective) or
-            isinstance(obj, abc_grading_objects.Grade) or
-            isinstance(obj, abc_assessment_objects.Answer) or
-            isinstance(obj, abc_assessment_objects.Bank) or
-            isinstance(obj, abc_assessment_objects.Item) or
-            isinstance(obj, abc_assessment_objects.Assessment) or
-            isinstance(obj, abc_assessment_objects.AssessmentOffered) or
-            isinstance(obj, abc_assessment_objects.AssessmentTaken)):
-            return dl_dumps(obj.object_map)
-        elif (isinstance(obj, abc_repository_objects.AssetList) or
-            isinstance(obj, abc_repository_objects.AssetContentList) or
-            isinstance(obj, abc_learning_objects.ActivityList) or
-            isinstance(obj, abc_learning_objects.ObjectiveList) or
-            isinstance(obj, abc_type_objects.TypeList) or
-            isinstance(obj, abc_grading_objects.GradeList) or
-            isinstance(obj, abc_assessment_objects.AnswerList) or
-            isinstance(obj, abc_assessment_objects.BankList) or
-            isinstance(obj, abc_assessment_objects.ItemList) or
-            isinstance(obj, abc_assessment_objects.AssessmentList) or
-            isinstance(obj, abc_assessment_objects.AssessmentOfferedList) or
-            isinstance(obj, abc_assessment_objects.AssessmentTakenList)):
-            result = []
-            for o in obj:
-                result.append(o.object_map)
-            return dl_dumps(result)
-        elif (isinstance(obj, abc_learning_objects.ObjectiveBank)):
-            return dl_dumps(obj._catalog.object_map)
-        elif (isinstance(obj, abc_learning_objects.ObjectiveBankList)):
-            result = []
-            for o in obj:
-                result.append(o._catalog.object_map)
-            return dl_dumps(result)
-        elif (isinstance(obj, list)):
-            result = []
-            for o in obj:
-                result.append(o.object_map)
-            return dl_dumps(result)
-        else:
-            return dl_dumps(obj.object_map)
-        return json.JSONEncoder.default(self, obj)
+    def initial(self, request, *args, **kwargs):
+        """set up the resource manager"""
+        super(DLKitSessionsManager, self).initial(request, *args, **kwargs)
+        set_user(request)
+        self.data = get_data_from_request(request)
 
 
 class DLSerializer(DefaultObjectSerializer):
@@ -101,6 +86,27 @@ class DLPaginationSerializer(PaginationSerializer):
     """
     class Meta:
         object_serializer_class = DLSerializer
+
+def activate_managers(request):
+    """
+    Create initial managers and store them in the user session
+    """
+    managers = [('am', 'ASSESSMENT'),
+        ('cm', 'COMMENTING'),
+        ('gm', 'GRADING'),
+        ('lm', 'LEARNING'),
+        ('rm', 'REPOSITORY')]
+
+    for manager in managers:
+        nickname = manager[0]
+        service_name = manager[1]
+        if nickname not in request.session:
+            condition = PROXY_SESSION.get_proxy_condition()
+            condition.set_http_request(request)
+            proxy = PROXY_SESSION.get_proxy(condition)
+            set_session_data(request, nickname, RUNTIME.get_service_manager(service_name,
+                                                                            proxy=proxy))
+    return request
 
 def add_links(request, object, links):
     object.update({
@@ -177,6 +183,27 @@ def clean_up_post(bank, item):
             bank.delete_assessment(item.ident)
         elif isinstance(item, abc_assessment_objects.Answer):
             bank.delete_answer(item.ident)
+
+def config_osid_object_querier(querier, params):
+    for param, value in params.iteritems():
+        try:
+            method_name = 'match_{0}'.format(underscore(param))
+            if hasattr(querier, method_name):
+                if param in ['displayName', 'description']:
+                    getattr(querier, method_name)(str(value),
+                                                  WORDIGNORECASE_STRING_MATCH_TYPE,
+                                                  True)
+                if param in ['learningObjectiveId']:
+                    if '@' in value:
+                        value = quote(value)
+                    getattr(querier, method_name)(str(value),
+                                                  True)
+                else:
+                    getattr(querier, method_name)(float(value),
+                                                  True)
+        except AttributeError:
+            pass
+    return querier
 
 def convert_dl_object(obj):
     """
@@ -392,6 +419,18 @@ def handle_exceptions(ex):
         raise exceptions.APIException('Invalid ID.')
     elif isinstance(ex, NoAccess):
         raise exceptions.APIException('You cannot edit those fields.')
+    elif isinstance(ex, Unsupported):
+        raise exceptions.APIException('That is an unsupported genus or record type.')
+    elif isinstance(ex, exceptions.NotAcceptable):
+        raise exceptions.NotAcceptable(ex.args)
+    elif isinstance(ex, IllegalState):
+        if len(ex.args) == 0:
+            raise exceptions.APIException('Illegal state: you cannot do that because '
+                                          'system conditions have changed. For example, '
+                                          'the assessment has already been taken, or you '
+                                          'have exceeded the number of allowed attempts.')
+        else:
+            raise exceptions.APIException(ex.args)
     else:
         raise exceptions.APIException(ex.args)
 
@@ -437,6 +476,18 @@ def paginate(data, request, items_per_page=10):
 
     return serializer.data
 
+def set_form_basics(form, data):
+    if 'displayName' in data:
+        form.display_name = data['displayName']
+
+    if 'description' in data:
+        form.description = data['description']
+
+    if 'genusTypeId' in data:
+        form.set_genus_type(Type(**data['genusTypeId']))
+
+    return form
+
 def set_session_data(request, item_type, data):
     request.session[item_type] = pickle.dumps(data)
     request.session.modified = True
@@ -470,9 +521,9 @@ def set_user(request):
         logout(request)
         # create the proxied user as a student, if they do not exist
         try:
-            APIUser.objects.get(username=username)
-        except APIUser.DoesNotExist:
-            APIUser.objects.create_user(username)
+            User.objects.get(username=username)
+        except User.DoesNotExist:
+            User.objects.create_user(username)
 
         remote_user = authenticate(remote_user=username)
         if remote_user is not None:
@@ -484,38 +535,6 @@ def set_user(request):
                 raise PermissionDenied()
         else:
             raise PermissionDenied()
-
-def store_lti_user(request):
-    """
-    The RESTful app needs to keep a record of LTI users and roles,
-    so that DLKit can check for membership when doing authorization
-    checks. Keep this anonymous, no personal information!
-    """
-    from assessments_users.models import LTIUser
-    lti_user_id = request.META['HTTP_LTI_USER_ID']
-    lti_tool_guid = request.META['HTTP_LTI_TOOL_CONSUMER_INSTANCE_GUID']
-    lti_user_role = request.META['HTTP_LTI_USER_ROLE']
-    lti_bank = request.META['HTTP_LTI_BANK']
-
-    # Nov 17, 2014
-    # cjshaw@mit.edu
-    # set a default lti_tool_guid because it is not required
-    # so edX doesn't set it. Create default with request IP address
-    # https://stackoverflow.com/questions/4581789/how-do-i-get-user-ip-address-in-django
-    if not lti_tool_guid or lti_tool_guid == '':
-        forwarded = request.META.get('HTTP_X_FORWARDED_FOR')
-        if forwarded:
-            lti_tool_guid = forwarded.split(',')[-1].strip()
-        else:
-            lti_tool_guid = request.META.get('REMOTE_ADDR')
-
-
-    new_user, created = LTIUser.objects.get_or_create(
-        user_id=lti_user_id,
-        consumer_guid=lti_tool_guid,
-        role=lti_user_role,
-        bank=lti_bank)
-
 
 def strip_object_ids(obj):
     """
@@ -539,6 +558,27 @@ def strip_object_ids(obj):
             else:
                 results[key] = value
     return results
+
+
+def update_links(request, obj):
+    """add links for browsable API"""
+    obj.update({
+        '_links': {
+            'self': build_safe_uri(request)
+        }
+    })
+
+    if obj['type'] == 'Bank':  # assessmentBank
+        obj['_links'].update({
+            'items': build_safe_uri(request) + 'items/',
+        })
+    elif obj['type'] == 'Item':  # assessmentItem
+        obj['_links'].update({
+            'answers': build_safe_uri(request) + 'answers/',
+            'edxml': build_safe_uri(request) + 'edxml/',
+            'files': build_safe_uri(request) + 'files/',
+            'question': build_safe_uri(request) + 'question/'
+        })
 
 def verify_at_least_one_key_present(_data, _keys_list):
     """
