@@ -1,24 +1,116 @@
 """useful utility methods"""
+import os
 import json
+import envoy
 
-from django.conf import settings
-from dlkit_django.primordium import Type
 import dlkit_django.configs
 
-from rest_framework_httpsignature.authentication import SignatureAuthentication
+from django.conf import settings
+from django.test.utils import override_settings
+from django.contrib.auth.models import User
+
+from dlkit_django.primordium import Type, Id
+
+from minimocktest import MockTestCase
+
+from rest_framework.test import APITestCase, APIClient
+
+from utilities import general as gutils
+from utilities import grading as grutils
+
+PROJECT_PATH = os.path.dirname(os.path.abspath(__file__))
+ABS_PATH = os.path.abspath(os.path.join(PROJECT_PATH, os.pardir))
 
 
-class APISignatureAuthentication(SignatureAuthentication):
+@override_settings(DLKIT_MONGO_DB_PREFIX='test_',
+                   CLOUDFRONT_DISTRO='d1v4o60a4yrgi8.cloudfront.net',
+                   CLOUDFRONT_DISTRO_ID='E1OEKZHRUO35M9',
+                   S3_BUCKET='mitodl-repository-test')
+class DjangoTestCase(APITestCase, MockTestCase):
     """
-    Adapted from
-    https://github.com/etoccalino/django-rest-framework-httpsignature/blob/master/rest_framework_httpsignature/tests.py
-    """
-    API_KEY_HEADER = 'X-Api-Key'
-    def __init__(self, user):
-        self.user = user
+    A TestCase class that combines minimocktest and django.test.TestCase
 
-    def fetch_user_data(self, api_key):
-        return (self.user, str(self.user.private_key))
+    http://pykler.github.io/MiniMockTest/
+    """
+    def _pre_setup(self):
+        APITestCase._pre_setup(self)
+        MockTestCase.setUp(self)
+        # optional: shortcut client handle for quick testing
+        self.client = APIClient()
+
+    def _post_teardown(self):
+        MockTestCase.tearDown(self)
+        APITestCase._post_teardown(self)
+
+    def code(self, _req, _code):
+        self.assertEqual(_req.status_code, _code)
+
+    def created(self, _req):
+        self.code(_req, 201)
+
+    def deleted(self, _req):
+        self.code(_req, 204)
+
+    def filename(self, file_):
+        try:
+            return file_.name.split('/')[-1]
+        except AttributeError:
+            return file_.split('/')[-1]
+
+    def is_cloudfront_url(self, _url):
+        self.assertIn(
+            'https://d1v4o60a4yrgi8.cloudfront.net/',
+            _url
+        )
+
+        expected_params = ['?Expires=','&Signature=','&Key-Pair-Id=APKAIGRK7FPIAJR675NA']
+
+        for param in expected_params:
+            self.assertIn(
+                param,
+                _url
+            )
+
+    def json(self, _req):
+        return json.loads(_req.content)
+
+    def login(self, non_instructor=False):
+        if non_instructor:
+            self.client.login(username=self.student_name, password=self.student_password)
+        else:
+            self.client.login(username=self.username, password=self.password)
+
+    def message(self, _req, _msg):
+        self.assertIn(_msg, str(_req.content))
+
+    def ok(self, _req):
+        self.assertEqual(_req.status_code, 200)
+
+    def setUp(self):
+        envoy.run('mongo test_assessment --eval "db.dropDatabase()"')
+        envoy.run('mongo test_grading --eval "db.dropDatabase()"')
+        envoy.run('mongo test_repository --eval "db.dropDatabase()"')
+
+        configure_test_bucket()
+        self.url = '/api/v1/'
+        self.username = 'cjshaw@mit.edu'
+        self.password = 'jinxem'
+        self.user = User.objects.create_user(username=self.username,
+                                             password=self.password)
+        self.student_name = 'astudent'
+        self.student_password = 'blahblah'
+        self.student = User.objects.create_user(username=self.student_name,
+                                                password=self.student_password)
+        self.req = create_test_request(self.user)
+        gutils.activate_managers(self.req)
+
+    def tearDown(self):
+        envoy.run('mongo test_assessment --eval "db.dropDatabase()"')
+        envoy.run('mongo test_grading --eval "db.dropDatabase()"')
+        envoy.run('mongo test_repository --eval "db.dropDatabase()"')
+
+    def updated(self, _req):
+        self.code(_req, 202)
 
 def calculate_signature(auth, headers, method, path):
     """

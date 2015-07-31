@@ -1,4 +1,5 @@
 import re
+import json
 import pickle
 import random
 import string
@@ -63,7 +64,10 @@ class DLKitSessionsManager(APIView):
         """set up the resource manager"""
         super(DLKitSessionsManager, self).initial(request, *args, **kwargs)
         set_user(request)
-        self.data = get_data_from_request(request)
+        try:
+            self.data = get_data_from_request(request)
+        except InvalidArgument as ex:
+            handle_exceptions(ex)
 
 
 class DLSerializer(DefaultObjectSerializer):
@@ -74,8 +78,6 @@ class DLSerializer(DefaultObjectSerializer):
                 item_map = item.object_map
                 results.append(item_map)
             except:
-                import pdb
-                pdb.set_trace()
                 results.append(item)
         return results
 
