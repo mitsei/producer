@@ -1,0 +1,33 @@
+{
+  "name": "producer2",
+  "version": "0.0.0",
+  "authors": [
+    "cjshaw <cjshaw@mit.edu>"
+  ],
+  "description": "Backstage course producer",
+  "moduleType": [
+    "amd"
+  ],
+  "keywords": [
+    "backstage",
+    "course",
+    "producer"
+  ],
+  "license": "MIT",
+  "homepage": "producer.mit.edu",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "ui/static/js/vendor/",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "backbone": "~1.2.1",
+    "bootstrap": "~3.3.5",
+    "fontawesome": "~4.3.0",
+    "lodash": "~3.10.0",
+    "requirejs": "~2.1.20"
+  }
+}

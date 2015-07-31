@@ -4,64 +4,62 @@ import cStringIO
 from django.conf import settings
 from django.shortcuts import render_to_response
 from django.template import RequestContext
-from django.http import Http404, HttpResponse, QueryDict
-from django.utils.http import quote
-
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status, exceptions
-from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer, XMLRenderer
+from django.http import Http404, HttpResponse
+from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
 from rest_framework.permissions import AllowAny
 
-
 from dlkit_django.errors import *
-from dlkit.mongo.osid.osid_errors import PermissionDenied as MongoPermissionDenied
-from dlkit_django.primordium import RGBColorCoordinate
-from dlkit.mongo.records.types import ANSWER_RECORD_TYPES, ANSWER_GENUS_TYPES
 
 from bs4 import BeautifulSoup
 
 from utilities.assessment import *
-from utilities.general import *
+from utilities import general as gutils
 from .types import *
 from utilities import resource as resutils
 
 # https://stackoverflow.com/questions/20424521/override-jsonserializer-on-django-rest-framework/20426493#20426493
 class DLJSONRenderer(JSONRenderer):
     def render(self, data, accepted_media_type=None, renderer_context=None):
-        data = clean_up_dl_objects(data)
+        data = gutils.clean_up_dl_objects(data)
         return super(DLJSONRenderer, self).render(data,
                                                   accepted_media_type,
                                                   renderer_context)
 
-# Also need to render LTI XML...
-class LTIXMLRenderer(XMLRenderer):
-    def render(self, data, accepted_media_type=None, renderer_context=None):
-        data = clean_up_dl_objects(data)
-        return super(LTIXMLRenderer, self).render(data,
-                                                  accepted_media_type,
-                                                  renderer_context)
 
+class ProducerAPIViews(gutils.DLKitSessionsManager):
+    """Set up the managers"""
+    def initial(self, request, *args, **kwargs):
+        """set up the managers"""
+        super(ProducerAPIViews, self).initial(request, *args, **kwargs)
+        gutils.activate_managers(request)
+        self.am = gutils.get_session_data(request, 'am')
+        self.cm = gutils.get_session_data(request, 'cm')
+        self.gm = gutils.get_session_data(request, 'gm')
+        self.lm = gutils.get_session_data(request, 'lm')
+        self.rm = gutils.get_session_data(request, 'rm')
+        try:
+            self.data = gutils.get_data_from_request(request)
+        except InvalidArgument as ex:
+            gutils.handle_exceptions(ex)
 
-class CreatedResponse(Response):
-    def __init__(self, *args, **kwargs):
-        super(CreatedResponse, self).__init__(status=status.HTTP_201_CREATED, *args, **kwargs)
-
-class DeletedResponse(Response):
-    def __init__(self, *args, **kwargs):
-        super(DeletedResponse, self).__init__(status=status.HTTP_204_NO_CONTENT, *args, **kwargs)
-
-class UpdatedResponse(Response):
-    def __init__(self, *args, **kwargs):
-        super(UpdatedResponse, self).__init__(status=status.HTTP_202_ACCEPTED, *args, **kwargs)
-
-
-
-
+    def finalize_response(self, request, response, *args, **kwargs):
+        """save the updated managers"""
+        try:
+            gutils.set_session_data(request, 'am', self.am)
+            gutils.set_session_data(request, 'cm', self.cm)
+            gutils.set_session_data(request, 'gm', self.gm)
+            gutils.set_session_data(request, 'lm', self.lm)
+            gutils.set_session_data(request, 'rm', self.rm)
+        except AttributeError:
+            pass  # with an exception, the RM may not be set
+        return super(ProducerAPIViews, self).finalize_response(request,
+                                                               response,
+                                                               *args,
+                                                               **kwargs)
 
 
 # http://www.django-rest-framework.org/tutorial/3-class-based-views
-class AssessmentService(APIView):
+class AssessmentService(ProducerAPIViews):
     """
     List all available assessment services.
     api/v2/assessment/
