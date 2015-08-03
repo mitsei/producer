@@ -110,19 +110,6 @@ def activate_managers(request):
                                                                             proxy=proxy))
     return request
 
-def add_links(request, object, links):
-    object.update({
-        '_links': {
-            'self': build_safe_uri(request)
-        }
-    })
-    for field, path in links.iteritems():
-        object['_links'].update({
-            field: build_safe_uri(request) + path
-        })
-
-    return object
-
 def append_slash(url):
     if url[-1] != '/':
         url += '/'
@@ -260,7 +247,6 @@ def extract_items(request, a_list, bank=None, section=None):
         not isinstance(a_list, abc_grading_objects.GradebookColumnList) and
         not isinstance(a_list, abc_grading_objects.GradeEntryList)):
         a_list = [a_list]
-
     try:
         list_len = a_list.available()
     except AttributeError:
@@ -318,9 +304,6 @@ def extract_items(request, a_list, bank=None, section=None):
                 results['data']['results'][index]['_link'] = '{0}../../../entries/{1}/'.format(root_url_base,
                                                                                                my_unquote(item_id))
             else:
-                if item_id is None:
-                    import pdb
-                    pdb.set_trace()
                 results['data']['results'][index]['_link'] = root_url_base + my_unquote(item_id) + '/'
     else:
         results['data'] = {'count': 0, 'next': None, 'results': [], 'previous': None}
@@ -486,7 +469,7 @@ def set_form_basics(form, data):
         form.description = data['description']
 
     if 'genusTypeId' in data:
-        form.set_genus_type(Type(**data['genusTypeId']))
+        form.set_genus_type(Type(data['genusTypeId']))
 
     return form
 
@@ -580,6 +563,15 @@ def update_links(request, obj):
             'edxml': build_safe_uri(request) + 'edxml/',
             'files': build_safe_uri(request) + 'files/',
             'question': build_safe_uri(request) + 'question/'
+        })
+    elif obj['type'] == 'Composition':  # repositoryComposition
+        obj['_links'].update({
+            'assets': build_safe_uri(request) + 'assets/'
+        })
+    elif obj['type'] == 'Repository':  # repositoryRepository
+        obj['_links'].update({
+            'assets': 'assets/',
+            'compositions': 'compositions/'
         })
 
 def verify_at_least_one_key_present(_data, _keys_list):

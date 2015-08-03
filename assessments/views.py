@@ -1,7 +1,6 @@
 import json
 
 from django.db import IntegrityError
-from django.http import Http404
 
 from dlkit_django.errors import *
 from dlkit_django.primitives import Type
@@ -140,6 +139,9 @@ class ItemsList(ProducerAPIViews):
             if bank_id is None:
                 item_lookup_session = autils.get_session(self.am, 'item', 'lookup')
                 item_query_session = autils.get_session(self.am, 'item', 'query')
+
+                item_lookup_session.use_federated_bank_view()
+                item_query_session.use_federated_bank_view()
             else:
                 item_query_session = item_lookup_session = self.am.get_bank(gutils.clean_id(bank_id))
 
@@ -179,12 +181,12 @@ class ItemsList(ProducerAPIViews):
         except (PermissionDenied, IntegrityError) as ex:
             gutils.handle_exceptions(ex)
 
-    def post(self, request, format=None):
+    def post(self, request, bank_id=None, format=None):
         try:
-            expected = ['bankId']
-            gutils.verify_keys_present(self.data, expected)
-
-            bank_id = self.data['bankId']
+            if bank_id is None:
+                expected = ['bankId']
+                gutils.verify_keys_present(self.data, expected)
+                bank_id = self.data['bankId']
 
             bank = self.am.get_bank(gutils.clean_id(bank_id))
             new_item = autils.create_new_item(bank, self.data)
@@ -246,7 +248,7 @@ class ItemsList(ProducerAPIViews):
 class ItemDetails(ProducerAPIViews):
     """
     Get item details for the given bank
-    api/v2/assessment/banks/<bank_id>/items/<item_id>/
+    api/v1/assessment/items/<item_id>/
 
     GET, PUT, DELETE
     PUT to modify an existing item. Include only the changed parameters.

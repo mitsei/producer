@@ -1,134 +1,86 @@
-import os
 import boto
-import json
 import envoy
-import requests
 
-from minimocktest import MockTestCase
-from django.test.utils import override_settings
-from django.utils.http import unquote
-from rest_framework.test import APITestCase, APIClient
-
-from assessments_users.models import APIUser
-
-from copy import deepcopy
-
-from utilities import general as gutils
-from utilities import repository as rutils
-from utilities.testing import configure_test_bucket, create_test_request, create_test_bank
-
-from django.conf import settings
-
-from dlkit_django.primordium import Id, DataInputStream, Type
-from dlkit.mongo.records.types import COMPOSITION_RECORD_TYPES, EDX_COMPOSITION_GENUS_TYPES
+from assessments.tests.test_views import AssessmentTestCase
 
 from boto.s3.key import Key
 
+from copy import deepcopy
 
-@override_settings(DLKIT_MONGO_DB_PREFIX='test_',
-                   CLOUDFRONT_DISTRO='d1v4o60a4yrgi8.cloudfront.net',
-                   CLOUDFRONT_DISTRO_ID='E1OEKZHRUO35M9',
-                   S3_BUCKET='mitodl-repository-test')
-class DjangoTestCase(APITestCase, MockTestCase):
+from dlkit.mongo.records.types import COMPOSITION_RECORD_TYPES, EDX_COMPOSITION_GENUS_TYPES
+
+from dlkit_django.primordium import Id, DataInputStream, Type
+
+from django.conf import settings
+from django.utils.http import unquote
+
+from utilities import general as gutils
+from utilities.testing import DjangoTestCase, ABS_PATH
+
+
+class RepositoryTestCase(DjangoTestCase):
     """
-    A TestCase class that combines minimocktest and django.test.TestCase
 
-    http://pykler.github.io/MiniMockTest/
     """
-    def _pre_setup(self):
-        APITestCase._pre_setup(self)
-        MockTestCase.setUp(self)
-        # optional: shortcut client handle for quick testing
-        self.client = APIClient()
-
-    def _post_teardown(self):
-        MockTestCase.tearDown(self)
-        APITestCase._post_teardown(self)
-
-    def code(self, _req, _code):
-        self.assertEqual(_req.status_code, _code)
+    def attach_ids_to_composition(self, composition_id, id_list):
+        for id_ in id_list:
+            self.repo.add_asset(Id(id_), Id(composition_id))
 
     def create_new_repo(self):
-        payload = {
-            'name': 'my new repository',
-            'description': 'for testing with'
-        }
-        req = self.new_repo_post(payload)
-        return self.json(req)
+        rm = gutils.get_session_data(self.req, 'rm')
+        form = rm.get_repository_form_for_create([])
+        form.display_name = 'new repository'
+        form.description = 'for testing'
+        return rm.create_repository(form)
 
-    def created(self, _req):
-        self.code(_req, 201)
-
-    def deleted(self, _req):
-        self.code(_req, 204)
-
-    def filename(self, file_):
-        try:
-            return file_.name.split('/')[-1].split('.')[0]
-        except AttributeError:
-            return file_.split('/')[-1].split('.')[0]
+    def get_asset(self, asset_id):
+        return self.repo.get_asset(Id(asset_id))
 
     def get_repo(self, repo_id):
-        rutils.activate_managers(self.req)
+        if not isinstance(repo_id, Id):
+            repo_id = Id(repo_id)
         rm = gutils.get_session_data(self.req, 'rm')
-        return rm.get_repository(Id(repo_id))
+        return rm.get_repository(repo_id)
 
-    def is_cloudfront_url(self, _url):
-        self.assertIn(
-            'https://d1v4o60a4yrgi8.cloudfront.net/',
-            _url
+    def num_assets(self, val):
+        self.assertEqual(
+            self.get_repo(self.repo.ident).get_assets().available(),
+            val
         )
 
-        expected_params = ['?Expires=','&Signature=','&Key-Pair-Id=APKAIGRK7FPIAJR675NA']
+    def num_compositions(self, val):
+        self.assertEqual(
+            self.get_repo(self.repo.ident).get_compositions().available(),
+            val
+        )
 
-        for param in expected_params:
-            self.assertIn(
-                param,
-                _url
-            )
+    def num_repos(self, val):
+        rm = gutils.get_session_data(self.req, 'rm')
 
-    def json(self, _req):
-        return json.loads(_req.content)
+        self.assertEqual(
+            rm.repositories.available(),
+            val
+        )
 
-    def login(self, non_instructor=False):
-        if non_instructor:
-            self.client.login(username=self.student_name, password=self.student_password)
-        else:
-            self.client.login(username=self.username, password=self.password)
-
-    def message(self, _req, _msg):
-        self.assertIn(_msg, str(_req.content))
-
-    def new_repo_post(self, payload):
-        url = self.url + 'repositories/'
-        self.login()
-        return self.client.post(url, payload)
-
-    def ok(self, _req):
-        self.assertEqual(_req.status_code, 200)
+    def s3_file_exists(self, key):
+        connection = boto.connect_s3(settings.S3_TEST_PUBLIC_KEY,
+                                     settings.S3_TEST_PRIVATE_KEY)
+        bucket = connection.create_bucket(settings.S3_BUCKET)
+        file_ = Key(bucket, key)
+        return file_.exists()
 
     def setUp(self):
-        configure_test_bucket()
-        self.url = '/api/v2/repository/'
-        self.username = 'cjshaw@mit.edu'
-        self.password = 'jinxem'
-        self.user = APIUser.objects.create_user(username=self.username,
-                                                password=self.password)
-        self.student_name = 'astudent'
-        self.student_password = 'blahblah'
-        self.student = APIUser.objects.create_user(username=self.student_name,
-                                                   password=self.student_password)
-        self.req = create_test_request(self.user)
-        envoy.run('mongo test_repository --eval "db.dropDatabase()"')
+        super(RepositoryTestCase, self).setUp()
+        self.url = self.base_url + 'repository/'
 
     def setup_asset(self, repository_id):
-        project_path = os.path.dirname(os.path.abspath(__file__))
-        abs_path = os.path.abspath(os.path.join(project_path, os.pardir))
-        test_file = '/tests/files/Flexure_structure_with_hints.pdf'
+        if not isinstance(repository_id, Id):
+            repository_id = Id(repository_id)
 
-        rutils.activate_managers(self.req)
+        test_file = '/repository/tests/files/Flexure_structure_with_hints.pdf'
+
         rm = gutils.get_session_data(self.req, 'rm')
-        repo = rm.get_repository(Id(repository_id))
+        repo = rm.get_repository(repository_id)
         asset_form = repo.get_asset_form_for_create([])
         asset_form.display_name = 'test'
         asset_form.description = 'ing'
@@ -147,90 +99,51 @@ class DjangoTestCase(APITestCase, MockTestCase):
         asset_content_form = repo.get_asset_content_form_for_create(new_asset.ident,
                                                                     asset_content_type_list)
 
-        self.default_asset_file = abs_path + test_file
+        self.default_asset_file = ABS_PATH + test_file
         with open(self.default_asset_file, 'r') as file_:
             asset_content_form.set_data(DataInputStream(file_))
 
         repo.create_asset_content(asset_content_form)
 
         new_asset = repo.get_asset(new_asset.ident)
-        return new_asset.object_map
+        return new_asset
 
     def setup_composition(self, repository_id):
-        project_path = os.path.dirname(os.path.abspath(__file__))
-        abs_path = os.path.abspath(os.path.join(project_path, os.pardir))
-        test_file = '/tests/files/Flexure_structure_with_hints.pdf'
-
-        rutils.activate_managers(self.req)
         rm = gutils.get_session_data(self.req, 'rm')
         repo = rm.get_repository(Id(repository_id))
-        asset_form = repo.get_asset_form_for_create([])
-        asset_form.display_name = 'test'
-        asset_form.description = 'ing'
-        new_asset = repo.create_asset(asset_form)
 
-        # now add the new data
-        asset_content_type_list = []
-        try:
-            config = repo._runtime.get_configuration()
-            parameter_id = Id('parameter:assetContentRecordTypeForFiles@mongo')
-            asset_content_type_list.append(
-                config.get_value_by_parameter(parameter_id).get_type_value())
-        except AttributeError:
-            pass
-
-        asset_content_form = repo.get_asset_content_form_for_create(new_asset.ident,
-                                                                    asset_content_type_list)
-
-        self.default_asset_file = abs_path + test_file
-        with open(self.default_asset_file, 'r') as file_:
-            asset_content_form.set_data(DataInputStream(file_))
-
-        repo.create_asset_content(asset_content_form)
+        new_asset = self.setup_asset(repository_id)
 
         form = repo.get_composition_form_for_create([])
         form.display_name = 'my test composition'
         form.description = 'foobar'
         form.set_children([new_asset.ident])
         composition = repo.create_composition(form)
-        return composition.object_map
+        return composition
 
     def tearDown(self):
-        envoy.run('mongo test_repository --eval "db.dropDatabase()"')
-
-    def updated(self, _req):
-        self.code(_req, 202)
+        super(RepositoryTestCase, self).tearDown()
 
 
-class AssetCrUDTests(DjangoTestCase):
+class AssetCrUDTests(RepositoryTestCase):
     """Test the views for repository crud
 
     """
-    def get_asset(self, asset_id):
-        rutils.activate_managers(self.req)
-        rm = gutils.get_session_data(self.req, 'rm')
-        repo = rm.get_repository(Id(self.repo['id']))
-        return repo.get_asset(Id(asset_id))
-
-    def s3_file_exists(self, key):
-        connection = boto.connect_s3(settings.S3_TEST_PUBLIC_KEY,
-                                     settings.S3_TEST_PRIVATE_KEY)
-        bucket = connection.create_bucket(settings.S3_BUCKET)
-        file = Key(bucket, key)
-        return file.exists()
-
     def setUp(self):
         super(AssetCrUDTests, self).setUp()
-        self.bad_repo_id = 'assessment.Bank%3A55203f0be7dde0815228bb41%40bazzim.MIT.EDU'
+        self.bad_repo_id = 'assessment.Bank%3A55203f0be7dde0815228bb41%40EDX.ORG'
         self.repo = self.create_new_repo()
+        self.repo_id = unquote(str(self.repo.ident))
 
-        project_path = os.path.dirname(os.path.abspath(__file__))
-        abs_path = os.path.abspath(os.path.join(project_path, os.pardir))
-        test_file = '/tests/files/ps_2015_beam_2gages.pdf'
-        test_file2 = '/tests/files/Backstage_v2_quick_guide.docx'
+        test_file = '/repository/tests/files/ps_2015_beam_2gages.pdf'
+        test_file2 = '/repository/tests/files/Backstage_v2_quick_guide.docx'
 
-        self.test_file = open(abs_path + test_file, 'r')
-        self.test_file2 = open(abs_path + test_file2, 'r')
+        self.test_file = open(ABS_PATH + test_file, 'r')
+        self.test_file2 = open(ABS_PATH + test_file2, 'r')
+
+        self.login()
+
+        self.url += 'assets/'
 
     def tearDown(self):
         super(AssetCrUDTests, self).tearDown()
@@ -238,9 +151,8 @@ class AssetCrUDTests(DjangoTestCase):
         self.test_file2.close()
 
     def test_can_get_repository_assets(self):
-        self.setup_asset(self.repo['id'])
-        self.login()
-        url = self.url + 'repositories/' + self.repo['id'] + '/assets/'
+        self.setup_asset(self.repo_id)
+        url = self.url
         req = self.client.get(url)
         self.ok(req)
         assets = self.json(req)['data']['results']
@@ -264,17 +176,17 @@ class AssetCrUDTests(DjangoTestCase):
         self.is_cloudfront_url(asset_contents[0]['url'])
 
     def test_student_can_view_assets(self):
-        self.setup_asset(self.repo['id'])
+        self.setup_asset(self.repo_id)
         self.login(non_instructor=True)
-        url = self.url + 'repositories/' + self.repo['id'] + '/assets/'
+        url = self.url
         req = self.client.get(url)
         self.ok(req)
 
-    def test_can_upload_single_asset(self):
-        self.login()
-        url = self.url + 'repositories/' + self.repo['id'] + '/assets/'
+    def test_can_create_single_asset(self):
+        url = self.url
         payload = {
-            'my_asset_label': self.test_file
+            'my_asset_label': self.test_file,
+            'repositoryId': str(self.repo.ident)
         }
         req = self.client.post(url, payload)
         self.created(req)
@@ -315,11 +227,11 @@ class AssetCrUDTests(DjangoTestCase):
         )
 
     def test_can_upload_multiple_assets_simultaneously(self):
-        self.login()
-        url = self.url + 'repositories/' + self.repo['id'] + '/assets/'
+        url = self.url
         payload = {
             'my_asset_label': self.test_file,
-            'my_second_asset': self.test_file2
+            'my_second_asset': self.test_file2,
+            'repositoryId': str(self.repo.ident)
         }
         req = self.client.post(url, payload)
         self.created(req)
@@ -368,18 +280,17 @@ class AssetCrUDTests(DjangoTestCase):
             )
 
     def test_can_get_single_asset_details(self):
-        asset = self.setup_asset(self.repo['id'])
-        self.login()
-        url = self.url + 'repositories/' + self.repo['id'] + '/assets/' + asset['id']
+        asset = self.setup_asset(self.repo_id)
+        url = self.url + unquote(str(asset.ident))
         req = self.client.get(url)
         self.ok(req)
         asset_map = self.json(req)
         self.assertEqual(
-            asset['id'],
+            str(asset.ident),
             asset_map['id']
         )
         self.assertEqual(
-            asset['displayName']['text'],
+            asset.display_name.text,
             asset_map['displayName']['text']
         )
 
@@ -395,28 +306,25 @@ class AssetCrUDTests(DjangoTestCase):
     def test_can_delete_asset(self):
         """Also check that the asset content is removed from AWS"""
         def get_s3_path(url):
-            return url.split('amazonaws.com')[-1]
+            return url.split('.net')[-1].split('?')[0]
 
-        asset = self.setup_asset(self.repo['id'])
-        s3_url = asset['assetContents'][0]['url']
+        asset = self.setup_asset(self.repo_id)
+        s3_url = asset.get_asset_contents().next().url
         s3_path = get_s3_path(s3_url)
         self.assertTrue(self.s3_file_exists(s3_path))
 
-        self.login()
-
-        url = self.url + 'repositories/' + self.repo['id'] + '/assets/' + asset['id']
+        url = self.url + unquote(str(asset.ident))
         req = self.client.delete(url)
         self.deleted(req)
 
         self.assertFalse(self.s3_file_exists(s3_path))
 
     def test_can_update_asset_name(self):
-        asset = self.setup_asset(self.repo['id'])
-        self.login()
-        url = self.url + 'repositories/' + self.repo['id'] + '/assets/' + asset['id']
+        asset = self.setup_asset(self.repo_id)
+        url = self.url + unquote(str(asset.ident))
 
         payload = {
-            'name': 'name v2'
+            'displayName': 'name v2'
         }
 
         req = self.client.put(url, payload, format='json')
@@ -424,33 +332,23 @@ class AssetCrUDTests(DjangoTestCase):
 
         updated_asset = self.json(req)
         self.assertEqual(
-            updated_asset.keys()[0],
-            payload['name']
-        )
-        self.assertEqual(
-            len(updated_asset.keys()),
-            1
-        )
-        updated_asset_obj = self.get_asset(updated_asset[payload['name']])
-        self.assertEqual(
-            updated_asset_obj.display_name.text,
-            payload['name']
+            updated_asset['displayName']['text'],
+            payload['displayName']
         )
 
         self.assertEqual(
-            updated_asset_obj.description.text,
-            asset['description']['text']
+            asset.description.text,
+            updated_asset['description']['text']
         )
 
         self.assertEqual(
-            updated_asset_obj.object_map['assetContents'],
-            asset['assetContents']
+            asset.object_map['assetContents'],
+            updated_asset['assetContents']
         )
 
     def test_can_update_asset_description(self):
-        asset = self.setup_asset(self.repo['id'])
-        self.login()
-        url = self.url + 'repositories/' + self.repo['id'] + '/assets/' + asset['id']
+        asset = self.setup_asset(self.repo_id)
+        url = self.url + unquote(str(asset.ident))
 
         payload = {
             'description': 'desc v2'
@@ -460,19 +358,15 @@ class AssetCrUDTests(DjangoTestCase):
         self.updated(req)
 
         updated_asset = self.json(req)
-        asset_name = asset['displayName']['text']
+        asset_name = asset.display_name.text
         self.assertEqual(
-            updated_asset.keys()[0],
+            updated_asset['displayName']['text'],
             asset_name
         )
-        self.assertEqual(
-            len(updated_asset.keys()),
-            1
-        )
-        updated_asset_obj = self.get_asset(updated_asset[asset_name])
+        updated_asset_obj = self.get_asset(updated_asset['id'])
         self.assertEqual(
             updated_asset_obj.display_name.text,
-            asset['displayName']['text']
+            asset.display_name.text
         )
 
         self.assertEqual(
@@ -482,13 +376,12 @@ class AssetCrUDTests(DjangoTestCase):
 
         self.assertEqual(
             updated_asset_obj.object_map['assetContents'],
-            asset['assetContents']
+            asset.object_map['assetContents']
         )
 
     def test_can_update_asset_file_with_single_file(self):
-        asset = self.setup_asset(self.repo['id'])
-        self.login()
-        url = self.url + 'repositories/' + self.repo['id'] + '/assets/' + asset['id']
+        asset = self.setup_asset(self.repo_id)
+        url = self.url + unquote(str(asset.ident))
 
         payload = {
             'file2': self.test_file
@@ -498,24 +391,20 @@ class AssetCrUDTests(DjangoTestCase):
         self.updated(req)
 
         updated_asset = self.json(req)
-        asset_name = asset['displayName']['text']
+        asset_name = asset.display_name.text
         self.assertEqual(
-            updated_asset.keys()[0],
+            updated_asset['displayName']['text'],
             asset_name
         )
-        self.assertEqual(
-            len(updated_asset.keys()),
-            1
-        )
-        updated_asset_obj = self.get_asset(updated_asset[asset_name])
+        updated_asset_obj = self.get_asset(updated_asset['id'])
         self.assertEqual(
             updated_asset_obj.display_name.text,
-            asset['displayName']['text']
+            asset.display_name.text
         )
 
         self.assertEqual(
             updated_asset_obj.description.text,
-            asset['description']['text']
+            asset.description.text
         )
 
         updated_ac_map = updated_asset_obj.object_map['assetContents']
@@ -537,10 +426,9 @@ class AssetCrUDTests(DjangoTestCase):
         )
 
     def test_when_updating_asset_file_previous_contents_deleted(self):
-        asset = self.setup_asset(self.repo['id'])
-        original_s3_url = asset['assetContents'][0]['url']
-        self.login()
-        url = self.url + 'repositories/' + self.repo['id'] + '/assets/' + asset['id']
+        asset = self.setup_asset(self.repo_id)
+        original_s3_url = asset.get_asset_contents().next().url
+        url = self.url + unquote(str(asset.ident))
 
         payload = {
             'file2': self.test_file
@@ -550,31 +438,28 @@ class AssetCrUDTests(DjangoTestCase):
         self.updated(req)
 
         updated_asset = self.json(req)
-        asset_name = asset['displayName']['text']
+        asset_name = asset.display_name.text
         self.assertEqual(
-            updated_asset.keys()[0],
+            updated_asset['displayName']['text'],
             asset_name
         )
-        self.assertEqual(
-            len(updated_asset.keys()),
-            1
-        )
-        updated_asset_obj = self.get_asset(updated_asset[asset_name])
+
+        updated_asset_obj = self.get_asset(updated_asset['id'])
         self.assertEqual(
             updated_asset_obj.display_name.text,
-            asset['displayName']['text']
+            asset.display_name.text
         )
 
         self.assertEqual(
             updated_asset_obj.description.text,
-            asset['description']['text']
+            asset.description.text
         )
 
         updated_ac_map = updated_asset_obj.object_map['assetContents']
 
         self.assertNotEqual(
             updated_ac_map,
-            asset['assetContents']
+            asset.object_map['assetContents']
         )
 
         self.assertEqual(
@@ -587,12 +472,11 @@ class AssetCrUDTests(DjangoTestCase):
             unexpected_name,
             updated_ac_map[0]['url']
         )
-        self.assertFalse(self.s3_file_exists(original_s3_url.split('.com')[1]))
+        self.assertFalse(self.s3_file_exists(original_s3_url.split('.net')[1].split('?')[0]))
 
     def test_can_update_asset_file_with_multiple_files(self):
-        asset = self.setup_asset(self.repo['id'])
-        self.login()
-        url = self.url + 'repositories/' + self.repo['id'] + '/assets/' + asset['id']
+        asset = self.setup_asset(self.repo_id)
+        url = self.url + unquote(str(asset.ident))
 
         payload = {
             'file2': self.test_file,
@@ -603,24 +487,20 @@ class AssetCrUDTests(DjangoTestCase):
         self.updated(req)
 
         updated_asset = self.json(req)
-        asset_name = asset['displayName']['text']
+        asset_name = asset.display_name.text
         self.assertEqual(
-            updated_asset.keys()[0],
+            updated_asset['displayName']['text'],
             asset_name
         )
-        self.assertEqual(
-            len(updated_asset.keys()),
-            1
-        )
-        updated_asset_obj = self.get_asset(updated_asset[asset_name])
+        updated_asset_obj = self.get_asset(updated_asset['id'])
         self.assertEqual(
             updated_asset_obj.display_name.text,
-            asset['displayName']['text']
+            asset.display_name.text
         )
 
         self.assertEqual(
             updated_asset_obj.description.text,
-            asset['description']['text']
+            asset.description.text
         )
 
         updated_ac_map = updated_asset_obj.object_map['assetContents']
@@ -644,9 +524,8 @@ class AssetCrUDTests(DjangoTestCase):
             expected_names = [name for name in expected_names if name not in content['url']]
 
     def test_update_with_no_parameters_throws_exception(self):
-        asset = self.setup_asset(self.repo['id'])
-        self.login()
-        url = self.url + 'repositories/' + self.repo['id'] + '/assets/' + asset['id']
+        asset = self.setup_asset(self.repo_id)
+        url = self.url + unquote(str(asset.ident))
 
         payload = {
             'foo': 'bar'
@@ -655,115 +534,54 @@ class AssetCrUDTests(DjangoTestCase):
         req = self.client.put(url, payload, format='json')
         self.code(req, 500)
         self.message(req,
-                     'At least one of the following must be passed in: [\\"name\\", \\"description\\", \\"files\\"')
+                     'At least one of the following must be passed in: [\\"displayName\\", \\"description\\", \\"files\\"')
 
 
-class BasicServiceTests(DjangoTestCase):
+class BasicServiceTests(RepositoryTestCase):
     """Test the views for getting the basic service calls
 
     """
     def setUp(self):
         super(BasicServiceTests, self).setUp()
+        self.url += 'repositories/'
 
     def tearDown(self):
         super(BasicServiceTests, self).tearDown()
 
-    def test_authenticated_users_can_see_available_services(self):
-        self.login()
-        url = self.url
-        req = self.client.get(url)
-        self.ok(req)
-        self.message(req, 'documentation')
-        self.message(req, 'repositories')
-
-    def test_non_authenticated_users_cannot_see_available_services(self):
-        url = self.url
-        req = self.client.get(url)
-        self.code(req, 403)
-
     def test_instructors_can_get_list_of_repositories(self):
         self.login()
-        url = self.url + 'repositories/'
+        url = self.url
         req = self.client.get(url)
         self.ok(req)
         self.message(req, '"count": 0')
 
     def test_learners_can_see_list_of_repositories(self):
         self.login(non_instructor=True)
-        url = self.url + 'repositories/'
+        url = self.url
         req = self.client.get(url)
         self.ok(req)
 
 
-class CompositionCrUDTests(DjangoTestCase):
+class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
     """Test the views for composition crud
 
     """
-    def attach_ids_to_composition(self, composition_id, id_list):
-        repo = self.get_repo(self.repo['id'])
-        for id_ in id_list:
-            repo.add_asset(Id(id_), Id(composition_id))
-
-    def create_bank_with_item_and_assessment(self):
-        from utilities import assessment as autils
-        autils.activate_managers(self.req)
-        am = gutils.get_session_data(self.req, 'am')
-        form = am.get_bank_form_for_create([])
-        form.display_name = 'Assessment Bank'
-        form.description = 'for testing'
-        bank = am.create_bank(form)
-
-        form = bank.get_item_form_for_create([])
-        form.display_name = 'an item'
-        form.description = 'for testing'
-        item = bank.create_item(form)
-
-        form = bank.get_assessment_form_for_create([])
-        form.display_name = 'an assessment'
-        form.description = 'for testing'
-        assessment = bank.create_assessment(form)
-
-        bank.add_item(assessment.ident, item.ident)
-        assessment = bank.get_assessment(assessment.ident)
-        return bank, item, assessment
-
-    def get_asset(self, asset_id):
-        rutils.activate_managers(self.req)
-        rm = gutils.get_session_data(self.req, 'rm')
-        repo = rm.get_repository(Id(self.repo['id']))
-        return repo.get_asset(Id(asset_id))
-
-    def num_assets(self, val):
-        self.assertEqual(
-            self.get_repo(self.repo['id']).get_assets().available(),
-            val
-        )
-
-    def num_compositions(self, val):
-        self.assertEqual(
-            self.get_repo(self.repo['id']).get_compositions().available(),
-            val
-        )
-
-    def s3_file_exists(self, key):
-        connection = boto.connect_s3(settings.S3_TEST_PUBLIC_KEY,
-                                     settings.S3_TEST_PRIVATE_KEY)
-        bucket = connection.create_bucket(settings.S3_BUCKET)
-        file = Key(bucket, key)
-        return file.exists()
-
     def setUp(self):
         super(CompositionCrUDTests, self).setUp()
-        self.bad_repo_id = 'assessment.Bank%3A55203f0be7dde0815228bb41%40bazzim.MIT.EDU'
+        self.bad_repo_id = 'assessment.Bank%3A55203f0be7dde0815228bb41%40EDX.ORG'
         self.repo = self.create_new_repo()
+        self.repo_id = unquote(str(self.repo.ident))
 
-        project_path = os.path.dirname(os.path.abspath(__file__))
-        abs_path = os.path.abspath(os.path.join(project_path, os.pardir))
-        test_file = '/tests/files/ps_2015_beam_2gages.pdf'
-        test_file2 = '/tests/files/Backstage_v2_quick_guide.docx'
+        test_file = '/repository/tests/files/ps_2015_beam_2gages.pdf'
+        test_file2 = '/repository/tests/files/Backstage_v2_quick_guide.docx'
 
-        self.test_file = open(abs_path + test_file, 'r')
-        self.test_file2 = open(abs_path + test_file2, 'r')
+        self.test_file = open(ABS_PATH + test_file, 'r')
+        self.test_file2 = open(ABS_PATH + test_file2, 'r')
+
+        self.login()
+
+        # reset this, because AssessmentTestCase will make it assessment/
+        self.url = self.base_url + 'repository/compositions/'
 
     def tearDown(self):
         super(CompositionCrUDTests, self).tearDown()
@@ -771,9 +589,8 @@ class CompositionCrUDTests(DjangoTestCase):
         self.test_file2.close()
 
     def test_can_get_repository_compositions(self):
-        self.setup_composition(self.repo['id'])
-        self.login()
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/'
+        self.setup_composition(self.repo_id)
+        url = self.url
         req = self.client.get(url)
         self.ok(req)
         compositions = self.json(req)['data']['results']
@@ -783,12 +600,12 @@ class CompositionCrUDTests(DjangoTestCase):
         )
 
     def test_can_create_composition_without_children(self):
-        self.login()
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/'
+        url = self.url
 
         payload = {
-            'name': 'test composition',
-            'description': 'for testing'
+            'displayName': 'test composition',
+            'description': 'for testing',
+            'repositoryId': str(self.repo.ident)
         }
 
         req = self.client.post(url, payload, format='json')
@@ -800,7 +617,7 @@ class CompositionCrUDTests(DjangoTestCase):
         )
         self.assertEqual(
             composition['displayName']['text'],
-            payload['name']
+            payload['displayName']
         )
         self.assertEqual(
             composition['description']['text'],
@@ -808,21 +625,21 @@ class CompositionCrUDTests(DjangoTestCase):
         )
 
     def test_create_composition_with_single_nonlist_child_id(self):
-        new_asset = self.setup_asset(self.repo['id'])
-        self.login()
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/'
+        new_asset = self.setup_asset(self.repo_id)
+        url = self.url
 
         payload = {
-            'name': 'test composition',
+            'displayName': 'test composition',
             'description': 'for testing',
-            'childIds': new_asset['id']
+            'childIds': str(new_asset.ident),
+            'repositoryId': str(self.repo.ident)
         }
 
         req = self.client.post(url, payload, format='json')
         self.created(req)
         composition = self.json(req)
         self.assertEqual(
-            new_asset['id'],
+            str(new_asset.ident),
             composition['childIds'][0]
         )
         self.assertEqual(
@@ -831,7 +648,7 @@ class CompositionCrUDTests(DjangoTestCase):
         )
         self.assertEqual(
             composition['displayName']['text'],
-            payload['name']
+            payload['displayName']
         )
         self.assertEqual(
             composition['description']['text'],
@@ -839,21 +656,21 @@ class CompositionCrUDTests(DjangoTestCase):
         )
 
     def test_can_create_composition_with_asset_child_id_in_list(self):
-        new_asset = self.setup_asset(self.repo['id'])
-        self.login()
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/'
+        new_asset = self.setup_asset(self.repo_id)
+        url = self.url
 
         payload = {
-            'name': 'test composition',
+            'displayName': 'test composition',
             'description': 'for testing',
-            'childIds': [new_asset['id']]
+            'childIds': [str(new_asset.ident)],
+            'repositoryId': str(self.repo.ident)
         }
 
         req = self.client.post(url, payload, format='json')
         self.created(req)
         composition = self.json(req)
         self.assertEqual(
-            new_asset['id'],
+            str(new_asset.ident),
             composition['childIds'][0]
         )
         self.assertEqual(
@@ -862,7 +679,7 @@ class CompositionCrUDTests(DjangoTestCase):
         )
         self.assertEqual(
             composition['displayName']['text'],
-            payload['name']
+            payload['displayName']
         )
         self.assertEqual(
             composition['description']['text'],
@@ -870,12 +687,11 @@ class CompositionCrUDTests(DjangoTestCase):
         )
 
     def test_missing_parameters_in_create_throw_exceptions(self):
-        self.login()
         self.num_compositions(0)
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/'
+        url = self.url
 
         payload = {
-            'name': 'test composition',
+            'displayName': 'test composition',
             'description': 'for testing'
         }
 
@@ -889,30 +705,27 @@ class CompositionCrUDTests(DjangoTestCase):
 
     def test_bad_id_in_delete_throws_exception(self):
         self.num_compositions(0)
-        self.setup_composition(self.repo['id'])
-        self.login()
+        self.setup_composition(self.repo_id)
         self.num_compositions(1)
 
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/123foo'
+        url = self.url + '123foo'
         req = self.client.delete(url)
         self.code(req, 500)
         self.num_compositions(1)
 
     def test_can_delete_composition(self):
         self.num_compositions(0)
-        composition = self.setup_composition(self.repo['id'])
-        self.login()
+        composition = self.setup_composition(self.repo_id)
         self.num_compositions(1)
 
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/' + composition['id']
+        url = self.url + unquote(str(composition.ident))
         req = self.client.delete(url)
         self.deleted(req)
         self.num_compositions(0)
 
     def test_can_get_composition_details(self):
-        new_composition = self.setup_composition(self.repo['id'])
-        self.login()
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/' + new_composition['id']
+        new_composition = self.setup_composition(self.repo_id)
+        url = self.url + unquote(str(new_composition.ident))
 
         req = self.client.get(url)
         self.ok(req)
@@ -923,11 +736,11 @@ class CompositionCrUDTests(DjangoTestCase):
         )
         self.assertEqual(
             composition['displayName']['text'],
-            new_composition['displayName']['text']
+            new_composition.display_name.text
         )
         self.assertEqual(
             composition['description']['text'],
-            new_composition['description']['text']
+            new_composition.description.text
         )
         self.assertIn(
             '_links',
@@ -935,43 +748,36 @@ class CompositionCrUDTests(DjangoTestCase):
         )
 
     def test_can_update_composition_attributes(self):
-        composition = self.setup_composition(self.repo['id'])
-        self.login()
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/' + composition['id']
+        composition = self.setup_composition(self.repo_id)
+        url = self.url + unquote(str(composition.ident))
 
-        test_cases = [{'name': 'ha'},
+        test_cases = [{'displayName': 'ha'},
                       {'description': 'funny'}]
 
         for payload in test_cases:
             req = self.client.put(url, payload, format='json')
             self.updated(req)
             data = self.json(req)
-            if payload.keys()[0] == 'name':
-                self.assertEqual(
-                    data['displayName']['text'],
-                    payload['name']
-                )
-            else:
-                self.assertEqual(
-                    data['description']['text'],
-                    payload['description']
-                )
+            key = payload.keys()[0]
+            self.assertEqual(
+                data[key]['text'],
+                payload[key]
+            )
 
     def test_updating_child_ids_removes_previous_ones(self):
-        composition = self.setup_composition(self.repo['id'])
+        composition = self.setup_composition(self.repo_id)
         self.num_compositions(1)
-        self.login()
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/' + composition['id']
+        url = self.url + unquote(str(composition.ident))
 
         # get the original asset id
         req = self.client.get(url)
         data = self.json(req)
         old_asset_id = data['childIds'][0]
 
-        new_asset = self.setup_asset(self.repo['id'])
+        new_asset = self.setup_asset(self.repo_id)
 
         payload = {
-            'childIds': new_asset['id']
+            'childIds': str(new_asset.ident)
         }
 
         req = self.client.put(url, payload, format='json')
@@ -979,29 +785,28 @@ class CompositionCrUDTests(DjangoTestCase):
         data = self.json(req)
         self.assertNotEqual(
             old_asset_id,
-            new_asset['id']
+            str(new_asset.ident)
         )
         self.assertEqual(
             data['childIds'],
-            [new_asset['id']]
+            [str(new_asset.ident)]
         )
         self.num_compositions(1)
 
     def test_updating_child_ids_preserves_order(self):
-        composition = self.setup_composition(self.repo['id'])
+        composition = self.setup_composition(self.repo_id)
         self.num_compositions(1)
-        self.login()
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/' + composition['id']
+        url = self.url + unquote(str(composition.ident))
 
         # get the original asset id
         req = self.client.get(url)
         data = self.json(req)
         old_asset_id = data['childIds'][0]
 
-        new_asset = self.setup_asset(self.repo['id'])
+        new_asset = self.setup_asset(self.repo_id)
 
         payload = {
-            'childIds': [old_asset_id, new_asset['id']]
+            'childIds': [old_asset_id, str(new_asset.ident)]
         }
 
         req = self.client.put(url, payload, format='json')
@@ -1009,16 +814,16 @@ class CompositionCrUDTests(DjangoTestCase):
         data = self.json(req)
         self.assertNotEqual(
             old_asset_id,
-            new_asset['id']
+            str(new_asset.ident)
         )
         self.assertEqual(
             data['childIds'],
-            [old_asset_id, new_asset['id']]
+            [old_asset_id, str(new_asset.ident)]
         )
         self.num_compositions(1)
 
         payload = {
-            'childIds': [new_asset['id'], old_asset_id]
+            'childIds': [str(new_asset.ident), old_asset_id]
         }
 
         req = self.client.put(url, payload, format='json')
@@ -1026,35 +831,35 @@ class CompositionCrUDTests(DjangoTestCase):
         data = self.json(req)
         self.assertNotEqual(
             old_asset_id,
-            new_asset['id']
+            str(new_asset.ident)
         )
         self.assertEqual(
             data['childIds'],
-            [new_asset['id'], old_asset_id]
+            [str(new_asset.ident), old_asset_id]
         )
         self.num_compositions(1)
 
     def test_update_with_no_parameters_throws_exception(self):
-        new_composition = self.setup_composition(self.repo['id'])
-        self.login()
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/' + new_composition['id']
+        new_composition = self.setup_composition(self.repo_id)
+        url = self.url + unquote(str(new_composition.ident))
 
         payload = {
             'foo': 'bar'
         }
 
-        req = self.client.put(url, payload, format='json')
+        req = self.client.put(url,
+                              data=payload,
+                              format='json')
         self.code(req, 500)
         self.message(req,
-                     'At least one of the following must be passed in: [\\"name\\", \\"description\\", \\"childIds\\"')
+                     'At least one of the following must be passed in: [\\"displayName\\", \\"description\\", \\"childIds\\"')
 
     def test_can_get_composition_assets(self):
-        asset = self.setup_asset(self.repo['id'])
-        composition = self.setup_composition(self.repo['id'])
-        self.attach_ids_to_composition(composition['id'], [asset['id']])
+        asset = self.setup_asset(self.repo_id)
+        composition = self.setup_composition(self.repo_id)
+        self.attach_ids_to_composition(str(composition.ident), [str(asset.ident)])
 
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/' + composition['id'] + '/assets/'
-        self.login()
+        url = self.url + unquote(str(composition.ident)) + '/assets/'
         req = self.client.get(url)
         self.ok(req)
         data = self.json(req)
@@ -1065,46 +870,48 @@ class CompositionCrUDTests(DjangoTestCase):
         assets = data['data']['results']
         self.assertEqual(
             assets[0]['id'],
-            asset['id']
+            str(asset.ident)
         )
         self.assertEqual(
             assets[0]['displayName']['text'],
-            asset['displayName']['text']
+            asset.display_name.text
         )
 
         self.assertEqual(
             assets[0]['description']['text'],
-            asset['description']['text']
+            asset.description.text
         )
 
     def test_asset_urls_point_to_root_asset_details(self):
-        asset = self.setup_asset(self.repo['id'])
-        composition = self.setup_composition(self.repo['id'])
-        self.attach_ids_to_composition(composition['id'], [asset['id']])
+        asset = self.setup_asset(self.repo_id)
+        composition = self.setup_composition(self.repo_id)
+        self.attach_ids_to_composition(str(composition.ident), [str(asset.ident)])
 
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/' + composition['id'] + '/assets/'
+        url = self.url + unquote(str(composition.ident)) + '/assets/'
         self.login()
         req = self.client.get(url)
         self.ok(req)
         data = self.json(req)
         asset_url = data['data']['results'][0]['_link']
         self.assertIn(
-            unquote('repositories/' + self.repo['id'] + '/compositions/' + composition['id'] +
-                    '/assets/../../../assets/' + asset['id'] + '/'),
+            unquote('/repository/compositions/' + str(composition.ident) +
+                    '/assets/../../../assets/' + str(asset.ident) + '/'),
             asset_url
         )
 
     def test_can_get_compositions_enclosed_assets(self):
         self.num_assets(0)
 
-        bank, item, assessment = self.create_bank_with_item_and_assessment()
-        composition = self.setup_composition(self.repo['id'])
+        bank = self.create_assessment_bank()
+        item = self.create_item(bank)
+        assessment = self.create_assessment_for_item(bank, item)
+
+        composition = self.setup_composition(self.repo_id)
         self.num_assets(1)
 
-        self.attach_ids_to_composition(composition['id'], [str(assessment.ident)])
+        self.attach_ids_to_composition(str(composition.ident), [str(assessment.ident)])
 
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/' + composition['id'] + '/assets/'
-        self.login()
+        url = self.url + unquote(str(composition.ident)) + '/assets/'
         req = self.client.get(url)
         self.ok(req)
         data = self.json(req)
@@ -1140,10 +947,10 @@ class CompositionCrUDTests(DjangoTestCase):
         self.num_assets(2)
 
     def test_can_attach_one_asset_to_composition(self):
-        composition = self.setup_composition(self.repo['id'])
-        asset = self.setup_asset(self.repo['id'])
+        composition = self.setup_composition(self.repo_id)
+        asset = self.setup_asset(self.repo_id)
 
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/' + composition['id'] + '/assets/'
+        url = self.url + unquote(str(composition.ident)) + '/assets/'
         self.login()
 
         req = self.client.get(url)
@@ -1155,7 +962,7 @@ class CompositionCrUDTests(DjangoTestCase):
         )
 
         payload = {
-            'assetIds': asset['id']
+            'assetIds': str(asset.ident)
         }
 
         req = self.client.put(url, payload, format='json')
@@ -1172,14 +979,17 @@ class CompositionCrUDTests(DjangoTestCase):
 
         self.assertEqual(
             assets[0]['id'],
-            asset['id']
+            str(asset.ident)
         )
 
     def test_can_attach_one_non_asset_to_composition(self):
-        composition = self.setup_composition(self.repo['id'])
-        bank, item, assessment = self.create_bank_with_item_and_assessment()
+        composition = self.setup_composition(self.repo_id)
 
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/' + composition['id'] + '/assets/'
+        bank = self.create_assessment_bank()
+        item = self.create_item(bank)
+        assessment = self.create_assessment_for_item(bank, item)
+
+        url = self.url + unquote(str(composition.ident)) + '/assets/'
         self.login()
 
         req = self.client.get(url)
@@ -1212,11 +1022,11 @@ class CompositionCrUDTests(DjangoTestCase):
         )
 
     def test_can_attach_multiple_assets_to_composition(self):
-        composition = self.setup_composition(self.repo['id'])
-        asset = self.setup_asset(self.repo['id'])
-        asset2 = self.setup_asset(self.repo['id'])
+        composition = self.setup_composition(self.repo_id)
+        asset = self.setup_asset(self.repo_id)
+        asset2 = self.setup_asset(self.repo_id)
 
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/' + composition['id'] + '/assets/'
+        url = self.url + unquote(str(composition.ident)) + '/assets/'
         self.login()
 
         req = self.client.get(url)
@@ -1228,7 +1038,7 @@ class CompositionCrUDTests(DjangoTestCase):
         )
 
         payload = {
-            'assetIds': [asset['id'], asset2['id']]
+            'assetIds': [str(asset.ident), str(asset2.ident)]
         }
 
         req = self.client.put(url, payload, format='json')
@@ -1245,19 +1055,24 @@ class CompositionCrUDTests(DjangoTestCase):
 
         self.assertEqual(
             assets[0]['id'],
-            asset['id']
+            str(asset.ident)
         )
         self.assertEqual(
             assets[1]['id'],
-            asset2['id']
+            str(asset2.ident)
         )
 
     def test_can_attach_multiple_non_assets_to_composition(self):
-        composition = self.setup_composition(self.repo['id'])
-        bank, item, assessment = self.create_bank_with_item_and_assessment()
-        bank2, item2, assessment2 = self.create_bank_with_item_and_assessment()
+        composition = self.setup_composition(self.repo_id)
+        bank = self.create_assessment_bank()
+        item = self.create_item(bank)
+        assessment = self.create_assessment_for_item(bank, item)
 
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/' + composition['id'] + '/assets/'
+        bank2 = self.create_assessment_bank()
+        item2 = self.create_item(bank2)
+        assessment2 = self.create_assessment_for_item(bank2, item2)
+
+        url = self.url + unquote(str(composition.ident)) + '/assets/'
         self.login()
 
         req = self.client.get(url)
@@ -1296,13 +1111,13 @@ class CompositionCrUDTests(DjangoTestCase):
     def test_exception_thrown_if_no_params_passed_to_attach_assets(self):
         self.num_assets(0)
 
-        asset = self.setup_asset(self.repo['id'])
-        composition = self.setup_composition(self.repo['id'])
+        asset = self.setup_asset(self.repo_id)
+        composition = self.setup_composition(self.repo_id)
         self.num_assets(2)
 
-        self.attach_ids_to_composition(composition['id'], [asset['id']])
+        self.attach_ids_to_composition(str(composition.ident), [str(asset.ident)])
 
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/' + composition['id'] + '/assets/'
+        url = self.url + unquote(str(composition.ident)) + '/assets/'
         self.login()
 
         payload = {
@@ -1315,10 +1130,12 @@ class CompositionCrUDTests(DjangoTestCase):
                      '\\"assetIds\\" required in input parameters but not provided.')
 
     def test_cannot_edit_some_enclosed_asset_attributes(self):
-        composition = self.setup_composition(self.repo['id'])
-        bank, item, assessment = self.create_bank_with_item_and_assessment()
+        composition = self.setup_composition(self.repo_id)
+        bank = self.create_assessment_bank()
+        item = self.create_item(bank)
+        assessment = self.create_assessment_for_item(bank, item)
 
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/' + composition['id'] + '/assets/'
+        url = self.url + unquote(str(composition.ident)) + '/assets/'
         self.login()
 
         payload = {
@@ -1334,10 +1151,10 @@ class CompositionCrUDTests(DjangoTestCase):
 
         enclosure_id = assets[0]['id']
 
-        url = self.url + 'repositories/' + self.repo['id'] + '/assets/' + enclosure_id + '/'
+        url = self.base_url + 'repository/assets/' + enclosure_id + '/'
 
         payload = {
-            'name': 'foo',
+            'displayName': 'foo',
             'description': 'bar'
         }
 
@@ -1347,10 +1164,12 @@ class CompositionCrUDTests(DjangoTestCase):
                      'You cannot edit those fields.')
 
     def test_can_add_files_to_enclosed_assets(self):
-        composition = self.setup_composition(self.repo['id'])
-        bank, item, assessment = self.create_bank_with_item_and_assessment()
+        composition = self.setup_composition(self.repo_id)
+        bank = self.create_assessment_bank()
+        item = self.create_item(bank)
+        assessment = self.create_assessment_for_item(bank, item)
 
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/' + composition['id'] + '/assets/'
+        url = self.url + unquote(str(composition.ident)) + '/assets/'
         self.login()
 
         payload = {
@@ -1366,7 +1185,7 @@ class CompositionCrUDTests(DjangoTestCase):
 
         enclosure_id = assets[0]['id']
 
-        url = self.url + 'repositories/' + self.repo['id'] + '/assets/' + enclosure_id + '/'
+        url = self.base_url + 'repository/assets/' + enclosure_id + '/'
 
         payload = {
             'testFile': self.test_file
@@ -1387,55 +1206,28 @@ class CompositionCrUDTests(DjangoTestCase):
         self.is_cloudfront_url(data['assetContents'][0]['url'])
 
 
-class DocumentationTests(DjangoTestCase):
-    """Test the views for getting the documentation
-
-    """
-    def setUp(self):
-        super(DocumentationTests, self).setUp()
-
-    def tearDown(self):
-        super(DocumentationTests, self).tearDown()
-
-    def test_authenticated_users_can_view_docs(self):
-        self.login()
-        url = self.url + 'docs/'
-        req = self.client.get(url)
-        self.ok(req)
-        self.message(req, 'Documentation for MIT Repository Service, V1')
-
-    def test_non_authenticated_users_can_view_docs(self):
-        url = self.url + 'docs/'
-        req = self.client.get(url)
-        self.ok(req)
-        self.message(req, 'Documentation for MIT Repository Service, V1')
-
-    def test_student_can_view_docs(self):
-        self.login(non_instructor=True)
-        url = self.url + 'docs/'
-        req = self.client.get(url)
-        self.ok(req)
-        self.message(req, 'Documentation for MIT Repository Service, V1')
-
-
-class EdXCompositionCrUDTests(CompositionCrUDTests):
+class EdXCompositionCrUDTests(RepositoryTestCase):
     """Test the views for composition crud
 
     """
     def setUp(self):
         super(EdXCompositionCrUDTests, self).setUp()
+        self.login()
+        self.repo = self.create_new_repo()
+        self.repo_id = unquote(str(self.repo.ident))
+        self.url += 'compositions/'
 
     def tearDown(self):
         super(EdXCompositionCrUDTests, self).tearDown()
 
     def test_can_create_edx_composition_with_genus_type(self):
-        self.login()
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/'
+        url = self.url
 
         payload = {
-            'name': 'test composition',
+            'displayName': 'test composition',
             'description': 'for testing',
-            'type': 'edx-course'
+            'genusTypeId': 'edx-composition%3Acourse%40EDX.ORG',
+            'repositoryId': str(self.repo.ident)
         }
 
         req = self.client.post(url, payload, format='json')
@@ -1447,7 +1239,7 @@ class EdXCompositionCrUDTests(CompositionCrUDTests):
         )
         self.assertEqual(
             composition['displayName']['text'],
-            payload['name']
+            payload['displayName']
         )
         self.assertEqual(
             composition['description']['text'],
@@ -1463,14 +1255,14 @@ class EdXCompositionCrUDTests(CompositionCrUDTests):
         )
 
     def test_throw_exception_if_bad_genus_type_provided(self):
-        self.login()
         self.num_compositions(0)
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/'
+        url = self.url
 
         payload = {
-            'name': 'test composition',
+            'displayName': 'test composition',
             'description': 'for testing',
-            'type': 'edx-filly'
+            'genusTypeId': 'edx-filly',
+            'repositoryId': str(self.repo.ident)
         }
 
         req = self.client.post(url, payload, format='json')
@@ -1481,13 +1273,13 @@ class EdXCompositionCrUDTests(CompositionCrUDTests):
         self.num_compositions(0)
 
     def test_can_set_edx_composition_values_on_create_chapter(self):
-        self.login()
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/'
+        url = self.url
 
         payload = {
-            'name': 'test composition',
+            'displayName': 'test composition',
             'description': 'for testing',
-            'type': 'edx-chapter',
+            'genusTypeId': 'edx-composition%3Achapter%40EDX.ORG',
+            'repositoryId': str(self.repo.ident),
             'startDate': {
                 'year': 2015,
                 'month': 1,
@@ -1501,7 +1293,7 @@ class EdXCompositionCrUDTests(CompositionCrUDTests):
             'visibleToStudents': False
         }
 
-        req = self.client.post(url, payload, format='json')
+        req = self.client.post(url, data=payload, format='json')
         self.created(req)
         composition = self.json(req)
         self.assertEqual(
@@ -1510,7 +1302,7 @@ class EdXCompositionCrUDTests(CompositionCrUDTests):
         )
         self.assertEqual(
             composition['displayName']['text'],
-            payload['name']
+            payload['displayName']
         )
         self.assertEqual(
             composition['description']['text'],
@@ -1540,17 +1332,17 @@ class EdXCompositionCrUDTests(CompositionCrUDTests):
             )
 
     def test_can_set_edx_composition_values_on_create_vertical(self):
-        self.login()
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/'
+        url = self.url
 
         payload = {
-            'name': 'test composition',
+            'displayName': 'test composition',
             'description': 'for testing',
-            'type': 'edx-vertical',
-            'draft': True
+            'genusTypeId': 'edx-composition%3Avertical%40EDX.ORG',
+            'draft': True,
+            'repositoryId': str(self.repo.ident)
         }
 
-        req = self.client.post(url, payload, format='json')
+        req = self.client.post(url, data=payload, format='json')
         self.created(req)
         composition = self.json(req)
         self.assertEqual(
@@ -1559,7 +1351,7 @@ class EdXCompositionCrUDTests(CompositionCrUDTests):
         )
         self.assertEqual(
             composition['displayName']['text'],
-            payload['name']
+            payload['displayName']
         )
         self.assertEqual(
             composition['description']['text'],
@@ -1577,13 +1369,13 @@ class EdXCompositionCrUDTests(CompositionCrUDTests):
         self.assertTrue(composition['draft'])
 
     def test_can_update_edx_composition_values_chapter(self):
-        self.login()
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/'
+        url = self.url
 
         payload = {
-            'name': 'test composition',
+            'displayName': 'test composition',
             'description': 'for testing',
-            'type': 'edx-chapter',
+            'genusTypeId': 'edx-composition%3Achapter%40EDX.ORG',
+            'repositoryId': str(self.repo.ident),
             'startDate': {
                 'year': 2015,
                 'month': 1,
@@ -1597,10 +1389,9 @@ class EdXCompositionCrUDTests(CompositionCrUDTests):
             'visibleToStudents': False
         }
 
-        req = self.client.post(url, payload, format='json')
+        req = self.client.post(url, data=payload, format='json')
         composition = self.json(req)
-
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/' + composition['id']
+        url = self.url + composition['id']
 
         payload2 = {
             'startDate': {
@@ -1635,20 +1426,20 @@ class EdXCompositionCrUDTests(CompositionCrUDTests):
             )
 
     def test_can_update_edx_composition_values_vertical(self):
-        self.login()
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/'
+        url = self.url
 
         payload = {
-            'name': 'test composition',
+            'displayName': 'test composition',
             'description': 'for testing',
-            'type': 'edx-vertical',
-            'draft': True
+            'genusTypeId': 'edx-composition%3Avertical%40EDX.ORG',
+            'draft': True,
+            'repositoryId': str(self.repo.ident)
         }
 
-        req = self.client.post(url, payload, format='json')
+        req = self.client.post(url, data=payload, format='json')
         composition = self.json(req)
 
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/' + composition['id']
+        url = self.url + composition['id']
 
         payload2 = {
             'draft': False
@@ -1662,16 +1453,16 @@ class EdXCompositionCrUDTests(CompositionCrUDTests):
 
     def test_can_query_compositions_by_type(self):
         self.num_compositions(0)
-        self.setup_composition(self.repo['id'])
+        self.setup_composition(self.repo_id)
         self.num_compositions(1)
 
-        self.login()
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/'
+        url = self.url
 
         payload = {
-            'name': 'test composition',
+            'displayName': 'test composition',
             'description': 'for testing querying',
-            'type': 'edx-chapter',
+            'genusTypeId': 'edx-composition%3Achapter%40EDX.ORG',
+            'repositoryId': str(self.repo.ident),
             'startDate': {
                 'year': 2015,
                 'month': 1,
@@ -1707,7 +1498,7 @@ class EdXCompositionCrUDTests(CompositionCrUDTests):
         )
         self.assertEqual(
             comp['displayName']['text'],
-            payload['name']
+            payload['displayName']
         )
         self.assertEqual(
             comp['description']['text'],
@@ -1716,16 +1507,16 @@ class EdXCompositionCrUDTests(CompositionCrUDTests):
 
     def test_bad_query_type_throws_exception(self):
         self.num_compositions(0)
-        self.setup_composition(self.repo['id'])
+        self.setup_composition(self.repo_id)
         self.num_compositions(1)
 
-        self.login()
-        url = self.url + 'repositories/' + self.repo['id'] + '/compositions/'
+        url = self.url
 
         payload = {
-            'name': 'test composition',
+            'displayName': 'test composition',
             'description': 'for testing querying',
-            'type': 'edx-chapter',
+            'genusTypeId': 'edx-composition%3Achapter%40EDX.ORG',
+            'repositoryId': str(self.repo.ident),
             'startDate': {
                 'year': 2015,
                 'month': 1,
@@ -1753,40 +1544,35 @@ class EdXCompositionCrUDTests(CompositionCrUDTests):
                      '\\"chapter\\", \\"sequential\\", \\"split_test\\", and \\"vertical\\" ' +
                      'are allowed.')
 
-class RepositoryCrUDTests(DjangoTestCase):
+
+class RepositoryCrUDTests(AssessmentTestCase, RepositoryTestCase):
     """Test the views for repository crud
 
     """
-    def num_repos(self, val):
-        rutils.activate_managers(self.req)
-        rm = gutils.get_session_data(self.req, 'rm')
-
-        self.assertEqual(
-            rm.repositories.available(),
-            val
-        )
-
     def setUp(self):
         super(RepositoryCrUDTests, self).setUp()
         # also need a test assessment bank here to do orchestration with
-        self.assessment_bank = create_test_bank(self)
-        self.bad_repo_id = 'assessment.Bank%3A55203f0be7dde0815228bb41%40bazzim.MIT.EDU'
+        self.assessment_bank = self.create_assessment_bank()
+        self.bad_repo_id = 'assessment.Bank%3A55203f0be7dde0815228bb41%40EDX.ORG'
+        self.login()
+        self.url = self.base_url + 'repository/repositories/'
 
     def tearDown(self):
-        envoy.run('mongo test_assessment --eval "db.dropDatabase()"')
         super(RepositoryCrUDTests, self).tearDown()
 
     def test_can_create_new_repository(self):
         payload = {
-            'name': 'my new repository',
+            'displayName': 'my new repository',
             'description': 'for testing with'
         }
-        req = self.new_repo_post(payload)
+        req = self.client.post(self.url,
+                               data=payload,
+                               format='json')
         self.created(req)
         repo = self.json(req)
         self.assertEqual(
             repo['displayName']['text'],
-            payload['name']
+            payload['displayName']
         )
         self.assertEqual(
             repo['description']['text'],
@@ -1794,12 +1580,10 @@ class RepositoryCrUDTests(DjangoTestCase):
         )
 
     def test_can_create_orchestrated_repository_with_default_attributes(self):
-        url = self.url + 'repositories/'
         payload = {
-            'bankId': self.assessment_bank['id']
+            'bankId': str(self.assessment_bank.ident)
         }
-        self.login()
-        req = self.client.post(url, payload)
+        req = self.client.post(self.url, payload)
         self.created(req)
         repo = self.json(req)
         self.assertEqual(
@@ -1811,49 +1595,45 @@ class RepositoryCrUDTests(DjangoTestCase):
             'Orchestrated Repository for the assessment service'
         )
         self.assertEqual(
-            Id(self.assessment_bank['id']).identifier,
+            self.assessment_bank.ident.identifier,
             Id(repo['id']).identifier
         )
 
     def test_can_create_orchestrated_repository_and_set_attributes(self):
-        url = self.url + 'repositories/'
         payload = {
-            'bankId': self.assessment_bank['id'],
-            'name': 'my new orchestra',
+            'bankId': str(self.assessment_bank.ident),
+            'displayName': 'my new orchestra',
             'description': 'for my assessment bank'
         }
-        self.login()
-        req = self.client.post(url, payload)
+        req = self.client.post(self.url, payload)
         self.created(req)
         repo = self.json(req)
         self.assertEqual(
             repo['displayName']['text'],
-            payload['name']
+            payload['displayName']
         )
         self.assertEqual(
             repo['description']['text'],
             payload['description']
         )
         self.assertEqual(
-            Id(self.assessment_bank['id']).identifier,
+            self.assessment_bank.ident.identifier,
             Id(repo['id']).identifier
         )
 
     def test_missing_parameters_throws_exception_on_create(self):
         self.num_repos(0)
 
-        url = self.url + 'repositories/'
         basic_payload = {
-            'name': 'my new repository',
+            'displayName': 'my new repository',
             'description': 'for testing with'
         }
-        blacklist = ['name', 'description']
-        self.login()
+        blacklist = ['displayName', 'description']
 
         for item in blacklist:
             payload = deepcopy(basic_payload)
             del payload[item]
-            req = self.client.post(url, payload)
+            req = self.client.post(self.url, payload)
             self.code(req, 500)
             self.message(req,
                          '\\"' + item + '\\" required in input parameters but not provided.')
@@ -1861,13 +1641,12 @@ class RepositoryCrUDTests(DjangoTestCase):
         self.num_repos(0)
 
     def test_can_get_repository_details(self):
-        self.login()
         repo = self.create_new_repo()
-        url = self.url + 'repositories/' + str(repo['id'])
+        url = self.url + unquote(str(repo.ident))
         req = self.client.get(url)
         self.ok(req)
         repo_details = self.json(req)
-        for attr, val in repo.iteritems():
+        for attr, val in repo.object_map.iteritems():
             self.assertEqual(
                 val,
                 repo_details[attr]
@@ -1875,17 +1654,15 @@ class RepositoryCrUDTests(DjangoTestCase):
         self.message(req, '"assets":')
 
     def test_invalid_repository_id_throws_exception(self):
-        self.login()
         self.create_new_repo()
-        url = self.url + 'repositories/x'
+        url = self.url + 'x'
         req = self.client.get(url)
         self.code(req, 500)
         self.message(req, 'Invalid ID.')
 
     def test_bad_repository_id_throws_exception(self):
-        self.login()
         self.create_new_repo()
-        url = self.url + 'repositories/' + self.bad_repo_id
+        url = self.url + self.bad_repo_id
         req = self.client.get(url)
         self.code(req, 500)
         self.message(req, 'Object not found.')
@@ -1893,13 +1670,11 @@ class RepositoryCrUDTests(DjangoTestCase):
     def test_can_delete_repository(self):
         self.num_repos(0)
 
-        self.login()
-
         repo = self.create_new_repo()
 
         self.num_repos(1)
 
-        url = self.url + 'repositories/' + str(repo['id'])
+        url = self.url + unquote(str(repo.ident))
         req = self.client.delete(url)
         self.deleted(req)
 
@@ -1908,14 +1683,12 @@ class RepositoryCrUDTests(DjangoTestCase):
     def test_trying_to_delete_repository_with_assets_throws_exception(self):
         self.num_repos(0)
 
-        self.login()
-
         repo = self.create_new_repo()
 
         self.num_repos(1)
-        self.setup_asset(repo['id'])
+        self.setup_asset(repo.ident)
 
-        url = self.url + 'repositories/' + str(repo['id'])
+        url = self.url + unquote(str(repo.ident))
         req = self.client.delete(url)
         self.code(req, 500)
         self.message(req, 'Repository is not empty.')
@@ -1925,13 +1698,11 @@ class RepositoryCrUDTests(DjangoTestCase):
     def test_trying_to_delete_repository_with_invalid_id_throws_exception(self):
         self.num_repos(0)
 
-        self.login()
-
         self.create_new_repo()
 
         self.num_repos(1)
 
-        url = self.url + 'repositories/' + self.bad_repo_id
+        url = self.url + self.bad_repo_id
         req = self.client.delete(url)
         self.code(req, 500)
         self.message(req, 'Object not found.')
@@ -1941,15 +1712,13 @@ class RepositoryCrUDTests(DjangoTestCase):
     def test_can_update_repository(self):
         self.num_repos(0)
 
-        self.login()
-
         repo = self.create_new_repo()
 
         self.num_repos(1)
 
-        url = self.url + 'repositories/' + str(repo['id'])
+        url = self.url + unquote(str(repo.ident))
 
-        test_cases = [('name', 'a new name'),
+        test_cases = [('displayName', 'a new name'),
                       ('description', 'foobar')]
         for case in test_cases:
             payload = {
@@ -1958,31 +1727,23 @@ class RepositoryCrUDTests(DjangoTestCase):
             req = self.client.put(url, payload, format='json')
             self.updated(req)
             updated_repo = self.json(req)
-            if case[0] == 'name':
-                self.assertEqual(
-                    updated_repo['displayName']['text'],
-                    case[1]
-                )
-            else:
-                self.assertEqual(
-                    updated_repo['description']['text'],
-                    case[1]
-                )
+            self.assertEqual(
+                updated_repo[case[0]]['text'],
+                case[1]
+            )
 
         self.num_repos(1)
 
     def test_update_with_invalid_id_throws_exception(self):
         self.num_repos(0)
 
-        self.login()
-
         self.create_new_repo()
 
         self.num_repos(1)
 
-        url = self.url + 'repositories/' + self.bad_repo_id
+        url = self.url + self.bad_repo_id
 
-        test_cases = [('name', 'a new name'),
+        test_cases = [('displayName', 'a new name'),
                       ('description', 'foobar')]
         for case in test_cases:
             payload = {
@@ -1997,13 +1758,11 @@ class RepositoryCrUDTests(DjangoTestCase):
     def test_update_with_no_params_throws_exception(self):
         self.num_repos(0)
 
-        self.login()
-
         repo = self.create_new_repo()
 
         self.num_repos(1)
 
-        url = self.url + 'repositories/' + str(repo['id'])
+        url = self.url + unquote(str(repo.ident))
 
         test_cases = [('foo', 'bar'),
                       ('bankId', 'foobar')]
@@ -2015,17 +1774,24 @@ class RepositoryCrUDTests(DjangoTestCase):
             self.code(req, 500)
             self.message(req,
                          'At least one of the following must be passed in: ' +
-                         '[\\"name\\", \\"description\\"]')
+                         '[\\"displayName\\", \\"description\\"]')
 
         self.num_repos(1)
         req = self.client.get(url)
         repo_fresh = self.json(req)
 
         params_to_test = ['id', 'displayName', 'description']
+        repo_map = repo.object_map
         for param in params_to_test:
+            if param == 'id':
+                expected = repo_map[param]
+                returned = repo_fresh[param]
+            else:
+                expected = repo_map[param]['text']
+                returned = repo_fresh[param]['text']
             self.assertEqual(
-                repo[param],
-                repo_fresh[param]
+                expected,
+                returned
             )
 
     def test_student_can_view_repositories(self):
@@ -2033,6 +1799,6 @@ class RepositoryCrUDTests(DjangoTestCase):
         self.login(non_instructor=True)
         self.num_repos(1)
 
-        url = self.url + 'repositories/'
+        url = self.url
         req = self.client.get(url)
         self.ok(req)

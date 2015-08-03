@@ -53,9 +53,9 @@ class DjangoTestCase(APITestCase, MockTestCase):
 
     def filename(self, file_):
         try:
-            return file_.name.split('/')[-1]
+            return file_.name.split('/')[-1].split('.')[0]
         except AttributeError:
-            return file_.split('/')[-1]
+            return file_.split('/')[-1].split('.')[0]
 
     def is_cloudfront_url(self, _url):
         self.assertIn(
@@ -92,7 +92,7 @@ class DjangoTestCase(APITestCase, MockTestCase):
         envoy.run('mongo test_repository --eval "db.dropDatabase()"')
 
         configure_test_bucket()
-        self.url = '/api/v1/'
+        self.base_url = '/api/v1/'
         self.username = 'cjshaw@mit.edu'
         self.password = 'jinxem'
         self.user = User.objects.create_user(username=self.username,

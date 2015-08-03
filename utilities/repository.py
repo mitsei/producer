@@ -95,11 +95,16 @@ def get_object_repository(manager, object_id, object_type='item', repository_id=
     """Get the object's repository even without the repositoryId"""
     # primarily used for Asset
     if repository_id is None:
-        lookup_session = getattr(manager, 'get_{0}_lookup_session'.format(object_type))()
-        lookup_session.use_federated_repository_view()
+        lookup_session = get_session(manager, object_type, 'lookup')
         object_ = getattr(lookup_session, 'get_{0}'.format(object_type))(clean_id(object_id))
         repository_id = object_.object_map['repositoryId']
     return manager.get_repository(clean_id(repository_id))
+
+def get_session(manager, object_type, session_type):
+    """get session type for object, using the manager"""
+    session = getattr(manager, 'get_{0}_{1}_session'.format(object_type, session_type))()
+    session.use_federated_repository_view()
+    return session
 
 def set_enclosed_object_provider_id(request, catalog, enclosed_object, provider_id_str):
     activate_managers(request)

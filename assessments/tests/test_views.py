@@ -16,6 +16,16 @@ class AssessmentTestCase(DjangoTestCase):
         form.description = 'bar'
         return am.create_bank(form)
 
+    def create_assessment_for_item(self, bank, item):
+        assessment_form = bank.get_assessment_form_for_create([])
+        assessment_form.display_name = 'an assessment'
+        assessment_form.description = 'for testing'
+        assessment = bank.create_assessment(assessment_form)
+
+        bank.add_item(assessment.ident, item.ident)
+        assessment = bank.get_assessment(assessment.ident)
+        return assessment
+
     def create_item(self, bank):
         form = bank.get_item_form_for_create([])
         form.display_name = 'a test item!'
@@ -41,7 +51,7 @@ class AssessmentTestCase(DjangoTestCase):
 
     def setUp(self):
         super(AssessmentTestCase, self).setUp()
-        self.url += 'assessment/'
+        self.url = self.base_url + 'assessment/'
 
     def setup_assessment(self):
         am = gutils.get_session_data(self.req, 'am')
@@ -52,12 +62,7 @@ class AssessmentTestCase(DjangoTestCase):
         item_form.description = 'for testing'
         item = bank.create_item(item_form)
 
-        assessment_form = bank.get_assessment_form_for_create([])
-        assessment_form.display_name = 'an assessment'
-        assessment_form.description = 'for testing'
-        assessment = bank.create_assessment(assessment_form)
-
-        bank.add_item(assessment.ident, item.ident)
+        assessment = self.create_assessment_for_item(bank, item)
 
         offered_form = bank.get_assessment_offered_form_for_create(assessment.ident, [])
         offered = bank.create_assessment_offered(offered_form)
