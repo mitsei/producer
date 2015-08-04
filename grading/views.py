@@ -6,69 +6,21 @@ from django.shortcuts import render_to_response
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status, exceptions
 from rest_framework.permissions import AllowAny
 
 from dlkit_django.errors import PermissionDenied, InvalidArgument, IllegalState, NotFound
 from dlkit_django.primordium import Id
 
+from producer.views import ProducerAPIViews
+
 from utilities import general as gutils
 from utilities import grading as grutils
 
 
-class CreatedResponse(Response):
-    def __init__(self, *args, **kwargs):
-        super(CreatedResponse, self).__init__(status=status.HTTP_201_CREATED, *args, **kwargs)
-
-
-class DeletedResponse(Response):
-    def __init__(self, *args, **kwargs):
-        super(DeletedResponse, self).__init__(status=status.HTTP_204_NO_CONTENT, *args, **kwargs)
-
-
-class UpdatedResponse(Response):
-    def __init__(self, *args, **kwargs):
-        super(UpdatedResponse, self).__init__(status=status.HTTP_202_ACCEPTED, *args, **kwargs)
-
-
-class DLKitSessionsManager(APIView):
-    """ base class to handle all the dlkit session management
-    """
-    def initial(self, request, *args, **kwargs):
-        """set up the resource manager"""
-        super(DLKitSessionsManager, self).initial(request, *args, **kwargs)
-        gutils.set_user(request)
-        grutils.activate_managers(request)
-        self.gm = gutils.get_session_data(request, 'gm')
-
-    def finalize_response(self, request, response, *args, **kwargs):
-        """save the updated repository manager"""
-        try:
-            gutils.set_session_data(request, 'gm', self.gm)
-        except AttributeError:
-            pass  # with an exception, the RM may not be set
-        return super(DLKitSessionsManager, self).finalize_response(request,
-                                                                   response,
-                                                                   *args,
-                                                                   **kwargs)
-
-
-class Documentation(DLKitSessionsManager):
-    """
-    Shows the user documentation for talking to the RESTful service
-    """
-    permission_classes = (AllowAny,)
-
-    def get(self, request, format=None):
-        return render_to_response('grading/documentation.html',
-                                  {},
-                                  RequestContext(request))
-
-
-class GradebookDetails(DLKitSessionsManager):
+class GradebookDetails(ProducerAPIViews):
     """
     Shows details for a specific gradebook.
-    api/v2/grading/gradebooks/<gradebook_id>/
+    api/v1/grading/gradebooks/<gradebook_id>/
 
     GET, PUT, DELETE
     PUT will update the gradebook. Only changed attributes need to be sent.
@@ -83,7 +35,7 @@ class GradebookDetails(DLKitSessionsManager):
     def delete(self, request, gradebook_id, format=None):
         try:
             self.gm.delete_gradebook(gutils.clean_id(gradebook_id))
-            return DeletedResponse()
+            return gutils.DeletedResponse()
         except (PermissionDenied, NotFound) as ex:
             gutils.handle_exceptions(ex)
         except IllegalState as ex:
@@ -94,12 +46,7 @@ class GradebookDetails(DLKitSessionsManager):
         try:
             gradebook = self.gm.get_gradebook(gutils.clean_id(gradebook_id))
             gradebook = gutils.convert_dl_object(gradebook)
-            gradebook = gutils.add_links(request,
-                                         gradebook,
-                                         {
-                                             'gradeSystems': 'gradesystems/',
-                                             'gradebookColumns': 'columns/'
-                                         })
+            gutils.update_links(request, gradebook)
             return Response(gradebook)
         except (PermissionDenied, InvalidId, NotFound) as ex:
             gutils.handle_exceptions(ex)
@@ -108,34 +55,23 @@ class GradebookDetails(DLKitSessionsManager):
         try:
             form = self.gm.get_gradebook_form_for_update(gutils.clean_id(gradebook_id))
 
-            data = gutils.get_data_from_request(request)
+            gutils.verify_at_least_one_key_present(self.data,
+                                                   ['displayName', 'description'])
 
-            gutils.verify_at_least_one_key_present(data, ['name', 'description'])
-
-            # should work for a form or json data
-            if 'name' in data:
-                form.display_name = data['name']
-            if 'description' in data:
-                form.description = data['description']
+            form = gutils.set_form_basics(form, self.data)
 
             updated_gradebook = self.gm.update_gradebook(form)
             updated_gradebook = gutils.convert_dl_object(updated_gradebook)
-            updated_gradebook = gutils.add_links(request,
-                                                 updated_gradebook,
-                                                 {
-                                                     'gradeSystems': 'gradesystems/',
-                                                     'gradebookColumns': 'columns/'
-                                                 })
 
-            return UpdatedResponse(updated_gradebook)
+            return gutils.UpdatedResponse(updated_gradebook)
         except (PermissionDenied, KeyError, InvalidArgument, NotFound) as ex:
             gutils.handle_exceptions(ex)
 
 
-class GradebookGradeSystemDetails(DLKitSessionsManager):
+class GradeSystemDetails(ProducerAPIViews):
     """
     Get grade system details
-    api/v2/grading/gradebooks/<gradebook_id>/gradesystems/<gradesystem_id>/
+    api/v1/grading/gradesystems/<gradesystem_id>/
 
     GET, PUT, DELETE
     PUT to modify an existing grade system (name or settings). Include only the changed parameters.
@@ -148,52 +84,52 @@ class GradebookGradeSystemDetails(DLKitSessionsManager):
        {"name" : "an updated item"}
     """
 
-    def delete(self, request, gradebook_id, gradesystem_id, format=None):
+    def delete(self, request, gradesystem_id, gradebook_id=None, format=None):
         try:
-            gradebook = self.gm.get_gradebook(gutils.clean_id(gradebook_id))
+            gradebook = grutils.get_object_gradebook(self.gm,
+                                                     gradesystem_id,
+                                                     'grade_system')
             gradebook.delete_grade_system(gutils.clean_id(gradesystem_id))
 
-            return DeletedResponse()
+            return gutils.DeletedResponse()
         except (PermissionDenied, InvalidArgument) as ex:
             gutils.handle_exceptions(ex)
         except IllegalState as ex:
             modified_ex = type(ex)('Grade system is being used.')
             gutils.handle_exceptions(modified_ex)
 
-    def get(self, request, gradebook_id, gradesystem_id, format=None):
+    def get(self, request, gradesystem_id, gradebook_id=None, format=None):
         try:
-            gradebook = self.gm.get_gradebook(gutils.clean_id(gradebook_id))
+            gradebook = grutils.get_object_gradebook(self.gm,
+                                                     gradesystem_id,
+                                                     'grade_system')
             grade_system = gradebook.get_grade_system(gutils.clean_id(gradesystem_id))
             grade_system_map = grade_system.object_map
 
-            grade_system_map.update({
-                '_links': {
-                    'self': gutils.build_safe_uri(request),
-                }
-            })
+            gutils.update_links(request, grade_system_map)
 
             return Response(grade_system_map)
         except (PermissionDenied, NotFound) as ex:
             gutils.handle_exceptions(ex)
 
-    def put(self, request, gradebook_id, gradesystem_id, format=None):
+    def put(self, request, gradesystem_id, gradebook_id=None, format=None):
         try:
-            data = gutils.get_data_from_request(request)
-
-            gutils.verify_at_least_one_key_present(data,
-                                                   ['name', 'description', 'basedOnGrades',
+            gutils.verify_at_least_one_key_present(self.data,
+                                                   ['displayName', 'description', 'basedOnGrades',
                                                     'grades', 'highestScore', 'lowestScore',
                                                     'scoreIncrement'])
 
-            gradebook = self.gm.get_gradebook(gutils.clean_id(gradebook_id))
+            gradebook = grutils.get_object_gradebook(self.gm,
+                                                     gradesystem_id,
+                                                     'grade_system')
             grade_system = gradebook.get_grade_system(gutils.clean_id(gradesystem_id))
 
-            if 'basedOnGrades' in data:
+            if 'basedOnGrades' in self.data:
                 # do this first, so methods below work
                 form = gradebook.get_grade_system_form_for_update(grade_system.ident)
-                form.set_based_on_grades(bool(data['basedOnGrades']))
+                form.set_based_on_grades(bool(self.data['basedOnGrades']))
 
-                if data['basedOnGrades']:
+                if self.data['basedOnGrades']:
                     # clear out the numeric score fields
                     form.clear_highest_numeric_score()
                     form.clear_lowest_numeric_score()
@@ -206,54 +142,51 @@ class GradebookGradeSystemDetails(DLKitSessionsManager):
                 grade_system = gradebook.update_grade_system(form)
 
             if (grade_system.is_based_on_grades() and
-                    'grades' in data):
+                    'grades' in self.data):
                 # user wants to update the grades
                 # here, wipe out all previous grades and over-write
-                grutils.check_grade_inputs(data)
-                if len(data['grades']) > 0:
+                grutils.check_grade_inputs(self.data)
+                if len(self.data['grades']) > 0:
                     for grade in grade_system.get_grades():
                         gradebook.delete_grade(grade.ident)
                     grutils.add_grades_to_grade_system(gradebook,
                                                        grade_system,
-                                                       data)
+                                                       self.data)
 
             score_inputs = ['highestScore', 'lowestScore', 'scoreIncrement']
             if (not grade_system.is_based_on_grades() and
-                    any(i in data for i in score_inputs)):
+                    any(i in self.data for i in score_inputs)):
                 form = gradebook.get_grade_system_form_for_update(grade_system.ident)
 
-                if 'highestScore' in data:
-                    form.set_highest_numeric_score(float(data['highestScore']))
+                if 'highestScore' in self.data:
+                    form.set_highest_numeric_score(float(self.data['highestScore']))
 
-                if 'lowestScore' in data:
-                    form.set_lowest_numeric_score(float(data['lowestScore']))
+                if 'lowestScore' in self.data:
+                    form.set_lowest_numeric_score(float(self.data['lowestScore']))
 
-                if 'scoreIncrement' in data:
-                    form.set_numeric_score_increment(float(data['scoreIncrement']))
+                if 'scoreIncrement' in self.data:
+                    form.set_numeric_score_increment(float(self.data['scoreIncrement']))
 
                 gradebook.update_grade_system(form)
 
-            if 'name' in data or 'description' in data:
+            if 'name' in self.data or 'description' in self.data:
                 form = gradebook.get_grade_system_form_for_update(grade_system.ident)
 
-                if 'name' in data:
-                    form.display_name = data['name']
-                if 'description' in data:
-                    form.description = data['description']
+                form = gutils.set_form_basics(form, self.data)
 
                 gradebook.update_grade_system(form)
 
             grade_system = gradebook.get_grade_system(grade_system.ident)
 
-            return UpdatedResponse(grade_system.object_map)
+            return gutils.UpdatedResponse(grade_system.object_map)
         except (PermissionDenied, InvalidArgument, KeyError) as ex:
             gutils.handle_exceptions(ex)
 
 
-class GradebookColumnDetails(DLKitSessionsManager):
+class GradebookColumnDetails(ProducerAPIViews):
     """
     Get grade system details
-    api/v2/grading/gradebooks/<gradebook_id>/columns/<column_id>/
+    api/v1/grading/columns/<column_id>/
 
     GET, PUT, DELETE
     PUT to modify an existing gradebook column (name or gradeSystemId).
@@ -267,60 +200,55 @@ class GradebookColumnDetails(DLKitSessionsManager):
        {"name" : "an updated item"}
     """
 
-    def delete(self, request, gradebook_id, column_id, format=None):
+    def delete(self, request, column_id, gradebook_id=None, format=None):
         try:
-            gradebook = self.gm.get_gradebook(gutils.clean_id(gradebook_id))
+            gradebook = grutils.get_object_gradebook(self.gm,
+                                                     column_id,
+                                                     'gradebook_column')
             gradebook.delete_gradebook_column(gutils.clean_id(column_id))
 
-            return DeletedResponse()
+            return gutils.DeletedResponse()
         except (PermissionDenied) as ex:
             gutils.handle_exceptions(ex)
         except IllegalState as ex:
             modified_ex = type(ex)('Gradebook column is not empty.')
             gutils.handle_exceptions(modified_ex)
 
-    def get(self, request, gradebook_id, column_id, format=None):
+    def get(self, request, column_id, gradebook_id=None, format=None):
         try:
-            gradebook = self.gm.get_gradebook(gutils.clean_id(gradebook_id))
+            gradebook = grutils.get_object_gradebook(self.gm,
+                                                     column_id,
+                                                     'gradebook_column')
             gradebook_column = gradebook.get_gradebook_column(gutils.clean_id(column_id))
             gradebook_column_map = gradebook_column.object_map
 
-            gradebook_column_map.update({
-                '_links': {
-                    'self': gutils.build_safe_uri(request),
-                    'entries': gutils.build_safe_uri(request) + 'entries/',
-                    'summary': gutils.build_safe_uri(request) + 'summary/'
-                }
-            })
+            gutils.update_links(request, gradebook_column_map)
 
             return Response(gradebook_column_map)
         except (PermissionDenied, NotFound) as ex:
             gutils.handle_exceptions(ex)
 
-    def put(self, request, gradebook_id, column_id, format=None):
+    def put(self, request, column_id, gradebook_id=None, format=None):
         try:
-            data = gutils.get_data_from_request(request)
+            gutils.verify_at_least_one_key_present(self.data,
+                                                   ['displayName', 'description', 'gradeSystemId'])
 
-            gutils.verify_at_least_one_key_present(data,
-                                                   ['name', 'description', 'gradeSystemId'])
-
-            gradebook = self.gm.get_gradebook(gutils.clean_id(gradebook_id))
+            gradebook = grutils.get_object_gradebook(self.gm,
+                                                     column_id,
+                                                     'gradebook_column')
             gradebook_column = gradebook.get_gradebook_column(gutils.clean_id(column_id))
 
             form = gradebook.get_gradebook_column_form_for_update(gradebook_column.ident)
 
-            if 'name' in data:
-                form.display_name = data['name']
-            if 'description' in data:
-                form.description = data['description']
-            if 'gradeSystemId' in data:
-                form.set_grade_system(gutils.clean_id(data['gradeSystemId']))
+            form = gutils.set_form_basics(form, self.data)
+            if 'gradeSystemId' in self.data:
+                form.set_grade_system(gutils.clean_id(self.data['gradeSystemId']))
 
             gradebook.update_gradebook_column(form)
 
             gradebook_column = gradebook.get_gradebook_column(gradebook_column.ident)
 
-            return UpdatedResponse(gradebook_column.object_map)
+            return gutils.UpdatedResponse(gradebook_column.object_map)
         except (PermissionDenied, InvalidArgument, KeyError) as ex:
             gutils.handle_exceptions(ex)
         except IllegalState as ex:
@@ -329,10 +257,10 @@ class GradebookColumnDetails(DLKitSessionsManager):
             gutils.handle_exceptions(modified_ex)
 
 
-class GradebookColumnsList(DLKitSessionsManager):
+class GradebookColumnsList(ProducerAPIViews):
     """
     Get or add column to a gradebook
-    api/v2/grading/gradebooks/<gradebook_id>/columns/
+    api/v1/grading/columns/
 
     GET, POST
     GET to view current columns.
@@ -345,57 +273,76 @@ class GradebookColumnsList(DLKitSessionsManager):
        {"gradeSystemId" : "grading.GradeSystem%3A123%40MIT-ODL"}
     """
 
-    def get(self, request, gradebook_id, format=None):
+    def get(self, request, gradebook_id=None, format=None):
         try:
-            gradebook = self.gm.get_gradebook(gutils.clean_id(gradebook_id))
+            if gradebook_id is None:
+                column_lookup_session = grutils.get_session(self.gm, 'gradebook_column', 'lookup')
+                column_query_session = grutils.get_session(self.gm, 'gradebook_column', 'query')
 
-            columns = gradebook.get_gradebook_columns()
+                column_lookup_session.use_federated_gradebook_view()
+                column_query_session.use_federated_gradebook_view()
+            else:
+                column_query_session = column_lookup_session = self.gm.get_gradebook(
+                    gutils.clean_id(gradebook_id))
+
+            if len(self.data) == 0 and gradebook_id is None:
+                columns = column_lookup_session.get_gradebook_columns()
+            else:
+                allowable_query_terms = ['displayName', 'description']
+                if any(term in self.data for term in allowable_query_terms):
+                    querier = column_query_session.get_gradebook_column_query()
+                    querier = gutils.config_osid_object_querier(querier, self.data)
+                    columns = column_query_session.get_gradebook_columns_by_query(querier)
+                else:
+                    columns = column_lookup_session.get_grade_entries()
+
             data = gutils.extract_items(request, columns)
 
             return Response(data)
         except (PermissionDenied, NotFound) as ex:
             gutils.handle_exceptions(ex)
 
-    def post(self, request, gradebook_id, format=None):
+    def post(self, request, gradebook_id=None, format=None):
         try:
-            data = gutils.get_data_from_request(request)
+            if gradebook_id is None:
+                gutils.verify_keys_present(self.data, ['gradebookId'])
+                gradebook_id = self.data['gradebookId']
 
-            gutils.verify_keys_present(data, ['gradeSystemId'])
+            gutils.verify_keys_present(self.data, ['gradeSystemId'])
 
             gradebook = self.gm.get_gradebook(gutils.clean_id(gradebook_id))
 
             form = gradebook.get_gradebook_column_form_for_create([])
 
-            if 'name' in data:
-                form.display_name = data['name']
+            form = gutils.set_form_basics(form, self.data)
 
-            if 'description' in data:
-                form.description = data['description']
-
-            form.set_grade_system(gutils.clean_id(data['gradeSystemId']))
+            form.set_grade_system(gutils.clean_id(self.data['gradeSystemId']))
 
             column = gradebook.create_gradebook_column(form)
 
-            return CreatedResponse(column.object_map)
+            return gutils.CreatedResponse(column.object_map)
         except (PermissionDenied, InvalidArgument, KeyError) as ex:
             gutils.handle_exceptions(ex)
 
 
-class GradebookColumnSummary(DLKitSessionsManager):
+class GradebookColumnSummary(ProducerAPIViews):
     """
     Get grade system details
-    api/v2/grading/gradebooks/<gradebook_id>/columns/<column_id>/summary/
+    api/v1/grading/columns/<column_id>/summary/
 
     GET
 
     Note that for RESTful calls, you need to set the request header
     'content-type' to 'application/json'
     """
-    def get(self, request, gradebook_id, column_id, format=None):
+    def get(self, request, column_id, format=None):
         try:
-            gradebook = self.gm.get_gradebook(gutils.clean_id(gradebook_id))
+            gradebook = grutils.get_object_gradebook(self.gm,
+                                                     column_id,
+                                                     'gradebook_column')
             if gradebook.get_grade_entries_for_gradebook_column(gutils.clean_id(column_id)).available() > 0:
-                gradebook_column_summary = gradebook.get_gradebook_column_summary(gutils.clean_id(column_id))
+                gradebook_column_summary = gradebook.get_gradebook_column_summary(
+                    gutils.clean_id(column_id))
                 gradebook_column_summary_map = {
                     '_links': {
                         'self': gutils.build_safe_uri(request)
@@ -425,10 +372,10 @@ class GradebookColumnSummary(DLKitSessionsManager):
             gutils.handle_exceptions(ex)
 
 
-class GradebookGradeSystemsList(DLKitSessionsManager):
+class GradeSystemsList(ProducerAPIViews):
     """
     Get or add gradesystems to a gradebook
-    api/v2/grading/gradebooks/<gradebook_id>/gradesystems/
+    api/v1/grading/gradesystems/
 
     GET, POST
     GET to view current gradesystems.
@@ -441,59 +388,79 @@ class GradebookGradeSystemsList(DLKitSessionsManager):
        {"name" : "Letters", "description": "Letter grades A - F"}
     """
 
-    def get(self, request, gradebook_id, format=None):
+    def get(self, request, gradebook_id=None, format=None):
         try:
-            gradebook = self.gm.get_gradebook(gutils.clean_id(gradebook_id))
+            if gradebook_id is None:
+                grade_system_lookup_session = grutils.get_session(self.gm,
+                                                                  'grade_system',
+                                                                  'lookup')
+                grade_system_query_session = grutils.get_session(self.gm,
+                                                                 'grade_system',
+                                                                 'query')
 
-            grade_systems = gradebook.get_grade_systems()
+                grade_system_lookup_session.use_federated_gradebook_view()
+                grade_system_query_session.use_federated_gradebook_view()
+            else:
+                grade_system_query_session = grade_system_lookup_session = self.gm.get_gradebook(
+                    gutils.clean_id(gradebook_id))
+
+            if len(self.data) == 0:
+                grade_systems = grade_system_lookup_session.get_grade_systems()
+            else:
+                allowable_query_terms = ['displayName', 'description']
+                if any(term in self.data for term in allowable_query_terms):
+                    querier = grade_system_query_session.get_grade_system_query()
+                    querier = gutils.config_osid_object_querier(querier, self.data)
+                    grade_systems = grade_system_query_session.get_grade_systems_by_query(querier)
+                else:
+                    grade_systems = grade_system_query_session.get_grade_systems()
+
             data = gutils.extract_items(request, grade_systems)
 
             return Response(data)
         except (PermissionDenied, NotFound) as ex:
             gutils.handle_exceptions(ex)
 
-    def post(self, request, gradebook_id, format=None):
+    def post(self, request, gradebook_id=None, format=None):
         try:
-            data = gutils.get_data_from_request(request)
+            if gradebook_id is None:
+                gutils.verify_keys_present(self.data, ['gradebookId'])
+                gradebook_id = self.data['gradebookId']
 
-            gutils.verify_at_least_one_key_present(data,
-                                                   ['name', 'description'])
+            gutils.verify_at_least_one_key_present(self.data,
+                                                   ['displayName', 'description'])
 
             gradebook = self.gm.get_gradebook(gutils.clean_id(gradebook_id))
 
             form = gradebook.get_grade_system_form_for_create([])
 
-            if 'name' in data:
-                form.display_name = data['name']
-
-            if 'description' in data:
-                form.description = data['description']
+            form = gutils.set_form_basics(form, self.data)
 
             check_scores = True
 
-            if 'basedOnGrades' in data:
-                form.set_based_on_grades(bool(data['basedOnGrades']))
-                if data['basedOnGrades']:
+            if 'basedOnGrades' in self.data:
+                form.set_based_on_grades(bool(self.data['basedOnGrades']))
+                if self.data['basedOnGrades']:
                     check_scores = False
 
             if check_scores:
-                grutils.check_numeric_score_inputs(data)
+                grutils.check_numeric_score_inputs(self.data)
 
-                form.set_highest_numeric_score(float(data['highestScore']))
-                form.set_lowest_numeric_score(float(data['lowestScore']))
-                form.set_numeric_score_increment(float(data['scoreIncrement']))
+                form.set_highest_numeric_score(float(self.data['highestScore']))
+                form.set_lowest_numeric_score(float(self.data['lowestScore']))
+                form.set_numeric_score_increment(float(self.data['scoreIncrement']))
 
             grade_system = gradebook.create_grade_system(form)
 
             if not check_scores:
-                grutils.check_grade_inputs(data)
+                grutils.check_grade_inputs(self.data)
                 grutils.add_grades_to_grade_system(gradebook,
                                                    grade_system,
-                                                   data)
+                                                   self.data)
 
             grade_system = gradebook.get_grade_system(grade_system.ident)
 
-            return CreatedResponse(grade_system.object_map)
+            return gutils.CreatedResponse(grade_system.object_map)
         except (PermissionDenied, InvalidArgument, KeyError) as ex:
             try:
                 gradebook.delete_grade_system(grade_system.ident)
@@ -502,7 +469,7 @@ class GradebookGradeSystemsList(DLKitSessionsManager):
             gutils.handle_exceptions(ex)
 
 
-class GradebooksList(DLKitSessionsManager):
+class GradebooksList(ProducerAPIViews):
     """
     List all available gradebooks.
     api/v2/grading/gradebooks/
@@ -547,36 +514,28 @@ class GradebooksList(DLKitSessionsManager):
 
         """
         try:
-            data = gutils.get_data_from_request(request)
-
-            if 'bankId' not in data:
-                gutils.verify_keys_present(data, ['name', 'description'])
+            if 'bankId' not in self.data:
+                gutils.verify_keys_present(self.data, ['displayName', 'description'])
                 form = self.gm.get_gradebook_form_for_create([])
                 finalize_method = self.gm.create_gradebook
             else:
-                gradebook = self.gm.get_gradebook(Id(data['bankId']))
+                gradebook = self.gm.get_gradebook(Id(self.data['bankId']))
                 form = self.gm.get_gradebook_form_for_update(gradebook.ident)
                 finalize_method = self.gm.update_gradebook
 
-            if 'name' in data:
-                form.display_name = data['name']
-            if 'description' in data:
-                form.description = data['description']
+            form = gutils.set_form_basics(form, self.data)
 
             new_gradebook = gutils.convert_dl_object(finalize_method(form))
 
-            return CreatedResponse(new_gradebook)
+            return gutils.CreatedResponse(new_gradebook)
         except (PermissionDenied, InvalidArgument, NotFound, KeyError) as ex:
             gutils.handle_exceptions(ex)
 
 
-class GradeEntriesList(DLKitSessionsManager):
+class GradeEntriesList(ProducerAPIViews):
     """
     Get or add grade entry to a gradebook column
-    api/v2/grading/gradebooks/<gradebook_id>/columns/<column_id>/entries
-
-    OR view all entries in a gradebook
-    api/v2/grading/gradebooks/<gradebook_id>/entries
+    api/v1/grading/entries
 
     GET, POST
     GET to view current grade entries (in whole gradebook or single gradebook column).
@@ -589,13 +548,43 @@ class GradeEntriesList(DLKitSessionsManager):
        {"grade" : "grading.Grade%3A123%40MIT-ODL"}
     """
 
-    def get(self, request, gradebook_id, column_id=None, format=None):
+    def get(self, request, column_id=None, format=None):
         try:
-            gradebook = self.gm.get_gradebook(gutils.clean_id(gradebook_id))
             if column_id is None:
-                entries = gradebook.get_grade_entries()
+                entry_lookup_session = grutils.get_session(self.gm, 'grade_entry', 'lookup')
+                entry_query_session = grutils.get_session(self.gm, 'grade_entry', 'query')
+
+                entry_lookup_session.use_federated_gradebook_view()
+                entry_query_session.use_federated_gradebook_view()
             else:
-                entries = gradebook.get_grade_entries_for_gradebook_column(gutils.clean_id(column_id))
+                entry_query_session = entry_lookup_session = grutils.get_object_gradebook(self.gm,
+                                                                                          column_id,
+                                                                                          'gradebook_column')
+
+            if len(self.data) == 0 and column_id is None:
+                entries = entry_lookup_session.get_grade_entries()
+            elif column_id is not None:
+                if len(self.data) == 0:
+                    entries = entry_lookup_session.get_grade_entries_for_gradebook_column(
+                        gutils.clean_id(column_id))
+                else:
+                    allowable_query_terms = ['displayName', 'description']
+                    if any(term in self.data for term in allowable_query_terms):
+                        querier = entry_query_session.get_grade_entry_query()
+                        querier = gutils.config_osid_object_querier(querier, self.data)
+                        querier.match_gradebook_column_id(gutils.clean_id(column_id))
+                        entries = entry_query_session.get_grade_entries_by_query(querier)
+                    else:
+                        entries = entry_lookup_session.get_grade_entries_for_gradebook_column(
+                            gutils.clean_id(column_id))
+            else:
+                allowable_query_terms = ['displayName', 'description']
+                if any(term in self.data for term in allowable_query_terms):
+                    querier = entry_query_session.get_grade_entry_query()
+                    querier = gutils.config_osid_object_querier(querier, self.data)
+                    entries = entry_query_session.get_grade_entries_by_query(querier)
+                else:
+                    entries = entry_lookup_session.get_grade_entries()
 
             data = gutils.extract_items(request, entries)
 
@@ -603,54 +592,50 @@ class GradeEntriesList(DLKitSessionsManager):
         except (PermissionDenied, NotFound) as ex:
             gutils.handle_exceptions(ex)
 
-    def post(self, request, gradebook_id, column_id=None, format=None):
+    def post(self, request, column_id=None, format=None):
         try:
-            data = gutils.get_data_from_request(request)
-
-            gutils.verify_at_least_one_key_present(data,
-                                                   ['grade', 'score', 'ignoredForCalculations'])
-            gutils.verify_keys_present(data, ['resourceId'])
-
             if column_id is None:
-                gutils.verify_keys_present(data, ['columnId'])
-                column_id = data['columnId']
+                gutils.verify_keys_present(self.data, ['gradebookColumnId'])
+                column_id = self.data['gradebookColumnId']
 
-            gradebook = self.gm.get_gradebook(gutils.clean_id(gradebook_id))
+            gutils.verify_at_least_one_key_present(self.data,
+                                                   ['grade', 'score', 'ignoredForCalculations'])
+            gutils.verify_keys_present(self.data, ['resourceId'])
+
+            gradebook = grutils.get_object_gradebook(self.gm,
+                                                     column_id,
+                                                     'gradebook_column')
             column = gradebook.get_gradebook_column(gutils.clean_id(column_id))
 
             grutils.validate_score_and_grades_against_system(column.get_grade_system(),
-                                                             data)
+                                                             self.data)
 
             form = gradebook.get_grade_entry_form_for_create(column.ident,
-                                                             gutils.clean_id(data['resourceId']),
+                                                             gutils.clean_id(self.data['resourceId']),
                                                              [])
 
-            if 'name' in data:
-                form.display_name = data['name']
+            form = gutils.set_form_basics(form, self.data)
 
-            if 'description' in data:
-                form.description = data['description']
+            if 'ignoredForCalculations' in self.data:
+                form.set_ignored_for_calculations(bool(self.data['ignoredForCalculations']))
 
-            if 'ignoredForCalculations' in data:
-                form.set_ignored_for_calculations(bool(data['ignoredForCalculations']))
+            if 'grade' in self.data:
+                form.set_grade(gutils.clean_id(self.data['grade']))
 
-            if 'grade' in data:
-                form.set_grade(gutils.clean_id(data['grade']))
-
-            if 'score' in data:
-                form.set_score(float(data['score']))
+            if 'score' in self.data:
+                form.set_score(float(self.data['score']))
 
             entry = gradebook.create_grade_entry(form)
 
-            return CreatedResponse(entry.object_map)
+            return gutils.CreatedResponse(entry.object_map)
         except (PermissionDenied, InvalidArgument, IllegalState, KeyError) as ex:
             gutils.handle_exceptions(ex)
 
 
-class GradeEntryDetails(DLKitSessionsManager):
+class GradeEntryDetails(ProducerAPIViews):
     """
     Get grade entry details
-    api/v2/grading/gradebooks/<gradebook_id>/entries/<entry_id>/
+    api/v1/grading/entries/<entry_id>/
 
     GET, PUT, DELETE
     PUT to modify an existing grade entry (name, score / grade, etc.).
@@ -664,85 +649,62 @@ class GradeEntryDetails(DLKitSessionsManager):
        {"score" : 98.2}
     """
 
-    def delete(self, request, gradebook_id, entry_id, format=None):
+    def delete(self, request, entry_id, format=None):
         try:
-            gradebook = self.gm.get_gradebook(gutils.clean_id(gradebook_id))
+            gradebook = grutils.get_object_gradebook(self.gm,
+                                                     entry_id,
+                                                     'grade_entry')
             gradebook.delete_grade_entry(gutils.clean_id(entry_id))
 
-            return DeletedResponse()
+            return gutils.DeletedResponse()
         except (PermissionDenied, IllegalState) as ex:
             gutils.handle_exceptions(ex)
 
-    def get(self, request, gradebook_id, entry_id, format=None):
+    def get(self, request, entry_id, format=None):
         try:
-            gradebook = self.gm.get_gradebook(gutils.clean_id(gradebook_id))
+            gradebook = grutils.get_object_gradebook(self.gm,
+                                                     entry_id,
+                                                     'grade_entry')
             entry = gradebook.get_grade_entry(gutils.clean_id(entry_id))
             entry_map = entry.object_map
 
-            entry_map.update({
-                '_links': {
-                    'self': gutils.build_safe_uri(request),
-                }
-            })
+            gutils.update_links(request, entry_map)
 
             return Response(entry_map)
         except (PermissionDenied, NotFound) as ex:
             gutils.handle_exceptions(ex)
 
-    def put(self, request, gradebook_id, entry_id, format=None):
+    def put(self, request, entry_id, format=None):
         try:
-            data = gutils.get_data_from_request(request)
-
-            gutils.verify_at_least_one_key_present(data,
-                                                   ['name', 'description', 'grade',
+            gutils.verify_at_least_one_key_present(self.data,
+                                                   ['displayName', 'description', 'grade',
                                                     'score', 'ignoredForCalculations'])
 
-            gradebook = self.gm.get_gradebook(gutils.clean_id(gradebook_id))
+            gradebook = grutils.get_object_gradebook(self.gm,
+                                                     entry_id,
+                                                     'grade_entry')
             entry = gradebook.get_grade_entry(gutils.clean_id(entry_id))
             grade_system = entry.get_gradebook_column().get_grade_system()
 
-            grutils.validate_score_and_grades_against_system(grade_system, data)
+            grutils.validate_score_and_grades_against_system(grade_system, self.data)
 
             form = gradebook.get_grade_entry_form_for_update(entry.ident)
 
-            if 'name' in data:
-                form.display_name = data['name']
-            if 'description' in data:
-                form.description = data['description']
-            if 'grade' in data:
-                form.set_grade(gutils.clean_id(data['grade']))
+            form = gutils.set_form_basics(form, self.data)
 
-            if 'score' in data:
-                form.set_score(float(data['score']))
+            if 'grade' in self.data:
+                form.set_grade(gutils.clean_id(self.data['grade']))
 
-            if 'ignoredForCalculations' in data:
-                form.set_ignored_for_calculations(bool(data['ignoredForCalculations']))
+            if 'score' in self.data:
+                form.set_score(float(self.data['score']))
+
+            if 'ignoredForCalculations' in self.data:
+                form.set_ignored_for_calculations(bool(self.data['ignoredForCalculations']))
 
             gradebook.update_grade_entry(form)
 
             entry = gradebook.get_grade_entry(entry.ident)
 
-            return UpdatedResponse(entry.object_map)
+            return gutils.UpdatedResponse(entry.object_map)
         except (PermissionDenied, InvalidArgument, KeyError) as ex:
             gutils.handle_exceptions(ex)
-
-
-class GradingService(DLKitSessionsManager):
-    """
-    List all available grading services.
-    api/v2/grading/
-    """
-
-    def get(self, request, format=None):
-        """
-        List all available grading services.
-        """
-        data = {}
-        data = gutils.add_links(request,
-                                data,
-                                {
-                                    'gradebooks': 'gradebooks/',
-                                    'documentation': 'docs/'
-                                })
-        return Response(data)
-

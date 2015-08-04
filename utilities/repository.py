@@ -91,7 +91,7 @@ def get_enclosed_object_provider_id(request, catalog, enclosed_object):
     else:
         return None
 
-def get_object_repository(manager, object_id, object_type='item', repository_id=None):
+def get_object_repository(manager, object_id, object_type='asset', repository_id=None):
     """Get the object's repository even without the repositoryId"""
     # primarily used for Asset
     if repository_id is None:

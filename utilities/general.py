@@ -547,6 +547,9 @@ def strip_object_ids(obj):
 
 def update_links(request, obj):
     """add links for browsable API"""
+    def uri(term):
+        return build_safe_uri(request) + term + '/'
+
     obj.update({
         '_links': {
             'self': build_safe_uri(request)
@@ -555,23 +558,33 @@ def update_links(request, obj):
 
     if obj['type'] == 'Bank':  # assessmentBank
         obj['_links'].update({
-            'items': build_safe_uri(request) + 'items/',
+            'items': uri('items')
         })
     elif obj['type'] == 'Item':  # assessmentItem
         obj['_links'].update({
-            'answers': build_safe_uri(request) + 'answers/',
-            'edxml': build_safe_uri(request) + 'edxml/',
-            'files': build_safe_uri(request) + 'files/',
-            'question': build_safe_uri(request) + 'question/'
+            'answers': uri('answers'),
+            'edxml': uri('edxml'),
+            'files': uri('files'),
+            'question': uri('question')
         })
     elif obj['type'] == 'Composition':  # repositoryComposition
         obj['_links'].update({
-            'assets': build_safe_uri(request) + 'assets/'
+            'assets': uri('assets')
         })
     elif obj['type'] == 'Repository':  # repositoryRepository
         obj['_links'].update({
-            'assets': 'assets/',
-            'compositions': 'compositions/'
+            'assets': uri('assets'),
+            'compositions': uri('compositions')
+        })
+    elif obj['type'] == 'Gradebook':  # gradingGradebook
+        obj['_links'].update({
+            'gradeSystems': uri('gradesystems'),
+            'gradebookColumns': uri('columns')
+        })
+    elif obj['type'] == 'GradebookColumn':  # gradebookColumn
+        obj['_links'].update({
+            'entries': uri('entries'),
+            'summary': uri('summary')
         })
 
 def verify_at_least_one_key_present(_data, _keys_list):

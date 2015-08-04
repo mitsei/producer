@@ -55,7 +55,7 @@ class AssessmentTestCase(DjangoTestCase):
 
     def setup_assessment(self):
         am = gutils.get_session_data(self.req, 'am')
-        bank = am.get_bank(Id(self.gradebook['id']))
+        bank = am.get_bank(self.gradebook.ident)
 
         item_form = bank.get_item_form_for_create([])
         item_form.display_name = 'test item'
@@ -70,7 +70,7 @@ class AssessmentTestCase(DjangoTestCase):
         taken_form = bank.get_assessment_taken_form_for_create(offered.ident, [])
         taken = bank.create_assessment_taken(taken_form)
 
-        return taken.object_map
+        return taken
 
     def tearDown(self):
         super(AssessmentTestCase, self).tearDown()

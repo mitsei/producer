@@ -26,7 +26,7 @@ def activate_managers(request):
 def add_grades_to_grade_system(gradebook, grade_system, data):
     try:
         attrs_to_check = ['inputScoreStartRange', 'inputScoreEndRange', 'outputScore',
-                          'name', 'description']
+                          'displayName', 'description']
         for grade in data['grades']:
             form = gradebook.get_grade_form_for_create(grade_system.ident, [])
             for attr in attrs_to_check:
@@ -36,7 +36,7 @@ def add_grades_to_grade_system(gradebook, grade_system, data):
                         getattr(form, 'set_' + inflection.underscore(attr))(val)
                     else:
                         val = str(grade[attr])
-                        if attr == 'name':
+                        if attr == 'displayName':
                             form.display_name = val
                         else:
                             form.description = val
@@ -49,10 +49,24 @@ def check_grade_inputs(data):
     if not isinstance(data['grades'], list):
         raise InvalidArgument('Grades must be a list of objects.')
 
-
 def check_numeric_score_inputs(data):
     expected_score_inputs = ['highestScore', 'lowestScore', 'scoreIncrement']
     verify_keys_present(data, expected_score_inputs)
+
+def get_object_gradebook(manager, object_id, object_type='gradebook_column', gradebook_id=None):
+    """Get the object's repository even without the repositoryId"""
+    # primarily used for Asset
+    if gradebook_id is None:
+        lookup_session = get_session(manager, object_type, 'lookup')
+        object_ = getattr(lookup_session, 'get_{0}'.format(object_type))(clean_id(object_id))
+        gradebook_id = object_.object_map['gradebookId']
+    return manager.get_gradebook(clean_id(gradebook_id))
+
+def get_session(manager, object_type, session_type):
+    """get session type for object, using the manager"""
+    session = getattr(manager, 'get_{0}_{1}_session'.format(object_type, session_type))()
+    session.use_federated_gradebook_view()
+    return session
 
 def validate_score_and_grades_against_system(grade_system, data):
     if grade_system.is_based_on_grades() and 'score' in data:
