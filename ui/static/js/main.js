@@ -1,90 +1,51 @@
 // Filename: main.js
 
-if (window.location.protocol === 'http:') {
-    var baseUrl = '/static/js/';
-} else {
-    var baseUrl = '/static/js/';  // unnecessary?
-}
+var baseUrl = '/static/js/';
 
-require.config({
+requirejs.config({
     baseUrl: baseUrl,
     paths: {
-        'admin-utils'           : 'utilities/admin',
-        'assignment-utils'      : 'utilities/assignmentUtilities',
         'backbone'              : 'vendor/backbone/backbone',
-        'bloodhound'            : 'vendor/typeahead.js/dist/bloodhound.min',
+        'backbone.babysitter'   : 'vendor/backbone.babysitter/lib/backbone.babysitter.min',
+        'backbone.radio'        : 'vendor/backbone.radio/build/backbone.radio.min',
         'bootstrap'             : 'vendor/bootstrap/dist/js/bootstrap.min',
         'bootstrap-dialog'      : 'vendor/bootstrap3-dialog/dist/js/bootstrap-dialog.min',
-        'bootstrap-switch'      : 'vendor/bootstrap-switch/dist/js/bootstrap-switch.min',
         'csrf'                  : 'vendor/csrf',
-        'item-utils'            : 'utilities/itemUtilities',
         'jquery'                : 'vendor/jquery/dist/jquery.min',
         'jquery-ui'             : 'vendor/jqueryui/jquery-ui.min',
-        'metadata-utils'        : 'utilities/metadataUtilities',
-        'select2'               : 'vendor/select2/select2.full.min',  // 4.0.0.rc2
-//        'select2'               : 'vendor/select2/select2.min', // 3.5.2
-        'sidebar-utils'         : 'utilities/sidebarUtilities',
-        'tex-utils'             : 'utilities/texUtilities',
-        'typeahead'             : 'vendor/typeahead.js/dist/typeahead.jquery.min',
-        'underscore'            : 'vendor/lodash/dist/lodash.min'
+        'marionette'            : 'vendor/marionette/lib/backbone.marionette.min',
+        'underscore'            : 'vendor/lodash/lodash.min'
     },
     shim: {
-        'admin-utils': {
-            deps: ['jquery', 'underscore'],
-            exports: 'Admin'
-        },
-        'assignment-utils': {
-            deps: ['jquery','underscore','admin-utils', 'item-utils'],
-            exports: 'Assignment'
-        },
         'backbone': {
             deps: ['underscore', 'jquery'],
             exports: 'Backbone'
+        },
+        'backbone.babysitter': {
+            deps: ['backbone']
+        },
+        'backbone.radio': {
+            deps: ['backbone']
         },
         'bootstrap': {
             deps: ['jquery']
         },
         'bootstrap-dialog': {
-            deps: ['bootstrap','jquery'],
+            deps: ['bootstrap'],
             exports: 'BootstrapDialog'
-        },
-        'bootstrap-switch': {
-            deps: ['bootstrap','jquery']
         },
         'csrf': {
             deps: ['jquery']
         },
-        'item-utils': {
-            deps: ['jquery','underscore','admin-utils', 'tex-utils'],
-            exports: 'Item'
-        },
         'jquery-ui': {
             deps: ['jquery']
         },
-        'metadata-utils': {
-            deps: ['jquery','underscore'],
-            exports: 'Metadata'
-        },
-        'select2': {
-            deps: ['jquery']
-        },
-        'sidebar-utils': {
-            deps: ['jquery', 'jquery-ui', 'underscore', 'admin-utils'],
-            exports: 'Sidebar'
-        },
-        'tex-utils' : {
-            deps: ['jquery', 'underscore'],
-            exports: 'Tex'
-        },
-        'typeahead' : {
-            deps: ['jquery','bloodhound']
+        'marionette': {
+            deps: ['backbone'],
+            exports: 'Marionette'
         }
     }
 });
-require(['app'], function(App) {
-    App.initialize();
-    require(['views/project/login']);
-    require(['views/project/dashboard']);
-    require(['views/project/dashboard_sidebar']);
-//    require(['views/project/dashboard_content_navbar']);
+requirejs(['app'], function(ProducerApp) {
+    ProducerApp.start();
 });

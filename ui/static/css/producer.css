@@ -1,0 +1,15 @@
+#dialog-region {
+    display: none;
+}
+
+.red {
+    color: red;
+}
+
+.green {
+    color: green;
+}
+
+#main-region {
+    min-height: 400px;
+}

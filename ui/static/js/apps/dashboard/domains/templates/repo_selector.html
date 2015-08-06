@@ -1,0 +1,8 @@
+<div id="<%- repoType %>-selector-wrapper">
+    <select class="<%- repoType %>-selector form-control">
+        <option value="">Now please select a <%- repoType %>...</option>
+        <% _.each(repos, function (repo) { %>
+            <option value="<%- repo.id %>"><%- repo.displayName.text %> -- <%- repo.description.text %></option>
+        <% }); %>
+    </select>
+</div>

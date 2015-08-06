@@ -1,17 +1,11 @@
 from bson.errors import InvalidId
 
-from django.template import RequestContext
-from django.shortcuts import render_to_response
-
-
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
-
 from dlkit_django.errors import PermissionDenied, InvalidArgument, IllegalState, NotFound
 from dlkit_django.primordium import Id
 
 from producer.views import ProducerAPIViews
+
+from rest_framework.response import Response
 
 from utilities import general as gutils
 from utilities import grading as grutils
@@ -84,7 +78,7 @@ class GradeSystemDetails(ProducerAPIViews):
        {"name" : "an updated item"}
     """
 
-    def delete(self, request, gradesystem_id, gradebook_id=None, format=None):
+    def delete(self, request, gradesystem_id, format=None):
         try:
             gradebook = grutils.get_object_gradebook(self.gm,
                                                      gradesystem_id,
@@ -98,7 +92,7 @@ class GradeSystemDetails(ProducerAPIViews):
             modified_ex = type(ex)('Grade system is being used.')
             gutils.handle_exceptions(modified_ex)
 
-    def get(self, request, gradesystem_id, gradebook_id=None, format=None):
+    def get(self, request, gradesystem_id, format=None):
         try:
             gradebook = grutils.get_object_gradebook(self.gm,
                                                      gradesystem_id,
@@ -112,7 +106,7 @@ class GradeSystemDetails(ProducerAPIViews):
         except (PermissionDenied, NotFound) as ex:
             gutils.handle_exceptions(ex)
 
-    def put(self, request, gradesystem_id, gradebook_id=None, format=None):
+    def put(self, request, gradesystem_id, format=None):
         try:
             gutils.verify_at_least_one_key_present(self.data,
                                                    ['displayName', 'description', 'basedOnGrades',
@@ -200,7 +194,7 @@ class GradebookColumnDetails(ProducerAPIViews):
        {"name" : "an updated item"}
     """
 
-    def delete(self, request, column_id, gradebook_id=None, format=None):
+    def delete(self, request, column_id, format=None):
         try:
             gradebook = grutils.get_object_gradebook(self.gm,
                                                      column_id,
@@ -214,7 +208,7 @@ class GradebookColumnDetails(ProducerAPIViews):
             modified_ex = type(ex)('Gradebook column is not empty.')
             gutils.handle_exceptions(modified_ex)
 
-    def get(self, request, column_id, gradebook_id=None, format=None):
+    def get(self, request, column_id, format=None):
         try:
             gradebook = grutils.get_object_gradebook(self.gm,
                                                      column_id,
@@ -228,7 +222,7 @@ class GradebookColumnDetails(ProducerAPIViews):
         except (PermissionDenied, NotFound) as ex:
             gutils.handle_exceptions(ex)
 
-    def put(self, request, column_id, gradebook_id=None, format=None):
+    def put(self, request, column_id, format=None):
         try:
             gutils.verify_at_least_one_key_present(self.data,
                                                    ['displayName', 'description', 'gradeSystemId'])

@@ -1545,6 +1545,63 @@ class EdXCompositionCrUDTests(RepositoryTestCase):
                      'are allowed.')
 
 
+class RepositoryChildrenTests(RepositoryTestCase):
+    """Test the views for repository crud
+
+    """
+    def setUp(self):
+        super(RepositoryChildrenTests, self).setUp()
+        self.login()
+        self.url = self.base_url + 'repository/repositories/'
+        self.repo1 = self.create_new_repo()
+        self.repo2 = self.create_new_repo()
+        self.repo3 = self.create_new_repo()
+
+        rm = gutils.get_session_data(self.req, 'rm')
+        rm.add_child_repository(self.repo1.ident, self.repo2.ident)
+
+        self.url = self.base_url + 'repository/repositories/'
+
+    def tearDown(self):
+        super(RepositoryChildrenTests, self).tearDown()
+
+    def test_can_get_children(self):
+        self.url += str(self.repo1.ident) + '/children/'
+        req = self.client.get(self.url)
+        self.ok(req)
+        data = self.json(req)
+        self.assertEqual(
+            data['data']['count'],
+            1
+        )
+        self.assertEqual(
+            data['data']['results'][0]['id'],
+            str(self.repo2.ident)
+        )
+
+    def test_can_update_children_list(self):
+        self.url += str(self.repo1.ident) + '/children/'
+        payload = {
+            'childIds': [str(self.repo3.ident)]
+        }
+        req = self.client.put(self.url,
+                              data=payload,
+                              format='json')
+        self.updated(req)
+
+        req = self.client.get(self.url)
+        self.ok(req)
+        data = self.json(req)
+        self.assertEqual(
+            data['data']['count'],
+            1
+        )
+        self.assertEqual(
+            data['data']['results'][0]['id'],
+            str(self.repo3.ident)
+        )
+
+
 class RepositoryCrUDTests(AssessmentTestCase, RepositoryTestCase):
     """Test the views for repository crud
 

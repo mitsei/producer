@@ -1,30 +1,77 @@
-{% extends 'mecqbank_ui/base.html' %}
+{% extends 'ui/base.html' %}
 
-{% block title %}MecQBank: Dashboard{% endblock %}
+{% block title %}Producer: Dashboard{% endblock %}
 
 {% block header_script %}
-    <link rel="stylesheet" href="{{ STATIC_URL }}js/vendor/bootstrap3-dialog/dist/css/bootstrap-dialog.min.css">
-    <link rel="stylesheet" href="{{ STATIC_URL }}js/vendor/bootstrap-switch/dist/css/bootstrap3/bootstrap-switch.min.css">
-    <link rel="stylesheet" href="{{ STATIC_URL }}js/vendor/select2/select2.4rc2.min.css">
-{#    <link rel="stylesheet" href="{{ STATIC_URL }}js/vendor/select2/select2.css">#}
-    <link rel="stylesheet" href="{{ STATIC_URL }}css/vendor/select2-bootstrap.css">
-    <link rel="stylesheet" href="{{ STATIC_URL }}css/typeahead_dropdown.css">
-    <link rel="stylesheet" href="{{ STATIC_URL }}css/vendor/typeaheadjs.css">
-    <link rel="stylesheet" href="{{ STATIC_URL }}css/mecqbank_ui_dashboard.css">
-    <link rel="stylesheet" href="{{ STATIC_URL }}css/mecqbank_ui_content_navbar.css">
-    <link rel="stylesheet" href="{{ STATIC_URL }}css/mecqbank_ui_dashboard_content.css">
+    <link rel="stylesheet" href="{{ STATIC_URL }}css/dashboard.css">
 {% endblock %}
+
 
 {% block navbar_content %}
-    <span id="dashboard_content_navbar"></span>
-{% endblock %}
+    <nav class="navbar navbar-default">
+      <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="/dashboard/">Producer</a>
+        </div>
 
-{% block sidebar_content %}
-    <span id="dashboard_sidebar_content"></span>
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+          <ul class="nav navbar-nav repository-navbar">
+            <li class="hidden"><a href="#import-course"><i aria-hidden="true" class="fa fa-cloud-upload"></i> Import Course</a></li>
+            <li class="hidden"><a href="#manage-learning-outcomes"><i aria-hidden="true" class="fa fa-cogs"></i> Manage Learning Outcomes</a></li>
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li class="dropdown">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                  <span class="repository-placeholder">Repositories</span><span class="caret"></span></a>
+              <ul class="dropdown-menu repositories-menu">
+                  {% for repo in repos %}
+                  <li><a data-id="{{ repo.object_map.id }}" href="#repos/{{ repo.slug }}">{{ repo.display_name.text }}</a></li>
+                  {% endfor %}
+                  <li role="separator" class="divider"></li>
+                  <li><a data-id="" href="#repos/new"><i aria-hiddent="true" class="fa fa-plus-circle"></i> Add new domain</a></li>
+              </ul>
+            </li>
+            <li class="dropdown">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><i aria-hidden="true" class="fa fa-cogs"></i> {{ user.username }}<span class="caret"></span></a>
+              <ul class="dropdown-menu">
+                <li><a href="#">Action</a></li>
+                <li><a href="#">Another action</a></li>
+                <li><a href="#">Something else here</a></li>
+                <li role="separator" class="divider"></li>
+                <li><a href="/logout">Log out</a></li>
+              </ul>
+            </li>
+          </ul>
+        </div><!-- /.navbar-collapse -->
+      </div><!-- /.container-fluid -->
+    </nav>
 {% endblock %}
 
 {% block main_content %}
-    <span id="dashboard_main_content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-7 col-md-7 col-sm-7 col-xs-12">
+                <div>
+                    <span id="course-selector-region">
 
-    </span>
+                    </span>
+                    <span id="run-selector-region">
+
+                    </span>
+                </div>
+                <div id="composition-region"></div>
+            </div>
+            <div id="preview-region" class="col-lg-offset-1 col-md-offset-1 col-sm-offset-1 col-ls-4 col-md-4 col-sm-4 col-xs-12">
+                <i aria-hidden="true" class="fa fa-arrow-up"></i> To start, please select a repository from above.
+            </div>
+        </div>
+    </div>
 {% endblock %}

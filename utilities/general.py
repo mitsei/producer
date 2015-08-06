@@ -182,7 +182,7 @@ def config_osid_object_querier(querier, params):
                     getattr(querier, method_name)(str(value),
                                                   WORDIGNORECASE_STRING_MATCH_TYPE,
                                                   True)
-                if param in ['learningObjectiveId']:
+                if param in ['learningObjectiveId', 'genusType']:
                     if '@' in value:
                         value = quote(value)
                     getattr(querier, method_name)(str(value),
@@ -444,7 +444,10 @@ def my_unquote(str):
 
 def paginate(data, request, items_per_page=10):
     # http://www.django-rest-framework.org/api-guide/pagination
-    page_num = request.QUERY_PARAMS.get('page')
+    try:
+        page_num = request.QUERY_PARAMS.get('page')
+    except (AttributeError, KeyError):
+        page_num = 'all'
     if page_num == 'all':
         items_per_page = len(data)
         page_num = 1

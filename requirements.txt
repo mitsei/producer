@@ -7,8 +7,8 @@ boto==2.38.0
 cffi==1.1.2
 cryptography==0.9.3
 django-appconf==1.0.1
+django-compressor==1.5
 django-cors-headers==1.1.0
-django-pipeline==1.5.0
 djangorestframework==2.4.0
 enum34==1.0.4
 envoy==0.0.3

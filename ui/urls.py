@@ -1,17 +1,20 @@
 from django.conf.urls import patterns, url
-from mecqbank_ui import views
+from ui import views
 
 urlpatterns = patterns('',
-   url(r'^check/$',
+    url(r'^check/?$',
         views.check_credentials,
         name="check"),
-    url(r'^dashboard/$',
+    url(r'^dashboard/?$',
         views.dashboard,
         name="dashboard"),
-    url(r'^privacy/$',
+    url(r'^logout/?$',
+        views.logout_user,
+        name="logout"),
+    url(r'^privacy/?$',
         views.privacy,
         name="privacy"),
-    url(r'^tos/$',
+    url(r'^tos/?$',
         views.tos,
         name="tos"),
     url(r'',

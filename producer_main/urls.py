@@ -15,7 +15,8 @@ urlpatterns = patterns('',
     # Uncomment the next line to enable the admin:
     url(r'^admin/?', include(admin.site.urls)),
 
-    url(r'^api/v1/?', include('producer.urls', namespace='producer')),
-    url(r'^touchstone/api/v1/?', include('producer.urls', namespace='producer.touchstone')),
-    url(r'^$', 'ui.views.login_page', name='login'),
+    url(r'^api/v1/', include('producer.urls', namespace='producer')),
+    url(r'^touchstone/api/v1/', include('producer.urls', namespace='producer.touchstone')),
+    url(r'^touchstone/', include('ui.urls', namespace='touchstone.ui')),
+    url(r'^/?', include('ui.urls', namespace='ui')),
 )

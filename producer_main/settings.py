@@ -21,6 +21,7 @@ except ImportError:
     exit(1)
 
 DEBUG = settings_credentials.__dict__.get("DEBUG", False)
+PIPELINE_ENABLED = settings_credentials.__dict__.get("PIPELINE_ENABLED", False)
 TEMPLATE_DEBUG = DEBUG
 ADMINS = settings_credentials.__dict__.get("ADMINS", ())
 MANAGERS = ADMINS
@@ -116,11 +117,8 @@ STATICFILES_FINDERS = (
     'django.contrib.staticfiles.finders.FileSystemFinder',
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
 #    'django.contrib.staticfiles.finders.DefaultStorageFinder',
-    'pipeline.finders.PipelineFinder',
+    'compressor.finders.CompressorFinder',
 )
-
-# Django Pipeline:
-STATICFILES_STORAGE = 'pipeline.storage.PipelineCachedStorage'
 
 # Make this unique, and don't share it with anybody.
 SECRET_KEY = '5#75$niX*(DSFh1fc!5%nzbn9o_!2tijqih*6uyomtb+bjlq$^n!ww'
@@ -155,7 +153,6 @@ else:
         'django.contrib.auth.middleware.RemoteUserMiddleware',
         'django.contrib.messages.middleware.MessageMiddleware',
         'django.middleware.gzip.GZipMiddleware',
-        'pipeline.middleware.MinifyHTMLMiddleware',
         # Uncomment the next line for simple clickjacking protection:
         'django.middleware.clickjacking.XFrameOptionsMiddleware',
     )
@@ -201,7 +198,7 @@ INSTALLED_APPS = (
     'dlkit_django',
     'dlkit',
     'corsheaders',
-    'pipeline'
+    'compressor',
 )
 
 SOUTH_TESTS_MIGRATE = False
@@ -234,42 +231,3 @@ CORS_ALLOW_HEADERS = (
 # sacrifice SEO to support non-slash frameworks like Angular
 # http://stackoverflow.com/questions/1596552/django-urls-without-a-trailing-slash-do-not-redirect
 APPEND_SLASH = False
-
-# compression
-PIPELINE_CSS_COMPRESSOR = 'pipeline.compressors.yuglify.YuglifyCompressor'
-PIPELINE_JS_COMPRESSOR = 'pipeline.compressors.yuglify.YuglifyCompressor'
-PIPELINE_YUGLIFY_BINARY = '/Users/cjshaw/Documents/virtual_environments/producer2/bin/yuglify'
-
-PIPELINE_CSS = {
-    'styles': {
-        'source_filenames': (
-          'css/producer.css',
-          'js/vendor/bootstrap/dist/css/bootstrap.css'
-          'js/vendor/fontawesome/css/font-awesome.css'
-        ),
-        'output_filename': 'css/producer.css',
-    },
-}
-
-PIPELINE_JS = {
-    'libs': {
-        'source_filenames': (
-          'js/vendor/backbone/backbone.js',
-          'js/vendor/bootstrap/dist/js/bootstrap.js',
-          'js/vendor/jquery/dist/jquery.js',
-          'js/vendor/lodash/lodash.js',
-          'js/vendor/requirejs/require.js',
-          'js/vendor/csrf.js',
-        ),
-        'output_filename': 'js/libs.js',
-    },
-    'producer': {
-        'source_filenames': (
-          'js/app.js',
-          'js/main.js',
-          'js/router.js',
-          'js/text.js',
-        ),
-        'output_filename': 'js/producer.js',
-    }
-}

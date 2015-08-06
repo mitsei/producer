@@ -547,3 +547,44 @@ class RepositoriesList(ProducerAPIViews):
         except (PermissionDenied, InvalidArgument, NotFound, KeyError) as ex:
             gutils.handle_exceptions(ex)
 
+
+class RepositoryChildrenList(ProducerAPIViews):
+    """
+    List all child repositories.
+    api/v1/repository/<repository_id>/children
+
+    PUT allows you to over-write the list of children (NOT append)
+
+    Note that for RESTful calls, you need to set the request header
+    'content-type' to 'application/json'
+
+    Example (note the use of double quotes!!):
+      {"childIds": ["repository.Repository%3A5547c37cea061a6d3f0ffe71%40cs-macbook-pro"]}
+    """
+
+    def get(self, request, repository_id, format=None):
+        """
+        List all child repositories
+        """
+        try:
+            repositories = self.rm.get_child_repositories(gutils.clean_id(repository_id))
+            repositories = gutils.extract_items(request, repositories)
+            return Response(repositories)
+        except PermissionDenied:
+            raise exceptions.AuthenticationFailed('Permission denied. You do not have '
+                                                  'rights to view repositories.')
+
+    def put(self, request, repository_id, format=None):
+        """
+        Appends child repositories, removing all existing children repos
+
+        """
+        try:
+            gutils.verify_keys_present(self.data, ['childIds'])
+            self.rm.remove_child_repositories(gutils.clean_id(repository_id))
+            for child_id in self.data['childIds']:
+                self.rm.add_child_repository(gutils.clean_id(repository_id),
+                                             gutils.clean_id(child_id))
+            return gutils.UpdatedResponse()
+        except (PermissionDenied, InvalidArgument, NotFound, KeyError) as ex:
+            gutils.handle_exceptions(ex)

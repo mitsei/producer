@@ -1,22 +1,21 @@
-{% extends 'mecqbank_ui/base.html' %}
+{% extends 'ui/base.html' %}
 
 {% block title %}Terms of Service{% endblock %}
 
 {% block header_script %}
-    <link rel="stylesheet" href="{{ STATIC_URL }}css/mecqbank_ui_content_navbar.css">
 {% endblock %}
 
 {% block navbar_content %}
-<h4>MecQBank Terms of Service</h4>
+<h4>Producer Terms of Service</h4>
 {% endblock %}
 
 {% block main_content %}
 <h2>
-    Welcome to the MecQBank.
+    Welcome to Backstage Producer.
 </h2>
 <p>
     You must read and agree to these Terms of Service ("TOS") and our
-    <a href="{% url 'mecqbank_ui:privacy' %}" target="_blank">Privacy Policy</a>
+    <a href="{% url 'ui:privacy' %}" target="_blank">Privacy Policy</a>
     prior to registering for this site or using any portion of this site (“Site”),
     including accessing any course materials or other electronic service.
     These TOS and the Privacy Policy are agreements (the “Agreements”) between you
@@ -95,7 +94,7 @@
 <br />
 <p>
     We care about the confidentiality and security of your personal information. Please
-    see our <a href="{% url 'mecqbank_ui:privacy' %}" target="_blank">Privacy Policy</a> for
+    see our <a href="{% url 'ui:privacy' %}" target="_blank">Privacy Policy</a> for
     more information about what information about you MIT collects and how MIT uses that
     information.
 </p>
@@ -229,6 +228,6 @@
 </p>
 <br />
 <p>
-    Effective Date: February 23, 2015
+    Effective Date: August 5, 2015
 </p>
 {% endblock %}

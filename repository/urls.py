@@ -5,6 +5,8 @@ from repository import views
 urlpatterns = patterns('',
     url(r'^repositories/(?P<repository_id>[-.:@%\d\w]+)/assets/?$',
         views.AssetsList.as_view()),
+    url(r'^repositories/(?P<repository_id>[-.:@%\d\w]+)/children/?$',
+        views.RepositoryChildrenList.as_view()),
     url(r'^repositories/(?P<repository_id>[-.:@%\d\w]+)/compositions/?$',
         views.CompositionsList.as_view()),
     url(r'^repositories/(?P<repository_id>[-.:@%\d\w]+)/?$',

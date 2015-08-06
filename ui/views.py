@@ -1,15 +1,15 @@
 from django.shortcuts import render_to_response
 from django.template import RequestContext
-from django.contrib.auth.decorators import login_required, user_passes_test
-
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.http import HttpResponseRedirect, Http404
 
-from django.http import HttpResponseRedirect, HttpResponseForbidden, Http404
+from dlkit.mongo.records.types import REPOSITORY_GENUS_TYPES
 
-from .utilities import *
+from dlkit_django.primitives import Type
 
-def unexpired_user(user):
-    return user.is_still_active_staff()
+from utilities.general import log_error, activate_managers, get_session_data, extract_items
+
 
 def check_credentials(request):
     username = request.POST['username']
@@ -17,7 +17,7 @@ def check_credentials(request):
     redirect_url = request.POST['next']
 
     try:
-        user = authenticate(username = username, password = password)
+        user = authenticate(username=username, password=password)
         if user is not None:
             if user.is_active:
                 login(request, user)
@@ -32,35 +32,50 @@ def check_credentials(request):
         else:
             raise AssertionError('Bad credentials provided.')
     except AssertionError as ex:
-        log_error('mecqbank_ui.views.check_credentials()', ex)
-        return HttpResponseForbidden("Bad credentials provided.")
+        return render_to_response('ui/login.html',
+                                  {'state': ex.args[0]},
+                                  RequestContext(request))
     except Exception as ex:
-        msg = log_error('mecqbank_ui.views.check_credentials()', ex)
+        msg = log_error('ui.views.check_credentials()', ex)
         return Http404(msg)
 
 @login_required()
-@user_passes_test(unexpired_user)
+@user_passes_test(lambda u: u.is_staff)
 def dashboard(request):
     """Dashboard for app
+    Send list of domain repositories
     """
-    return render_to_response('mecqbank_ui/dashboard.html', {},
+    domain_repo_genus = Type(**REPOSITORY_GENUS_TYPES['domain-repo'])
+    activate_managers(request)
+    rm = get_session_data(request, 'rm')
+    querier = rm.get_repository_query()
+    querier.match_genus_type(domain_repo_genus, True)
+    repos = rm.get_repositories_by_query(querier)
+    return render_to_response('ui/dashboard.html',
+                              {
+                                  'repos': repos
+                              },
                               RequestContext(request))
 
 def login_page(request):
     """Login page for app
     """
-
-    return render_to_response('mecqbank_ui/login.html', {},
+    return render_to_response('ui/login.html', {},
                               RequestContext(request))
+
+def logout_user(request):
+    """log out of the Django session"""
+    logout(request)
+    return HttpResponseRedirect('/')
 
 def privacy(request):
     """Privacy policy
     """
-    return render_to_response('mecqbank_ui/privacy.html', {},
+    return render_to_response('ui/privacy.html', {},
                               RequestContext(request))
 
 def tos(request):
     """Terms of Service for app
     """
-    return render_to_response('mecqbank_ui/tos.html', {},
+    return render_to_response('ui/tos.html', {},
                               RequestContext(request))
