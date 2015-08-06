@@ -345,6 +345,12 @@ class CompositionsList(ProducerAPIViews):
         "description": "high",
         "childIds": ["abc@1:MIT"]}
     """
+    def _get_map_with_children(self, obj):
+        obj_map = obj.object_map
+        obj_map['children'] = []
+        for child in obj.get_children():
+            obj_map['children'].append(self._get_map_with_children(child))
+        return obj_map
 
     def get(self, request, repository_id=None, format=None):
         try:
@@ -360,17 +366,25 @@ class CompositionsList(ProducerAPIViews):
 
             if len(self.data) == 0:
                 compositions = composition_lookup_session.get_compositions()
+            elif ((len(self.data) == 1 and 'nested' in self.data) or
+                  (len(self.data) == 2 and 'nested' in self.data and 'page' in self.data)):
+                compositions = []
+                chapters = composition_query_session.get_compositions_by_genus_type(
+                    str(Type(**EDX_COMPOSITION_GENUS_TYPES['chapter'])))
+                for chapter in chapters:
+                    compositions.append(self._get_map_with_children(chapter))
+
             else:
                 allowable_query_terms = ['displayName', 'description', 'course', 'chapter',
-                                         'sequential', 'split_test', 'vertical', 'page']
+                                         'sequential', 'split_test', 'vertical']
                 if any(term in self.data for term in allowable_query_terms):
                     compositions = []
                     if any(term in self.data for term in ['displayName', 'description']):
-                        querier = composition_query_session.get_asset_query()
+                        querier = composition_query_session.get_composition_query()
                         querier = gutils.config_osid_object_querier(querier, self.data)
-                        compositions += list(composition_query_session.get_assets_by_query(querier))
+                        compositions += list(composition_query_session.get_compositions_by_query(querier))
                     for genus_val, empty in self.data.iteritems():
-                        if genus_val not in ['page', 'displayName', 'description']:
+                        if genus_val not in ['page', 'displayName', 'description', 'nested']:
                             try:
                                 compositions += list(
                                     composition_query_session.get_compositions_by_genus_type(
@@ -380,7 +394,7 @@ class CompositionsList(ProducerAPIViews):
                                                    '"chapter", "sequential", "split_test", and "vertical" ' +
                                                    'are allowed.')
                 else:
-                    compositions = composition_query_session.get_assets()
+                    compositions = composition_lookup_session.get_compositions()
 
             data = gutils.extract_items(request, compositions)
 

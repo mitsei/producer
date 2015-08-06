@@ -1544,6 +1544,53 @@ class EdXCompositionCrUDTests(RepositoryTestCase):
                      '\\"chapter\\", \\"sequential\\", \\"split_test\\", and \\"vertical\\" ' +
                      'are allowed.')
 
+    def test_can_query_for_nested_compositions(self):
+        url = self.url
+
+        payload = {
+            'displayName': 'test composition',
+            'description': 'for testing',
+            'repositoryId': str(self.repo.ident)
+        }
+
+        req = self.client.post(url, payload, format='json')
+        self.created(req)
+        composition = self.json(req)
+
+        payload = {
+            'displayName': 'test composition',
+            'description': 'for testing',
+            'childIds': [composition['id']],
+            'repositoryId': str(self.repo.ident),
+            'genusTypeId': 'edx-composition%3Achapter%40EDX.ORG',
+        }
+
+        req = self.client.post(url, payload, format='json')
+        self.created(req)
+        composition2 = self.json(req)
+
+        url = self.base_url + 'repository/repositories/' + str(self.repo.ident) + '/compositions/?nested'
+        req = self.client.get(url)
+        self.ok(req)
+        data = self.json(req)
+        self.assertEqual(
+            data['data']['count'],
+            1
+        )
+        self.assertEqual(
+            data['data']['results'][0]['id'],
+            composition2['id']
+        )
+        self.assertEqual(
+            len(data['data']['results'][0]['children']),
+            1
+        )
+        self.assertEqual(
+            data['data']['results'][0]['children'][0]['id'],
+            composition['id']
+        )
+
+
 
 class RepositoryChildrenTests(RepositoryTestCase):
     """Test the views for repository crud

@@ -182,7 +182,7 @@ def config_osid_object_querier(querier, params):
                     getattr(querier, method_name)(str(value),
                                                   WORDIGNORECASE_STRING_MATCH_TYPE,
                                                   True)
-                if param in ['learningObjectiveId', 'genusType']:
+                elif param in ['learningObjectiveId', 'genusType']:
                     if '@' in value:
                         value = quote(value)
                     getattr(querier, method_name)(str(value),
