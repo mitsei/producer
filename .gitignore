@@ -61,3 +61,6 @@ apache/django.wsgi
 
 # logs
 log/
+
+# static files
+static/

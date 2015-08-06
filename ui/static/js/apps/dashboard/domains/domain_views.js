@@ -2,8 +2,13 @@
 
 define(["app",
         "apps/dashboard/domains/collections/courses",
-        "text!apps/dashboard/domains/templates/repo_selector.html"],
-       function(ProducerManager, CourseCollection, RepoSelectorTemplate){
+        "apps/dashboard/domains/collections/single_run",
+        "apps/dashboard/compositions/collections/compositions",
+        "text!apps/dashboard/domains/templates/repo_selector.html",
+        "text!apps/dashboard/compositions/templates/composition_template.html",
+        "text!apps/dashboard/compositions/templates/compositions_template.html"],
+       function(ProducerManager, CourseCollection, RunCollection, CompositionsCollection,
+                RepoSelectorTemplate, CompositionTemplate, CompositionsTemplate){
   ProducerManager.module("ProducerApp.Domain.View", function(View, ProducerManager, Backbone, Marionette, $, _){
     View.CoursesView = Marionette.ItemView.extend({
       template: function (serializedData) {
@@ -19,7 +24,8 @@ define(["app",
             var courseId = $(e.currentTarget).val(),
                 runs = new CourseCollection([], {id: courseId}),
                 runsView = new View.RunsView({collection: runs}),
-                runsPromise = runsView.collection.fetch();
+                runsPromise = runsView.collection.fetch(),
+                _this = this;
 
             runsPromise.done(function (data) {
                 ProducerManager.regions.run.show(runsView);
@@ -35,7 +41,47 @@ define(["app",
                 repoType: 'run',
                 repos: serializedData.items
             });
+        },
+        events: {
+            'change select.run-selector' : 'renderCourseStructure'
+        },
+        renderCourseStructure: function (e) {
+            var courseId = $(e.currentTarget).val(),
+                run = new RunCollection([], {id: courseId}),
+                runView = new View.SingleRunView({collection: run}),
+                runPromise = runView.collection.fetch();
+
+            runPromise.done(function (data) {
+                ProducerManager.regions.composition.show(runView);
+                ProducerManager.regions.preview.$el.html('');
+            });
+            console.log('showing a single run');
         }
+    });
+
+    View.CompositionView = Marionette.ItemView.extend({
+        tagName: 'li',
+        template: function (serializedData) {
+            return _.template(CompositionTemplate)({
+                composition: serializedData
+            });
+        }
+    });
+
+    View.CompositionsView = Marionette.CompositeView.extend({
+        initialize: function () {
+            this.collection = new CompositionsCollection(this.model.get('children'));
+        },
+        tagName: 'ul',
+        template: function (serializedData) {
+            return _.template(CompositionsTemplate)({
+                composition: serializedData
+            });
+        }
+    });
+
+    View.SingleRunView = Marionette.CollectionView.extend({
+        childView: View.CompositionsView
     });
   });
 
