@@ -1,3 +1,9 @@
-#course-selector-wrapper {
-    width: 70%;
+#course-selector-region {
+    width: 65%;
+    display: inline-block;
+}
+
+#run-selector-region {
+    width: 30%;
+    display: inline-block;
 }
