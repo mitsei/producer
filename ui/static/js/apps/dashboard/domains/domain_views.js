@@ -4,10 +4,12 @@ define(["app",
         "apps/dashboard/domains/collections/courses",
         "apps/dashboard/domains/collections/single_run",
         "apps/dashboard/compositions/collections/compositions",
+        "apps/common/utilities",
         "text!apps/dashboard/domains/templates/repo_selector.html",
         "text!apps/dashboard/compositions/templates/composition_template.html",
         "text!apps/dashboard/compositions/templates/compositions_template.html"],
        function(ProducerManager, CourseCollection, RunCollection, CompositionsCollection,
+                Utils,
                 RepoSelectorTemplate, CompositionTemplate, CompositionsTemplate){
   ProducerManager.module("ProducerApp.Domain.View", function(View, ProducerManager, Backbone, Marionette, $, _){
     View.CoursesView = Marionette.ItemView.extend({
@@ -72,16 +74,21 @@ define(["app",
         initialize: function () {
             this.collection = new CompositionsCollection(this.model.get('children'));
         },
-        tagName: 'ul',
         template: function (serializedData) {
             return _.template(CompositionsTemplate)({
-                composition: serializedData
+                composition: serializedData,
+                compositionType: Utils.parseGenusType(serializedData.genusTypeId),
+                rawObject: JSON.stringify(serializedData)
             });
         }
     });
 
     View.SingleRunView = Marionette.CollectionView.extend({
-        childView: View.CompositionsView
+        childView: View.CompositionsView,
+        className: "list-group",
+        onRender: function () {
+            $('div.action-menu').removeClass('hidden');
+        }
     });
   });
 

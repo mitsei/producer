@@ -1,4 +1,29 @@
-<li>
-    <%- composition.displayName.text %>
-    <ul></ul>
-</li>
+<div class="<%- compositionType %> composition list-group-item" data-obj="<%- rawObject %>">
+    <div class="composition-icon composition-<%- compositionType %>">
+        <div class="ic-custom"></div>
+    </div>
+    <div class="vertical-box">
+        <div class="vertical-content">
+            <span class="display-name">
+                <%- composition.displayName.text %>
+            </span>
+            <span class="description">
+                <%- composition.description.text %>
+            </span>
+        </div>
+        <div class="vertical-footer">
+            <div class="composition-actions">
+                <span class="preview-composition">
+                    <i aria-hidden="true" class="fa fa-eye"></i>
+                    Preview
+                </span>
+                <span class="export-composition">
+                    <i aria-hidden="true" class="fa fa-arrow-right"></i>
+                    Export
+                </span>
+            </div>
+        </div>
+    </div>
+    <div class="pull-right composition-move-options">
+    </div>
+</div>

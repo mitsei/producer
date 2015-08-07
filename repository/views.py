@@ -373,7 +373,8 @@ class CompositionsList(ProducerAPIViews):
                     str(Type(**EDX_COMPOSITION_GENUS_TYPES['chapter'])))
                 for chapter in chapters:
                     compositions.append(self._get_map_with_children(chapter))
-
+                # hack...
+                compositions = sorted(compositions, key=lambda k: k['id'])
             else:
                 allowable_query_terms = ['displayName', 'description', 'course', 'chapter',
                                          'sequential', 'split_test', 'vertical']

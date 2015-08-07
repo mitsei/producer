@@ -7,3 +7,118 @@
     width: 35%;
     display: inline-block;
 }
+
+div.action-menu {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+.composition {
+    margin-top: 5px;
+    margin-bottom: 5px;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-flex-direction: row;
+    flex-direction: row;
+}
+
+.vertical-box {
+    display: -webkit-flex;
+    display: flex;
+    -webkit-flex-direction: column;
+    flex-direction: column;
+    height: 50px;
+}
+
+.vertical-content {
+    flex: 0 1 100%;
+}
+
+.vertical-footer {
+    flex: 0 1 20px;
+}
+
+.vertical-footer span:hover {
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.composition-icon {
+    border-radius:50%;
+    border:1px solid #eee;
+    width:53px;
+    height:53px;
+    margin:0 8px 0 0;
+    display: inline-block;
+    vertical-align: top;
+    text-align: center;
+}
+
+.composition-icon img {
+    position: relative;
+    top: 12px;
+}
+
+div.ic-custom {
+    height: 100%;
+    width: 100%;
+}
+
+.composition-chapter {
+    border-color:#B01574; /* purple */
+}
+
+.composition-chapter div {
+    background-image: url("/static/img/ic-book.png");
+    background-repeat: no-repeat;
+    margin-left: 25%;
+    margin-top: 25%;
+}
+
+.composition-sequential {
+    border-color:#417505; /* green */
+}
+
+.composition-sequential div {
+    background-image: url("/static/img/ic-sequential.png");
+    background-repeat: no-repeat;
+    margin-left: 25%;
+    margin-top: 25%;
+}
+
+.composition-vertical {
+    border-color:#C24242; /* red */
+}
+
+.composition-vertical div {
+    background-image: url("/static/img/ic-vertical.png");
+    background-repeat: no-repeat;
+    margin-left: 35%;
+    margin-top: 25%;
+}
+
+.sequential {
+    margin-left: 3%;
+}
+
+.vertical {
+    margin-left: 6%;
+}
+
+.composition span.display-name {
+    padding-left: 10px;
+    font-weight: bold;
+}
+
+div.composition-actions span {
+    color: blue;
+}
+
+.composition-actions {
+    margin-left: 5px;
+}
+
+.composition-actions span {
+    margin-left: 5px;
+    margin-right: 5px;
+}

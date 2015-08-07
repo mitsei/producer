@@ -45,6 +45,13 @@ define(["app",
       $(".repositories-menu li a").on('click', function () {
           Utils.fixDomainSelector($(this).attr('href'));
       });
+
+
+//      $("#add-new-components-btn").sidr({
+//          source: '#search-components-menu',
+//          side: 'right',
+//          name: 'component-search-sidr'
+//      });
     });
   });
 

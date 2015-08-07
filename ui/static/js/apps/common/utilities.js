@@ -24,6 +24,11 @@ define(["jquery", "underscore"],
             $("ul.repository-navbar li").removeClass('hidden');
         };
 
+        utils.parseGenusType = function (genusTypeStr) {
+            return genusTypeStr.slice(genusTypeStr.indexOf('%3A') + 3,
+                                      genusTypeStr.indexOf('%40'));
+        };
+
         utils.selectedRepoId = function (path) {
             var domainMatch = utils.getMatchingDomainOption('#repos/' + path);
             return $(domainMatch).data('id');
