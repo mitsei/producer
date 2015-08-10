@@ -28,6 +28,9 @@ from dlkit_django.primordium import Id, Type
 from dlkit_django.errors import (
     PermissionDenied, InvalidArgument, NotFound, NoAccess, Unsupported, IllegalState
 )
+from dlkit_django.proxy_example import TestRequest
+
+from dysonx.dysonx import DysonXUtil, ABS_PATH
 
 from inflection import underscore
 
@@ -589,6 +592,17 @@ def update_links(request, obj):
             'entries': uri('entries'),
             'summary': uri('summary')
         })
+
+def upload_class(path, domain_repo, user):
+    """use DysonX to parse and upload the class"""
+    request = TestRequest(username=user.username)
+
+    if ABS_PATH not in path:
+        if '/' != path[0]:
+            path = '/' + path
+        path = ABS_PATH + path
+    dyson = DysonXUtil(request=request)
+    return dyson.vacuum(path, domain_repo=domain_repo, user=user)
 
 def verify_at_least_one_key_present(_data, _keys_list):
     """
