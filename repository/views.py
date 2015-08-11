@@ -6,10 +6,12 @@ from rest_framework import exceptions
 from dlkit_django.errors import PermissionDenied, InvalidArgument, IllegalState,\
     NotFound, NoAccess
 from dlkit_django.primordium import Id, Type
-from dlkit.mongo.records.types import EDX_COMPOSITION_GENUS_TYPES, COMPOSITION_RECORD_TYPES
+from dlkit.mongo.records.types import EDX_COMPOSITION_GENUS_TYPES,\
+    COMPOSITION_RECORD_TYPES, REPOSITORY_GENUS_TYPES
 
 from utilities import general as gutils
 from utilities import repository as rutils
+from producer.tasks import import_file
 from producer.views import ProducerAPIViews
 
 EDX_COMPOSITION_RECORD_TYPE = Type(**COMPOSITION_RECORD_TYPES['edx-composition'])
@@ -601,5 +603,22 @@ class RepositoryChildrenList(ProducerAPIViews):
                 self.rm.add_child_repository(gutils.clean_id(repository_id),
                                              gutils.clean_id(child_id))
             return gutils.UpdatedResponse()
+        except (PermissionDenied, InvalidArgument, NotFound, KeyError) as ex:
+            gutils.handle_exceptions(ex)
+
+
+class UploadNewClassFile(ProducerAPIViews):
+    """Uploads and imports a given class file"""
+    def post(self, request, repository_id, format=None):
+        """
+        Create a new repository, if authorized
+
+        """
+        try:
+            domain_repo = self.rm.get_repository(gutils.clean_id(repository_id))
+            if str(domain_repo.genus_type) != str(Type(**REPOSITORY_GENUS_TYPES['domain-repo'])):
+                raise InvalidArgument('You cannot upload classes to a non-domain repository.')
+            import_file.delay()
+            return gutils.CreatedResponse(new_repo)
         except (PermissionDenied, InvalidArgument, NotFound, KeyError) as ex:
             gutils.handle_exceptions(ex)

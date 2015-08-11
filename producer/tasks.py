@@ -10,5 +10,5 @@ from utilities.general import upload_class
 @app.task
 def import_file(path, repo, user):
     """Asynchronously import a course."""
-    import_course_from_file(path, repo, user)
+    upload_class(path, repo, user)
 
