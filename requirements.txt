@@ -14,7 +14,7 @@ autobahn==0.10.5.post2
 beautifulsoup4==4.4.0
 billiard==3.3.0.20
 boto==2.38.0
--e git://github.com/celery/celery.git@f2f2d34a3263902012572a333e19d7feeee327f2#egg=celery-dev
+celery==3.1.18
 cffi==1.1.2
 characteristic==14.3.0
 cryptography==0.9.3
