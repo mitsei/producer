@@ -4,6 +4,15 @@ define(["jquery", "underscore"],
     function ($, _) {
 
         var utils = {};
+
+        utils.bindDialogCloseEvents = function () {
+            $('div[role="dialog"] button.ui-dialog-titlebar-close').text('x');
+
+            $(document).on('click', '.ui-widget-overlay', function(){
+                $(".ui-dialog-titlebar-close").trigger('click');
+            });
+        };
+
         utils.getMatchingDomainOption = function (path) {
             var domainRepoOptions = $('.repositories-menu li a'),
                 domainMatch;

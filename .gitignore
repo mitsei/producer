@@ -64,4 +64,5 @@ log/
 
 # static files
 static/
+media/
 *.zip

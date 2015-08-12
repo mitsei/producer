@@ -78,6 +78,8 @@ DLKIT_MONGO_DB_PREFIX = settings_credentials.__dict__.get('DLKIT_MONGO_DB_PREFIX
 MONGO_HOST_URI = settings_credentials.__dict__.get('MONGO_HOST_URI')
 DLKIT_AUTHORITY = settings_credentials.__dict__.get('DLKIT_AUTHORITY')
 DLKIT_MONGO_DB_INDEXES = settings_credentials.__dict__.get('DLKIT_MONGO_DB_INDEXES')
+WEBSOCKET_EXCHANGE = settings_credentials.__dict__.get('WEBSOCKET_EXCHANGE', '')
+CELERY_ALWAYS_EAGER = settings_credentials.__dict__.get('CELERY_ALWAYS_EAGER', False)
 
 if "default" not in DATABASES or "PASSWORD" not in DATABASES["default"] or DATABASES["default"]["PASSWORD"]=="":
     print msg_credentials()

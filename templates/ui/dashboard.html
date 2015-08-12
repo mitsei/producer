@@ -6,6 +6,9 @@
     <link rel="stylesheet" href="{{ STATIC_URL }}css/dashboard.css">
 {% endblock %}
 
+{% block header_js_script %}
+{% endblock %}
+
 
 {% block navbar_content %}
     <nav class="navbar navbar-default">
@@ -23,9 +26,9 @@
 
         <!-- Collect the nav links, forms, and other content for toggling -->
         <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
-          <ul class="nav navbar-nav repository-navbar">
-            <li class="hidden"><a href="#import-course"><i aria-hidden="true" class="fa fa-cloud-upload"></i> Import Course</a></li>
-            <li class="hidden"><a href="#manage-learning-outcomes"><i aria-hidden="true" class="fa fa-cogs"></i> Manage Learning Outcomes</a></li>
+          <ul class="nav navbar-nav repository-navbar btn-group" role="group" aria-label="repository tools">
+            <li class="hidden"><button class="btn btn-lg import-course repository-btn"><i aria-hidden="true" class="fa fa-cloud-upload"></i> Import Course</button></li>
+            <li class="hidden"><button class="btn btn-lg manage-los repository-btn"><i aria-hidden="true" class="fa fa-cogs"></i> Manage Learning Outcomes</button></li>
           </ul>
           <ul class="nav navbar-nav navbar-right">
             <li class="dropdown">
@@ -84,7 +87,12 @@
                 </div>
             </div>
             <div id="preview-region" class="col-lg-offset-1 col-md-offset-1 col-sm-offset-1 col-ls-4 col-md-4 col-sm-4 col-xs-12">
-                <i aria-hidden="true" class="fa fa-arrow-up"></i> To start, please select a repository from above.
+                <div class="notifications-region">
+                    <i aria-hidden="true" class="fa fa-arrow-up"></i> To start, please select a repository from above.
+                </div>
+                <div>
+
+                </div>
             </div>
         </div>
     </div>

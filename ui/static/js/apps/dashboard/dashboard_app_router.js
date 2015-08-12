@@ -41,12 +41,6 @@ define(["app",
         controller: API
       });
 
-      // bind the click events. This should go into a Navbar view somewhere...
-      $(".repositories-menu li a").on('click', function () {
-          Utils.fixDomainSelector($(this).attr('href'));
-      });
-
-
 //      $("#add-new-components-btn").sidr({
 //          source: '#search-components-menu',
 //          side: 'right',

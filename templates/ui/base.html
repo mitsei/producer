@@ -22,6 +22,10 @@
         {% compress css %}
         {% block header_script %} {% endblock %}
         {% endcompress %}
+
+        {% compress js %}
+        {% block header_js_script %} {% endblock %}
+        {% endcompress %}
     </head>
     <body class="container-fluid">
         {% csrf_token %}

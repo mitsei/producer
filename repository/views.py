@@ -3,6 +3,8 @@ from bson.errors import InvalidId
 from rest_framework.response import Response
 from rest_framework import exceptions
 
+from django.core.files.storage import default_storage
+
 from dlkit_django.errors import PermissionDenied, InvalidArgument, IllegalState,\
     NotFound, NoAccess
 from dlkit_django.primordium import Id, Type
@@ -11,6 +13,7 @@ from dlkit.mongo.records.types import EDX_COMPOSITION_GENUS_TYPES,\
 
 from utilities import general as gutils
 from utilities import repository as rutils
+from producer.receivers import RabbitMQReceiver
 from producer.tasks import import_file
 from producer.views import ProducerAPIViews
 
@@ -607,18 +610,41 @@ class RepositoryChildrenList(ProducerAPIViews):
             gutils.handle_exceptions(ex)
 
 
+
 class UploadNewClassFile(ProducerAPIViews):
     """Uploads and imports a given class file"""
+    def _notify_upload_finished(self):
+        self.rabbit.new_repositories(["Upload finished. New course and run created."])
+
+    def _notify_upload_failed(self):
+        self.rabbit.new_repositories(["Your course upload failed..."])
+
+    def initial(self, request, *args, **kwargs):
+        super(UploadNewClassFile, self).initial(request, *args, **kwargs)
+        self.rabbit = RabbitMQReceiver(request=request)
+
     def post(self, request, repository_id, format=None):
         """
         Create a new repository, if authorized
-
         """
         try:
+            if 'files' not in self.data:
+                raise InvalidArgument('You must include a file with your POST data.')
+            if len(self.data['files']) > 1:
+                raise InvalidArgument('You can only upload a single course at one time.')
+
             domain_repo = self.rm.get_repository(gutils.clean_id(repository_id))
             if str(domain_repo.genus_type) != str(Type(**REPOSITORY_GENUS_TYPES['domain-repo'])):
                 raise InvalidArgument('You cannot upload classes to a non-domain repository.')
-            import_file.delay()
-            return gutils.CreatedResponse(new_repo)
+
+            import pdb
+            pdb.set_trace()
+            uploaded_file = self.data['files'][self.data['files'].keys()[0]]
+            path = default_storage.save(uploaded_file.name,
+                                        uploaded_file)
+            import_file.apply_async((path, domain_repo, request.user),
+                                    link=self._notify_upload_finished,
+                                    link_error=self._notify_upload_failed)
+            return Response()
         except (PermissionDenied, InvalidArgument, NotFound, KeyError) as ex:
             gutils.handle_exceptions(ex)

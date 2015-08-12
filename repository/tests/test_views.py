@@ -7,7 +7,8 @@ from boto.s3.key import Key
 
 from copy import deepcopy
 
-from dlkit.mongo.records.types import COMPOSITION_RECORD_TYPES, EDX_COMPOSITION_GENUS_TYPES
+from dlkit.mongo.records.types import COMPOSITION_RECORD_TYPES, EDX_COMPOSITION_GENUS_TYPES,\
+    REPOSITORY_GENUS_TYPES
 
 from dlkit_django.primordium import Id, DataInputStream, Type
 
@@ -31,6 +32,7 @@ class RepositoryTestCase(DjangoTestCase):
         form = rm.get_repository_form_for_create([])
         form.display_name = 'new repository'
         form.description = 'for testing'
+        form.set_genus_type(Type(**REPOSITORY_GENUS_TYPES['domain-repo']))
         return rm.create_repository(form)
 
     def get_asset(self, asset_id):
@@ -1661,8 +1663,11 @@ class RepositoryCrUDTests(AssessmentTestCase, RepositoryTestCase):
         self.login()
         self.url = self.base_url + 'repository/repositories/'
 
+        self.demo_course = open(ABS_PATH + '/producer/tests/files/content-mit-1805x-master.zip', 'rb')
+
     def tearDown(self):
         super(RepositoryCrUDTests, self).tearDown()
+        self.demo_course.close()
 
     def test_can_create_new_repository(self):
         payload = {
@@ -1906,3 +1911,14 @@ class RepositoryCrUDTests(AssessmentTestCase, RepositoryTestCase):
         url = self.url
         req = self.client.get(url)
         self.ok(req)
+
+    def test_can_upload_new_course_to_domain_repo(self):
+        domain = self.create_new_repo()
+        self.num_repos(1)
+        url = self.url + str(domain.ident) + '/upload/'
+        payload = {
+            'myFile': self.demo_course
+        }
+        req = self.client.post(url, data=payload)
+        self.ok(req)
+        self.num_repos(3)

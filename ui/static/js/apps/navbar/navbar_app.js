@@ -1,13 +1,14 @@
 // apps/navbar/navbar_app.js
 
 define(["app",
-        "apps/navbar/views/navbar",
+        "apps/navbar/navbar_app_router",
         "bootstrap"],
-    function(ProducerManager, NavbarView){
+    function(ProducerManager){
   ProducerManager.module("NavbarApp", function(NavbarApp, ProducerManager, Backbone, Marionette, $, _){
+    NavbarApp.startWithParent = false;
+
     NavbarApp.onStart = function(){
       console.log("starting NavbarApp");
-      ProducerManager.regions.navbar.show(new NavbarView());
     };
 
     NavbarApp.onStop = function(){

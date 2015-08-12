@@ -1,6 +1,7 @@
 // Filename: main.js
 
 var baseUrl = '/static/js/';
+var socketioPath = window.location.protocol + '//' + window.location.hostname + ':8080/socket.io/socket.io';
 
 requirejs.config({
     baseUrl: baseUrl,
@@ -14,6 +15,7 @@ requirejs.config({
         'jquery'                : 'vendor/jquery/dist/jquery.min',
         'jquery-ui'             : 'vendor/jqueryui/jquery-ui.min',
         'marionette'            : 'vendor/marionette/lib/backbone.marionette.min',
+        'socketio'              : socketioPath,
         'underscore'            : 'vendor/lodash/lodash.min'
     },
     shim: {
