@@ -14,6 +14,7 @@ define(['marionette'
         regions: {
             composition: "#composition-region",
             course: "#course-selector-region",
+            courseActions: "#course-actions-region",
             dialog: "#dialog-region",
             main: "#main-region",
             navbar: "#navbar-region",

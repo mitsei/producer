@@ -11,6 +11,7 @@ requirejs.config({
         'backbone.radio'        : 'vendor/backbone.radio/build/backbone.radio.min',
         'bootstrap'             : 'vendor/bootstrap/dist/js/bootstrap.min',
         'bootstrap-dialog'      : 'vendor/bootstrap3-dialog/dist/js/bootstrap-dialog.min',
+        'bootstrap-drawer'      : 'vendor/bootstrap-drawer/dist/js/drawer.min',
         'csrf'                  : 'vendor/csrf',
         'jquery'                : 'vendor/jquery/dist/jquery.min',
         'jquery-ui'             : 'vendor/jqueryui/jquery-ui.min',
@@ -35,6 +36,9 @@ requirejs.config({
         'bootstrap-dialog': {
             deps: ['bootstrap'],
             exports: 'BootstrapDialog'
+        },
+        'bootstrap-drawer': {
+            deps: ['jquery', 'bootstrap']
         },
         'csrf': {
             deps: ['jquery'],
