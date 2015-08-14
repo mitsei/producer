@@ -9,6 +9,7 @@ from django.core.files.storage import default_storage
 from dlkit_django.errors import PermissionDenied, InvalidArgument, IllegalState,\
     NotFound, NoAccess
 from dlkit_django.primordium import Id, Type
+from dlkit_django.proxy_example import TestRequest
 from dlkit.mongo.records.types import EDX_COMPOSITION_GENUS_TYPES,\
     COMPOSITION_RECORD_TYPES, REPOSITORY_GENUS_TYPES
 
@@ -612,34 +613,25 @@ class RepositoryChildrenList(ProducerAPIViews):
             gutils.handle_exceptions(ex)
 
 
+@celery_app.task()
+def _upload_error_simple(uuid):
+    print uuid
+    import pdb
+    pdb.set_trace()
+    result = celery_app.AsyncResult(uuid)
+    result.get()
+    print type(result)
+    print result.backend
+    print result.state
+    print result.result
+    print result.traceback
+    msg = 'Task {0} raised exception: {1!r}\n{2!r}'.format(uuid,
+                                                           result.result,
+                                                           result.traceback)
+
+
 class UploadNewClassFile(ProducerAPIViews):
     """Uploads and imports a given class file"""
-    @celery_app.task()
-    def _upload_success(self, msg, rabbit, path):
-        rabbit._pub_wrapper('new',
-                            obj_type='repositories',
-                            id_list=[msg],
-                            status='success')
-        default_storage.delete(path)
-
-    @celery_app.task(bind=True)
-    def _upload_error(self, uuid, rabbit, path):
-        result = celery_app.AsyncResult(uuid)
-        msg = 'Upload task failed...check the course format. For more details, ' \
-              'check the server logs.'
-        # msg = 'Task {0} raised exception: {1!r}\n{2!r}'.format(uuid,
-        #                                                        result.result,
-        #                                                        result.traceback)
-        rabbit._pub_wrapper('new',
-                            obj_type='repositories',
-                            id_list=[msg],
-                            status='error')
-        default_storage.delete(path)
-
-    def initial(self, request, *args, **kwargs):
-        self.rabbit = RabbitMQReceiver(request=request)
-        super(UploadNewClassFile, self).initial(request, *args, **kwargs)
-
     def post(self, request, repository_id, format=None):
         """
         Create a new repository, if authorized
@@ -658,16 +650,7 @@ class UploadNewClassFile(ProducerAPIViews):
             self.path = default_storage.save('{0}/{1}'.format(settings.MEDIA_ROOT,
                                                               uploaded_file.name),
                                              uploaded_file)
-            self.async_result = import_file.apply_async((self.path, domain_repo, request.user),
-                                                        link=self._upload_success.s(
-                                                            "Upload finished. New course and run created.",
-                                                            self.rabbit,
-                                                            self.path),
-                                                        link_error=self._upload_error.s(
-                                                            self.rabbit,
-                                                            self.path
-                                                        ))
-
+            self.async_result = import_file.apply_async((self.path, domain_repo, request.user))
             return Response()
-        except (PermissionDenied, InvalidArgument, NotFound, KeyError) as ex:
+        except (PermissionDenied, TypeError, InvalidArgument, NotFound, KeyError) as ex:
             gutils.handle_exceptions(ex)

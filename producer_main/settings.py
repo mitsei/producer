@@ -84,6 +84,8 @@ CELERY_ALWAYS_EAGER = settings_credentials.__dict__.get('CELERY_ALWAYS_EAGER', F
 CELERY_EAGER_PROPAGATES_EXCEPTIONS = settings_credentials.__dict__.get('CELERY_EAGER_PROPAGATES_EXCEPTIONS', False)
 BROKER_URL = settings_credentials.__dict__.get('BROKER_URL', '')
 CELERY_RESULT_BACKEND = settings_credentials.__dict__.get('CELERY_RESULT_BACKEND', '')
+CELERY_RESULT_PERSISTENT = settings_credentials.__dict__.get('CELERY_RESULT_PERSISTENT', True)
+CELERY_IGNORE_RESULT = settings_credentials.__dict__.get('CELERY_IGNORE_RESULT', '')
 
 if "default" not in DATABASES or "PASSWORD" not in DATABASES["default"] or DATABASES["default"]["PASSWORD"]=="":
     print msg_credentials()

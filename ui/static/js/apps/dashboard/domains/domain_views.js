@@ -29,6 +29,10 @@ define(["app",
                 runsPromise = runsView.collection.fetch(),
                 _this = this;
 
+            ProducerManager.regions.composition.empty();
+            ProducerManager.regions.preview.$el.html('');
+            $('div.action-menu').addClass('hidden');
+
             runsPromise.done(function (data) {
                 ProducerManager.regions.run.show(runsView);
                 ProducerManager.regions.preview.$el.html('');
