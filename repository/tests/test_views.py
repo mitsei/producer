@@ -13,6 +13,7 @@ from dlkit.mongo.records.types import COMPOSITION_RECORD_TYPES, EDX_COMPOSITION_
 from dlkit_django.primordium import Id, DataInputStream, Type
 
 from django.conf import settings
+from django.test.utils import override_settings
 from django.utils.http import unquote
 
 from utilities import general as gutils
@@ -1651,6 +1652,8 @@ class RepositoryChildrenTests(RepositoryTestCase):
         )
 
 
+@override_settings(CELERY_ALWAYS_EAGER=True,
+                   WEBSOCKET_EXCHANGE='test.backstage.producer')
 class RepositoryCrUDTests(AssessmentTestCase, RepositoryTestCase):
     """Test the views for repository crud
 
@@ -1664,10 +1667,12 @@ class RepositoryCrUDTests(AssessmentTestCase, RepositoryTestCase):
         self.url = self.base_url + 'repository/repositories/'
 
         self.demo_course = open(ABS_PATH + '/producer/tests/files/content-mit-1805x-master.zip', 'rb')
+        self.non_course = open(ABS_PATH + '/repository/tests/files/Flexure_structure_with_hints.pdf', 'rb')
 
     def tearDown(self):
         super(RepositoryCrUDTests, self).tearDown()
         self.demo_course.close()
+        self.non_course.close()
 
     def test_can_create_new_repository(self):
         payload = {
@@ -1921,4 +1926,31 @@ class RepositoryCrUDTests(AssessmentTestCase, RepositoryTestCase):
         }
         req = self.client.post(url, data=payload)
         self.ok(req)
-        self.num_repos(3)
+        self.num_repos(5)  # Users, user-repo, course, run, and domain
+        rm = gutils.get_session_data(self.req, 'rm')
+        querier = rm.get_repository_query()
+        querier.match_genus_type(Type(**REPOSITORY_GENUS_TYPES['course-repo']), True)
+        course_repos = rm.get_repositories_by_query(querier)
+        self.assertEqual(
+            course_repos.available(),
+            1
+        )
+        querier = rm.get_repository_query()
+        querier.match_genus_type(Type(**REPOSITORY_GENUS_TYPES['course-run-repo']), True)
+        run_repos = rm.get_repositories_by_query(querier)
+        self.assertEqual(
+            run_repos.available(),
+            1
+        )
+
+    def test_bad_file_upload_throws_exception(self):
+        domain = self.create_new_repo()
+        self.num_repos(1)
+        url = self.url + str(domain.ident) + '/upload/'
+        payload = {
+            'myFile': self.non_course
+        }
+        req = self.client.post(url, data=payload)
+        self.ok(req)
+        self.num_repos(1)
+

@@ -5,6 +5,8 @@ define(["jquery", "underscore"],
 
         var utils = {};
 
+        utils.activeUser = $('span.active-user').text().trim();
+
         utils.bindDialogCloseEvents = function () {
             $('div[role="dialog"] button.ui-dialog-titlebar-close').text('x');
 
@@ -29,7 +31,7 @@ define(["jquery", "underscore"],
                 $repoBtn = $('.dropdown-toggle');
 
             $repoBtn.find('span.repository-placeholder').text($(domainMatch).text());
-            $('.repository-menu').data('id', $(domainMatch).data('id'));
+            $('.repositories-menu').data('id', $(domainMatch).data('id'));
             $("ul.repository-navbar li").removeClass('hidden');
         };
 
@@ -39,8 +41,12 @@ define(["jquery", "underscore"],
         };
 
         utils.selectedRepoId = function (path) {
-            var domainMatch = utils.getMatchingDomainOption('#repos/' + path);
-            return $(domainMatch).data('id');
+            if (typeof path !== 'undefined') {
+                var domainMatch = utils.getMatchingDomainOption('#repos/' + path);
+                return $(domainMatch).data('id');
+            } else {
+                return $('.repositories-menu').data('id');
+            }
         };
 
         return utils;

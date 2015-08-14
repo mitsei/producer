@@ -9,7 +9,7 @@ import logging
 
 from celery import Celery
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'producer.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'producer_main.settings')
 
 from django.conf import settings
 

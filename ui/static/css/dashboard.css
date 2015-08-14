@@ -154,3 +154,9 @@ ul.repository-navbar button.repository-btn {
     margin-left: 5%;
     margin-bottom: 15px;
 }
+
+.dismiss-notification {
+    position: absolute;
+    top: 3px;
+    right: 20px;
+}

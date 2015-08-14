@@ -1,3 +1,0 @@
-[submodule "dlkit"]
-	path = dlkit
-	url = git@github.mit.edu:oeit/dlkit.git

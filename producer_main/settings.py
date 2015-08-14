@@ -78,8 +78,12 @@ DLKIT_MONGO_DB_PREFIX = settings_credentials.__dict__.get('DLKIT_MONGO_DB_PREFIX
 MONGO_HOST_URI = settings_credentials.__dict__.get('MONGO_HOST_URI')
 DLKIT_AUTHORITY = settings_credentials.__dict__.get('DLKIT_AUTHORITY')
 DLKIT_MONGO_DB_INDEXES = settings_credentials.__dict__.get('DLKIT_MONGO_DB_INDEXES')
-WEBSOCKET_EXCHANGE = settings_credentials.__dict__.get('WEBSOCKET_EXCHANGE', '')
+WEBSOCKET_EXCHANGE = settings_credentials.__dict__.get('WEBSOCKET_EXCHANGE', '')  # needs to match spec in node_modules/server.js...should migrate to environment variable at some point
+
 CELERY_ALWAYS_EAGER = settings_credentials.__dict__.get('CELERY_ALWAYS_EAGER', False)
+CELERY_EAGER_PROPAGATES_EXCEPTIONS = settings_credentials.__dict__.get('CELERY_EAGER_PROPAGATES_EXCEPTIONS', False)
+BROKER_URL = settings_credentials.__dict__.get('BROKER_URL', '')
+CELERY_RESULT_BACKEND = settings_credentials.__dict__.get('CELERY_RESULT_BACKEND', '')
 
 if "default" not in DATABASES or "PASSWORD" not in DATABASES["default"] or DATABASES["default"]["PASSWORD"]=="":
     print msg_credentials()

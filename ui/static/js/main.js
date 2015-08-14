@@ -37,7 +37,8 @@ requirejs.config({
             exports: 'BootstrapDialog'
         },
         'csrf': {
-            deps: ['jquery']
+            deps: ['jquery'],
+            exports: 'csrftoken'
         },
         'jquery-ui': {
             deps: ['jquery']

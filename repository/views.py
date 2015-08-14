@@ -3,6 +3,7 @@ from bson.errors import InvalidId
 from rest_framework.response import Response
 from rest_framework import exceptions
 
+from django.conf import settings
 from django.core.files.storage import default_storage
 
 from dlkit_django.errors import PermissionDenied, InvalidArgument, IllegalState,\
@@ -16,6 +17,7 @@ from utilities import repository as rutils
 from producer.receivers import RabbitMQReceiver
 from producer.tasks import import_file
 from producer.views import ProducerAPIViews
+from producer_main.celery import app as celery_app
 
 EDX_COMPOSITION_RECORD_TYPE = Type(**COMPOSITION_RECORD_TYPES['edx-composition'])
 EDX_COMPOSITION_GENUS_TYPES_STR = [str(Type(**genus_type))
@@ -610,18 +612,33 @@ class RepositoryChildrenList(ProducerAPIViews):
             gutils.handle_exceptions(ex)
 
 
-
 class UploadNewClassFile(ProducerAPIViews):
     """Uploads and imports a given class file"""
-    def _notify_upload_finished(self):
-        self.rabbit.new_repositories(["Upload finished. New course and run created."])
+    @celery_app.task()
+    def _upload_success(self, msg, rabbit, path):
+        rabbit._pub_wrapper('new',
+                            obj_type='repositories',
+                            id_list=[msg],
+                            status='success')
+        default_storage.delete(path)
 
-    def _notify_upload_failed(self):
-        self.rabbit.new_repositories(["Your course upload failed..."])
+    @celery_app.task(bind=True)
+    def _upload_error(self, uuid, rabbit, path):
+        result = celery_app.AsyncResult(uuid)
+        msg = 'Upload task failed...check the course format. For more details, ' \
+              'check the server logs.'
+        # msg = 'Task {0} raised exception: {1!r}\n{2!r}'.format(uuid,
+        #                                                        result.result,
+        #                                                        result.traceback)
+        rabbit._pub_wrapper('new',
+                            obj_type='repositories',
+                            id_list=[msg],
+                            status='error')
+        default_storage.delete(path)
 
     def initial(self, request, *args, **kwargs):
-        super(UploadNewClassFile, self).initial(request, *args, **kwargs)
         self.rabbit = RabbitMQReceiver(request=request)
+        super(UploadNewClassFile, self).initial(request, *args, **kwargs)
 
     def post(self, request, repository_id, format=None):
         """
@@ -637,14 +654,20 @@ class UploadNewClassFile(ProducerAPIViews):
             if str(domain_repo.genus_type) != str(Type(**REPOSITORY_GENUS_TYPES['domain-repo'])):
                 raise InvalidArgument('You cannot upload classes to a non-domain repository.')
 
-            import pdb
-            pdb.set_trace()
             uploaded_file = self.data['files'][self.data['files'].keys()[0]]
-            path = default_storage.save(uploaded_file.name,
-                                        uploaded_file)
-            import_file.apply_async((path, domain_repo, request.user),
-                                    link=self._notify_upload_finished,
-                                    link_error=self._notify_upload_failed)
+            self.path = default_storage.save('{0}/{1}'.format(settings.MEDIA_ROOT,
+                                                              uploaded_file.name),
+                                             uploaded_file)
+            self.async_result = import_file.apply_async((self.path, domain_repo, request.user),
+                                                        link=self._upload_success.s(
+                                                            "Upload finished. New course and run created.",
+                                                            self.rabbit,
+                                                            self.path),
+                                                        link_error=self._upload_error.s(
+                                                            self.rabbit,
+                                                            self.path
+                                                        ))
+
             return Response()
         except (PermissionDenied, InvalidArgument, NotFound, KeyError) as ex:
             gutils.handle_exceptions(ex)

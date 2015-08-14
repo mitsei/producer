@@ -22,7 +22,7 @@ class RabbitMQReceiver(object):
                                      routing_key=routing_key,
                                      body=json.dumps(data))
 
-    def _pub_wrapper(self, verb, obj_type='', id_list=None):
+    def _pub_wrapper(self, verb, obj_type='', id_list=None, status=''):
         ids = [str(i) for i in id_list]
         message = {
             'data': ids,
@@ -30,6 +30,10 @@ class RabbitMQReceiver(object):
             'username': self.username,
             'verb': verb
         }
+        if status != '':
+            message.update({
+                'status': status
+            })
         return self._pub(message)
 
     # def new_resources(self, id_list):
