@@ -16,6 +16,9 @@ define(['marionette'
             course: "#course-selector-region",
             courseActions: "#course-actions-region",
             dialog: "#dialog-region",
+            facetedSearchHeader: '#faceted-search-header',
+            facetedSearchFacets: '#faceted-search-facets',
+            facetedSearchResults: '#faceted-search-results',
             main: "#main-region",
             navbar: "#navbar-region",
             notifications: {

@@ -8,21 +8,40 @@ from django.core.files.storage import default_storage
 
 from dlkit_django.errors import PermissionDenied, InvalidArgument, IllegalState,\
     NotFound, NoAccess
-from dlkit_django.primordium import Id, Type
-from dlkit_django.proxy_example import TestRequest
+from dlkit_django.primordium import Type
 from dlkit.mongo.records.types import EDX_COMPOSITION_GENUS_TYPES,\
     COMPOSITION_RECORD_TYPES, REPOSITORY_GENUS_TYPES
 
+from dysonx.dysonx import get_or_create_user_repo
+
 from utilities import general as gutils
 from utilities import repository as rutils
-from producer.receivers import RabbitMQReceiver
 from producer.tasks import import_file
 from producer.views import ProducerAPIViews
-from producer_main.celery import app as celery_app
 
 EDX_COMPOSITION_RECORD_TYPE = Type(**COMPOSITION_RECORD_TYPES['edx-composition'])
 EDX_COMPOSITION_GENUS_TYPES_STR = [str(Type(**genus_type))
                                    for k, genus_type in EDX_COMPOSITION_GENUS_TYPES.iteritems()]
+
+
+def get_facets_values(params, facet_prefix):
+    if 'selected_facets' in params:
+        facet_params = [f.split(':')[-1]
+                        for f in params['selected_facets']
+                        if '{}:'.format(facet_prefix) in f]
+        if len(facet_params) == 0:
+            return None
+        else:
+            return facet_params
+    else:
+        return None
+
+def get_query_values(params):
+    if params is not None:
+        params = params.split(' ')
+        if not isinstance(params, list):
+            params = [params]
+    return params
 
 
 class AssetDetails(ProducerAPIViews):
@@ -613,22 +632,142 @@ class RepositoryChildrenList(ProducerAPIViews):
             gutils.handle_exceptions(ex)
 
 
-@celery_app.task()
-def _upload_error_simple(uuid):
-    print uuid
-    import pdb
-    pdb.set_trace()
-    result = celery_app.AsyncResult(uuid)
-    result.get()
-    print type(result)
-    print result.backend
-    print result.state
-    print result.result
-    print result.traceback
-    msg = 'Task {0} raised exception: {1!r}\n{2!r}'.format(uuid,
-                                                           result.result,
-                                                           result.traceback)
+class RepositorySearch(ProducerAPIViews):
+    """
+    Search interface for a specific (domain) repository.
+    api/v1/repository/repositories/<repository_id>/search/
 
+    GET
+    ?selected_facets=course_exact:<id>&selected_facets=resource_type_exact:problem&....
+    """
+    def _query_positive(self, resource):
+        """takes a DLKit object and checks if any of the self.query_params are found in
+        the edxml / description / displayName"""
+        if self.query_params is None or len(self.query_params) == 0:
+            return True
+
+        query_terms = [qt.lower().encode('utf-8') for qt in self.query_params]
+        if 'repository.Asset' in str(resource.ident):
+            print str(resource.ident)
+            text_haystack = '{} {} {}'.format(resource.display_name.text.encode('utf-8'),
+                                              resource.description.text.encode('utf-8'),
+                                              resource.get_asset_contents().next().get_text().text.encode('utf-8'))
+        else:
+            text_haystack = '{} {} {}'.format(resource.display_name.text.encode('utf-8'),
+                                              resource.description.text.encode('utf-8'),
+                                              resource.get_text('edxml').encode('utf-8'))
+        text_haystack = text_haystack.lower()
+        return any(qt in text_haystack for qt in query_terms)
+
+    def _showable(self, resource_tag, course_run_name):
+        return ((self.facet_resource_types is None or resource_tag in self.facet_resource_types) and
+                (self.facet_course_runs is None or course_run_name in self.facet_course_runs))
+
+    def get(self, request, repository_id, format=None):
+        try:
+            self.facet_resource_types = get_facets_values(self.data, 'resource_type_exact')
+            self.facet_course_runs = get_facets_values(self.data, 'course_exact')
+            self.query_params = get_query_values(self.data.get('q', None))
+
+            facets = {
+                'course': [],
+                'resource_type': []
+            }
+            object_list = []
+
+            asset_counts = {}
+            course_run_counts = {}
+
+            user_repo = get_or_create_user_repo(request.user.username)
+            bank = self.am.get_bank(user_repo.ident)
+
+            repo_nodes = self.rm.get_repository_nodes(repository_id=gutils.clean_id(repository_id),
+                                                      ancestor_levels=0,
+                                                      descendant_levels=2,
+                                                      include_siblings=False)
+            repo_nodes = repo_nodes.get_object_node_map()
+
+            runs = [(course['displayName']['text'], r)
+                    for course in repo_nodes['childNodes']
+                    for r in course['childNodes']]
+
+            # First, get IDs of all assets that match text of the query param
+            # in the user_repo,
+            # and also the assessment items in the bank.
+            # Then iterate through runs, and only accept items / assets
+            # whose IDs are in the list. If no query params, then
+            # just iterate through.
+            # if self.query_params is None or len(self.query_params) == 0:
+            #     pass
+            # else:
+            #     asset_querier = user_repo.get_asset_query()
+            #     asset_querier.match_keyword()
+
+            for run_pkg in runs:
+                course_name = run_pkg[0]
+                run = run_pkg[1]
+
+                run_name = '{}, {}'.format(course_name,
+                                           run['displayName']['text'])
+
+                course_run_counts[run_name] = 0
+
+                services_repo = self.rm.get_repository(gutils.clean_id(run['id']))
+                for composition in self.rm.get_compositions_by_repository(services_repo.ident):
+                    # get the assets! -- finally
+                    try:
+                        assets = services_repo.get_composition_assets(composition.ident)
+                        for asset in assets:
+                            add_to_run_count = False
+
+                            try:
+                                # for now, assume you want the item of the assessment (assume
+                                # these are assessments, too)
+                                assessment = asset.get_enclosed_object()
+                                items = bank.get_assessment_items(assessment.ident)
+                                for item in items:
+                                    if self._query_positive(item):
+                                        add_to_run_count = True
+                                        item_tag = item.genus_type.identifier
+                                        if item_tag not in asset_counts:
+                                            asset_counts[item_tag] = 0
+                                        asset_counts[item_tag] += 1
+
+                                        if self._showable(item_tag, run_name):
+                                            object_list.append(item.object_map)
+                            except TypeError:
+                                asset_map = asset.object_map
+
+                                if self._query_positive(asset):
+                                    add_to_run_count = True
+                                    asset_tag = asset.get_asset_contents().next().genus_type.identifier
+
+                                    if asset_tag not in asset_counts:
+                                        asset_counts[asset_tag] = 0
+                                    asset_counts[asset_tag] += 1
+
+                                    if self._showable(asset_tag, run_name):
+                                        object_list.append(asset_map)
+
+                            # do the counts for included assets, including enclosed ones
+                            if add_to_run_count:
+                                course_run_counts[run_name] += 1
+
+                    except NotFound:
+                        pass
+            for k, v in asset_counts.iteritems():
+                facets['resource_type'].append((k, v))
+
+            for k, v in course_run_counts.iteritems():
+                facets['course'].append((k, v))
+
+            return_data = {
+                'facets': facets,
+                'objects': object_list
+            }
+            return Response(return_data)
+        except (PermissionDenied, InvalidId, NotFound) as ex:
+            gutils.handle_exceptions(ex)
 
 class UploadNewClassFile(ProducerAPIViews):
     """Uploads and imports a given class file"""

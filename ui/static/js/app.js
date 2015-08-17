@@ -73,7 +73,8 @@ define([
             require(["apps/dashboard/dashboard_app",
                      "apps/navbar/navbar_app",
                      "apps/notification/notification_app",
-                     "apps/course-actions/course_actions_app"], function () {
+                     "apps/course-actions/course_actions_app",
+                     "apps/faceted-search/faceted_search_app"], function () {
                 if ($("#login_tabs").length > 0) {
                     $("#login_tabs").tabs();
                 }

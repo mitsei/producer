@@ -13,7 +13,8 @@ div.action-menu {
     margin-bottom: 10px;
 }
 
-.composition {
+.composition,
+.resource {
     margin-top: 5px;
     margin-bottom: 5px;
     display: -webkit-flex;
@@ -43,7 +44,8 @@ div.action-menu {
     font-weight: bold;
 }
 
-.composition-icon {
+.composition-icon,
+.resource-icon {
     border-radius:50%;
     border:1px solid #eee;
     width:53px;
@@ -54,7 +56,8 @@ div.action-menu {
     text-align: center;
 }
 
-.composition-icon img {
+.composition-icon img,
+.resource-icon img {
     position: relative;
     top: 12px;
 }
@@ -159,4 +162,96 @@ ul.repository-navbar button.repository-btn {
     position: absolute;
     top: 3px;
     right: 20px;
+}
+
+.faceted-search-header {
+    border-bottom: darkgray;
+    border-bottom-style: dashed;
+    padding-bottom: 15px;
+    margin-left: 10px;
+    margin-right: -15px;
+}
+
+#faceted-search-results {
+    border-left: darkgray;
+    border-left-style: dashed;
+    padding-left: 10px;
+}
+
+#faceted-search-facets {
+    margin-right: 10px;
+}
+
+.faceted-search-container {
+    display: flex;
+    display: -webkit-flex;
+}
+
+.faceted-search-container > #faceted-search-facets {
+    flex: 1 1 30%;
+}
+
+.faceted-search-container > #faceted-search-results {
+    flex: 1 1 70%;
+}
+
+.processing-spinner {
+    margin-right: 15px;
+    margin-top: 8px;
+    padding-right: 5%;
+    margin-left: -65px;
+}
+
+.panel-heading .accordion-toggle:before {
+    font-family: 'FontAwesome';
+    content: "\f078";
+    color: #F5A623;
+    font-size: 12px;
+    margin:-3px 0 0 0;
+    line-height: 1em;
+    width:16px;
+    display: inline-block;
+    text-align: center;
+}
+
+.panel-heading .accordion-toggle.collapsed:before {
+    content: "\f054";
+}
+
+#facet-accordion label {
+    width: 100%;
+}
+
+
+.resource-problem {
+    border-color:#1589B0; /* purple */
+}
+
+.resource-problem div.ic-custom {
+    background-image: url("/static/images/ic-pieces.png");
+    background-repeat: no-repeat;
+    margin-left: 25%;
+    margin-top: 25%;
+}
+
+.resource-html {
+    border-color:#F5A623; /* green */
+}
+
+.resource-html div.ic-custom {
+    background-image: url("/static/images/ic-code.png");
+    background-repeat: no-repeat;
+    margin-left: 25%;
+    margin-top: 25%;
+}
+
+.resource-video {
+    border-color:#C24242; /* red */
+}
+
+.resource-video div.ic-custom {
+    background-image: url("/static/images/ic-video.png");
+    background-repeat: no-repeat;
+    margin-left: 35%;
+    margin-top: 25%;
 }

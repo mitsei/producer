@@ -102,23 +102,40 @@
     </div>
     <div id="search-components-menu" class="drawer drawer-right dw-xs-10 dw-sm-10 dw-md-8 dw-lg-8 fold">
         <div class="container container-search drawer-contents">
-          <div class="drawer-header input-group">
-            <input name="keyword-search" type="search"
-               class="form-control input-lg input-search"
-               placeholder="Search for terms in learning resource titles, descriptions or content..."/>
-            <span class="input-group-btn">
-              <button type="submit" aria-label="Submit" class="btn btn-default btn-lg">
-                <i aria-hidden="true" class="fa fa-search"></i>
-              </button>
-            </span>
-            <div class="pull-right">
-                <button aria-label="Close" class="btn btn-primary btn-lg close-drawer">
-                    <i aria-hidden="true" class="fa fa-times-circle"></i>
-                    <span class="sr-only">Close Add Component Drawer</span>
-                </button>
+          <div id="faceted-search-header" class="drawer-header">
+              <div class="input-group faceted-search-header">
+                  <input name="keyword-search" type="search"
+                   class="form-control input-lg input-search"
+                   placeholder="Search for terms in learning resource titles, descriptions or content..."/>
+                <span class="input-group-btn">
+                  <button type="submit" aria-label="Submit" class="btn btn-default btn-lg execute-keyword-search">
+                    <i aria-hidden="true" class="fa fa-search"></i>
+                  </button>
+                </span>
+                <div class="pull-right">
+                    <button aria-label="Close" class="btn btn-primary btn-lg close-drawer">
+                        <i aria-hidden="true" class="fa fa-times-circle"></i>
+                        <span class="sr-only">Close Add Component Drawer</span>
+                    </button>
+                </div>
+                <div class="pull-right processing-spinner hidden" aria-label="Processing wait sign">
+                    <div>
+                        <i aria-hidden="true" class="fa fa-spin fa-refresh fa-2x"></i>
+                        <span class="sr-only">Processing...</span>
+                    </div>
+                </div>
+              </div>
+          </div>
+          <div class="drawer-body">
+            <div class="faceted-search-container">
+                <div id="faceted-search-facets" class="facets">
+
+                </div>
+                <div id="faceted-search-results">
+
+                </div>
             </div>
           </div>
-
         </div>
         <div class="col-md-3">
           <div class="panel-group facet-region">
