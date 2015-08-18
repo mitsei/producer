@@ -294,6 +294,12 @@ class ItemDetails(ProducerAPIViews):
             if data['question'] and 'fileIds' in data['question']:
                 data['question']['files'] = item.get_question().get_files()
 
+            try:
+                if 'renderable_edxml' in self.data:
+                    data['texts']['edxml'] = item.get_edxml_with_aws_urls()
+            except AttributeError:
+                pass
+
             return Response(data)
         except (PermissionDenied, NotFound) as ex:
             gutils.handle_exceptions(ex)

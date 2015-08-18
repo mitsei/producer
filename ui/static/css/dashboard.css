@@ -108,9 +108,11 @@ div.ic-custom {
     margin-left: 6%;
 }
 
-.composition span.display-name {
+.composition span.display-name,
+.resource span.display-name {
     padding-left: 10px;
     font-weight: bold;
+    word-wrap: break-word;
 }
 
 div.composition-actions span {
@@ -202,7 +204,8 @@ ul.repository-navbar button.repository-btn {
     margin-left: -65px;
 }
 
-.panel-heading .accordion-toggle:before {
+.panel-heading .accordion-toggle:before,
+.show-preview:before {
     font-family: 'FontAwesome';
     content: "\f078";
     color: #F5A623;
@@ -214,7 +217,8 @@ ul.repository-navbar button.repository-btn {
     text-align: center;
 }
 
-.panel-heading .accordion-toggle.collapsed:before {
+.panel-heading .accordion-toggle.collapsed:before,
+.show-preview.collapsed:before {
     content: "\f054";
 }
 
@@ -254,4 +258,25 @@ ul.repository-navbar button.repository-btn {
     background-repeat: no-repeat;
     margin-left: 35%;
     margin-top: 25%;
+}
+
+.resource-icon {
+    flex: 0 0 50px;
+}
+
+.resource .vertical-box {
+    flex: 0 1 180px;
+}
+
+.resource-preview {
+    flex: 0 1 auto;
+}
+
+.show-preview {
+    cursor: pointer;
+}
+
+.show-preview:hover {
+    text-decoration: underline;
+    font-weight: bold;
 }
