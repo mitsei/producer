@@ -280,3 +280,7 @@ ul.repository-navbar button.repository-btn {
     text-decoration: underline;
     font-weight: bold;
 }
+
+.drawer-contents.container-search {
+    background-color: lightyellow;
+}

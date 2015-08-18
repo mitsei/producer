@@ -10,7 +10,7 @@
         <% } %>
         <% var objectType = genusTypeStr.slice(genusTypeStr.indexOf('%3A') + 3, genusTypeStr.indexOf('%40')); %>
         <% var objMap = JSON.stringify(object); %>
-        <div class="<%- objectType %> resource list-group-item" data-obj="<%- objMap %>">
+        <div class="<%- objectType %> resource list-group-item" data-run="<%- object.runName %>" data-obj="<%- objMap %>">
             <div class="resource-icon resource-<%- objectType %>">
                 <div class="ic-custom"></div>
             </div>

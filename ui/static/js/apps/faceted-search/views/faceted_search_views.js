@@ -8,17 +8,44 @@ define(["app",
         "bootstrap-drawer"],
        function(ProducerManager, Utils, FacetsTemplate, FacetResultsTemplate){
   ProducerManager.module("FacetedSearchApp.View", function(View, ProducerManager, Backbone, Marionette, $, _){
+    function cleanUpMathjax (text) {
+//        text = text.replace(/\[mathjaxinline\]/g, '\(');
+//        return text.replace(/\[\/mathjaxinline\]/g, '\)');
+        return text;
+    }
+
     function wrapText (textBlob) {
+        var mathjaxScript = $('<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/2.4-latest/MathJax.js?config=TeX-MML-AM_HTMLorMML-full">' +
+                '</script>'),
+            configMathjax = $('<script type="text/x-mathjax-config">' +
+                'MathJax.Hub.Config({' +
+                'tex2jax: {' +
+                  'inlineMath: [' +
+                    "['\\(','\\)']," +
+                    "['[mathjaxinline]','[/mathjaxinline]']" +
+                  '],' +
+                  'displayMath: [' +
+                    '["\\[","\\]"],' +
+                    "['[mathjax]','[/mathjax]']" +
+                  ']' +
+                '}' +
+              '});' +
+              'MathJax.Hub.Configured();</script>');
+
+
         if ($(textBlob).find('html').length > 0) {
             var wrapper = $(textBlob);
             if (wrapper.find('head').length > 0) {
-                wrapper.find('head').append(
-                        '<script type="text/javascript" src="https://edx-static.s3.amazonaws.com/mathjax-MathJax-727332c/MathJax.js?config=TeX-MML-AM_HTMLorMML-full">' +
-                        '</script>');
+                if (textBlob.indexOf('[mathjax') >= 0) {
+                    wrapper.find('head').append(configMathjax);
+                }
+                wrapper.find('head').append(mathjaxScript);
             } else {
                 var head = $('<head></head>');
-                head.append('<script type="text/javascript" src="https://edx-static.s3.amazonaws.com/mathjax-MathJax-727332c/MathJax.js?config=TeX-MML-AM_HTMLorMML-full">' +
-                '</script>');
+                if (textBlob.indexOf('[mathjax') >= 0) {
+                    head.append(configMathjax);
+                }
+                head.append(mathjaxScript);
                 wrapper.prepend(head);
             }
         } else {
@@ -26,12 +53,14 @@ define(["app",
                 head = $('<head></head>'),
                 body = $('<body></body>');
             body.append(textBlob);
-            head.append('<script type="text/javascript" src="https://edx-static.s3.amazonaws.com/mathjax-MathJax-727332c/MathJax.js?config=TeX-MML-AM_HTMLorMML-full">' +
-                '</script>');
+            if (textBlob.indexOf('[mathjax') >= 0) {
+                head.append(configMathjax);
+            }
+            head.append(mathjaxScript);
             wrapper.append(head);
             wrapper.append(body);
         }
-        return wrapper.prop('outerHTML');
+        return cleanUpMathjax(wrapper.prop('outerHTML'));
     }
 
     View.HeaderView = Marionette.ItemView.extend({
@@ -102,7 +131,22 @@ define(["app",
         events: {
             // on click of a facet, update the results region
             // by passing it a filtered "objects" list
-
+            'click .facet-checkbox': 'updateFacetResults'
+        },
+        updateFacetResults: function (e) {
+            // check all facets for the checked ones
+            // If none checked, unhide all objects
+            // If some are checked, hide objects that do not meet filter requirements
+            if ($('input.facet-checkbox:checked').length === 0) {
+                $('.resource').removeClass('hidden');
+            } else {
+                $('.resource').addClass('hidden');
+                _.each($('input.facet-checkbox:checked'), function (box) {
+                    var facetValue = $(box).val();
+                    $('.resource.' + facetValue).removeClass('hidden');
+                    $('.resource[data-run="' + facetValue + '"]').removeClass('hidden');
+                });
+            }
         }
     });
 

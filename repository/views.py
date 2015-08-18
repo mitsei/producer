@@ -734,10 +734,12 @@ class RepositorySearch(ProducerAPIViews):
                                         asset_counts[item_tag] += 1
 
                                         if self._showable(item_tag, run_name):
-                                            object_list.append(item.object_map)
+                                            item_map = item.object_map
+                                            item_map.update({
+                                                'runName': run_name
+                                            })
+                                            object_list.append(item_map)
                             except TypeError:
-                                asset_map = asset.object_map
-
                                 if self._query_positive(asset):
                                     add_to_run_count = True
                                     asset_tag = asset.get_asset_contents().next().genus_type.identifier
@@ -747,6 +749,11 @@ class RepositorySearch(ProducerAPIViews):
                                     asset_counts[asset_tag] += 1
 
                                     if self._showable(asset_tag, run_name):
+                                        asset_map = asset.object_map
+
+                                        asset_map.update({
+                                            'runName': run_name
+                                        })
                                         object_list.append(asset_map)
 
                             # do the counts for included assets, including enclosed ones
