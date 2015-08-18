@@ -115,7 +115,7 @@ def set_enclosed_object_provider_id(request, catalog, enclosed_object, provider_
     asset = repo.update_asset(form)
     return asset
 
-def update_asset_urls(repository, asset):
+def update_asset_urls(repository, asset, params=None):
     """update the asset URLs on assetContents with CloudFront URLs
     asset can be either the dlkit Asset or it's object map
     """
@@ -127,17 +127,24 @@ def update_asset_urls(repository, asset):
         asset_map = asset.object_map
 
     cloudfront_url_map = {}
-    for asset_content in asset_object.get_asset_contents():
+
+    for index, asset_content in enumerate(asset_object.get_asset_contents()):
         try:
             cloudfront_url_map[str(asset_content.ident)] = asset_content.get_url()
         except IllegalState:
             # does not have
             pass
+        try:
+            if params is not None:
+                if 'renderable_edxml' in params:
+                    asset_map['assetContents'][index]['text']['text'] = asset_content.get_edxml_with_aws_urls()
+        except AttributeError:
+            pass
 
     for index, asset_content in enumerate(asset_map['assetContents']):
         if asset_content['id'] in cloudfront_url_map:
             asset_content['url'] = cloudfront_url_map[asset_content['id']]
-            asset_map['assetContent'][index]['url'] = cloudfront_url_map[asset_content['id']]
+            asset_map['assetContents'][index]['url'] = cloudfront_url_map[asset_content['id']]
 
     return asset_map
 

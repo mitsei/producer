@@ -83,7 +83,7 @@ class AssetDetails(ProducerAPIViews):
                                                       asset_id,
                                                       'asset')
             asset = repository.get_asset(gutils.clean_id(asset_id))
-            asset_map = rutils.update_asset_urls(repository, asset)
+            asset_map = rutils.update_asset_urls(repository, asset, self.data)
 
             gutils.update_links(request, asset_map)
 
