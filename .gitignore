@@ -63,6 +63,8 @@ apache/django.wsgi
 log/
 
 # static files
-static/
+!ui/
+static/*
+!ui/static/*
 media/
 *.zip

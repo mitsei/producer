@@ -1,0 +1,32 @@
+{
+  "name": "bootstrap.dropdown",
+  "version": "3.3.1",
+  "homepage": "https://github.com/ungki/bootstrap.dropdown",
+  "authors": [
+    "ungki"
+  ],
+  "description": "drawer dropdown by bootstrap",
+  "main": [
+    "dropdown.js",
+    "dropdown.min.js"
+  ],
+  "keywords": [
+    "drawer",
+    "dropdown"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components"
+  ],
+  "_release": "3.3.1",
+  "_resolution": {
+    "type": "version",
+    "tag": "3.3.1",
+    "commit": "d326f0a29b0f88fc97b2288381be582e281409cf"
+  },
+  "_source": "git://github.com/ungki/bootstrap.dropdown.git",
+  "_target": "~3.3.1",
+  "_originalSource": "bootstrap.dropdown"
+}

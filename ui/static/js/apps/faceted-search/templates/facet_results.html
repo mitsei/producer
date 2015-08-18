@@ -1,0 +1,39 @@
+<!--iframe inject code from http://stackoverflow.com/questions/13439625/how-to-inject-external-js-files-to-an-iframe-->
+<div class="list-group">
+    <% _.each(objects, function (object) { %>
+        <% if (object.hasOwnProperty('assetContents')) { %>
+            <% var genusTypeStr = object.assetContents[0].genusTypeId; %>
+            <% var sourceDoc = object.assetContents[0].text.text %>
+        <% } else { %>
+            <% var genusTypeStr = object.genusTypeId; %>
+            <% var sourceDoc = object.texts.edxml %>
+        <% } %>
+        <% var objectType = genusTypeStr.slice(genusTypeStr.indexOf('%3A') + 3, genusTypeStr.indexOf('%40')); %>
+        <% var objMap = JSON.stringify(object); %>
+        <div class="<%- objectType %> resource list-group-item" data-obj="<%- objMap %>">
+            <div class="resource-icon resource-<%- objectType %>">
+                <div class="ic-custom"></div>
+            </div>
+            <div class="vertical-box">
+                <div class="vertical-content">
+                    <span class="display-name">
+                        <%- object.displayName.text %>
+                    </span>
+                    <span class="description">
+                        <%- object.description.text %>
+                    </span>
+                </div>
+                <div class="vertical-footer">
+                </div>
+            </div>
+            <div class="pull-right resource-preview">
+                <span class="show-preview collapsed">Preview Me</span>
+                <div class="hidden preview-processing">
+                    <span class="fa fa-spin fa-refresh" aria-hidden="true"></span>
+                    <span class="sr-only">Processing the preview</span>
+                </div>
+                <iframe class="preview-frame hidden" srcdoc="<%- sourceDoc %>"></iframe>
+            </div>
+        </div>
+    <% }); %>
+</div>

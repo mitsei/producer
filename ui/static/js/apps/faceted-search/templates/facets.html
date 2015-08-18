@@ -1,0 +1,28 @@
+<div class="panel-group" id="facet-accordion" role="tablist" aria-multiselectable="true">
+    <% _.each(facets, function (cluster, ind) { %>
+        <div class="panel panel-default">
+        <div class="panel-heading" role="tab" id="heading-<%- ind %>">
+          <h4 class="panel-title">
+            <a class="accordion-toggle" role="button" data-toggle="collapse" href="#collapse-<%- ind %>" aria-expanded="true" aria-controls="collapse-<%- ind %>">
+              <%- ind %>
+            </a>
+          </h4>
+        </div>
+        <div id="collapse-<%- ind %>" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="heading-<%- ind %>">
+          <div class="panel-body">
+              <% _.each(cluster, function (item) { %>
+                <div class="checkbox">
+                  <label>
+                    <input type="checkbox" value="">
+                      <%- item[0] %>
+                      <span class="badge pull-right">
+                          <%- item[1] %>
+                      </span>
+                  </label>
+                </div>
+              <% }); %>
+          </div>
+        </div>
+      </div>
+    <% }); %>
+</div>
