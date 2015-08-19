@@ -39,7 +39,8 @@ div.action-menu {
     flex: 0 1 20px;
 }
 
-.vertical-footer span:hover {
+.vertical-footer span.display-name:hover,
+.vertical-footer span.description:hover {
     cursor: pointer;
     font-weight: bold;
 }
@@ -193,7 +194,7 @@ ul.repository-navbar button.repository-btn {
     flex: 1 1 30%;
 }
 
-.faceted-search-container > #faceted-search-results {
+.faceted-search-container > #faceted-search-results-wrapper {
     flex: 1 1 70%;
 }
 
@@ -228,7 +229,7 @@ ul.repository-navbar button.repository-btn {
 
 
 .resource-problem {
-    border-color:#1589B0; /* purple */
+    border-color:#1589B0; /* blue */
 }
 
 .resource-problem div.ic-custom {
@@ -239,7 +240,7 @@ ul.repository-navbar button.repository-btn {
 }
 
 .resource-html {
-    border-color:#F5A623; /* green */
+    border-color:#F5A623; /* yellow */
 }
 
 .resource-html div.ic-custom {
@@ -249,14 +250,16 @@ ul.repository-navbar button.repository-btn {
     margin-top: 25%;
 }
 
-.resource-video {
-    border-color:#C24242; /* red */
+.resource-video,
+.resource-videoalpha {
+    border-color:#5C7694; /* navy blue */
 }
 
-.resource-video div.ic-custom {
+.resource-video div.ic-custom,
+.resource-videoalpha div.ic-custom {
     background-image: url("/static/images/ic-video.png");
     background-repeat: no-repeat;
-    margin-left: 35%;
+    margin-left: 25%;
     margin-top: 25%;
 }
 
@@ -283,4 +286,46 @@ ul.repository-navbar button.repository-btn {
 
 .drawer-contents.container-search {
     background-color: lightyellow;
+}
+
+.facet-results-list {
+    margin-top: -5px;
+}
+
+.items-per-page-wrapper {
+    margin-top: 10px;
+}
+
+#items-per-page {
+    width: 25%;
+    min-width: 50px;
+    display: inline-block;
+}
+
+#items-label {
+    display: inline-block;
+    width: 65% !important;
+}
+
+#faceted-search-results-wrapper {
+    display: flex;
+    flex-direction: column;
+    display: -webkit-flex;
+}
+
+#faceted-search-results {
+    flex: 1 1 100%;
+}
+
+#faceted-search-pagination {
+    flex: 1 1 50px;
+}
+
+.paginator {
+    margin-left: 30%;
+}
+
+.resource-run {
+    font-size: 0.7em;
+    color: gray;
 }

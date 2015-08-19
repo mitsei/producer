@@ -1,5 +1,5 @@
 <!--iframe inject code from http://stackoverflow.com/questions/13439625/how-to-inject-external-js-files-to-an-iframe-->
-<div class="list-group">
+<div class="list-group facet-results-list">
     <% _.each(objects, function (object) { %>
         <% if (object.hasOwnProperty('assetContents')) { %>
             <% var genusTypeStr = object.assetContents[0].genusTypeId; %>
@@ -24,6 +24,9 @@
                     </span>
                 </div>
                 <div class="vertical-footer">
+                    <span class="resource-run">
+                        <%- object.runName %>
+                    </span>
                 </div>
             </div>
             <div class="pull-right resource-preview">

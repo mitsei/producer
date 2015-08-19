@@ -68,3 +68,4 @@ static/*
 !ui/static/*
 media/
 *.zip
+tmp.xml

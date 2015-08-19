@@ -14,6 +14,7 @@ requirejs.config({
         'bootstrap-drawer'      : 'vendor/bootstrap-drawer/dist/js/drawer.min',
         'csrf'                  : 'vendor/csrf',
         'jquery'                : 'vendor/jquery/dist/jquery.min',
+        'jquery-bootpag'        : 'vendor/jquery-bootpag/lib/jquery.bootpag.min',
         'jquery-ui'             : 'vendor/jqueryui/jquery-ui.min',
         'marionette'            : 'vendor/marionette/lib/backbone.marionette.min',
         'mathjax'               : 'https://edx-static.s3.amazonaws.com/mathjax-MathJax-727332c/MathJax.js?config=TeX-MML-AM_HTMLorMML-full',
@@ -44,6 +45,9 @@ requirejs.config({
         'csrf': {
             deps: ['jquery'],
             exports: 'csrftoken'
+        },
+        'jquery-bootpag': {
+            deps: ['jquery', 'bootstrap']
         },
         'jquery-ui': {
             deps: ['jquery']

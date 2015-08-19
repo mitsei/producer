@@ -648,7 +648,6 @@ class RepositorySearch(ProducerAPIViews):
 
         query_terms = [qt.lower().encode('utf-8') for qt in self.query_params]
         if 'repository.Asset' in str(resource.ident):
-            print str(resource.ident)
             text_haystack = '{} {} {}'.format(resource.display_name.text.encode('utf-8'),
                                               resource.description.text.encode('utf-8'),
                                               resource.get_asset_contents().next().get_text().text.encode('utf-8'))
