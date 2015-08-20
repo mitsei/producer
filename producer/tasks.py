@@ -34,6 +34,7 @@ class ErrorHandlingTask(Task):
                             id_list=[msg],
                             status='error')
         default_storage.delete(targs[0])
+        # shutil.rmtree(extract_path)
 
     def on_success(self, retval, task_id, targs, tkwargs):
         """
@@ -51,6 +52,7 @@ class ErrorHandlingTask(Task):
                             id_list=["Upload successful. You may now view your course."],
                             status='success')
         default_storage.delete(targs[0])
+        # shutil.rmtree(extract_path)
 
 
 @app.task(base=ErrorHandlingTask)

@@ -22,10 +22,11 @@ class RabbitMQReceiver(object):
                                      routing_key=routing_key,
                                      body=json.dumps(data))
 
-    def _pub_wrapper(self, verb, obj_type='', id_list=None, status=''):
+    def _pub_wrapper(self, verb, obj_type='', notification_id=None, id_list=None, status=''):
         ids = [str(i) for i in id_list]
         message = {
             'data': ids,
+            'id': str(notification_id),
             'objType': obj_type.lower(),
             'username': self.username,
             'verb': verb
@@ -43,10 +44,59 @@ class RabbitMQReceiver(object):
         verb = item.split('_')[0]
         obj_type = item.split('_')[-1]
         if (verb in ['new', 'changed', 'deleted'] and
-                obj_type in ['resources', 'items', 'banks', 'repositories']):
+                obj_type in ['assets', 'resources', 'items', 'banks', 'repositories']):
 
             def wrapper(*args, **kwargs):
-                return self._pub_wrapper(verb, obj_type, args[0])
+                return self._pub_wrapper(verb, obj_type, args[0], args[1])
             return wrapper
         raise AttributeError
 
+
+class SimpleAssetReceiver(object):
+    """The asset receiver is the consumer supplied interface for receiving notifications pertaining to new, updated or deleted
+        ``Asset`` objects."""
+
+    def __init__(self):
+        self._notifications = list()
+
+    def new_assets(self, notification_id, asset_ids):
+        """The callback for notifications of new assets.
+
+        :param notification_id: the notification ``Id``
+        :type notification_id: ``osid.id.Id``
+        :param asset_ids: the ``Ids`` of the new ``Assets``
+        :type asset_ids: ``osid.id.IdList``
+
+
+        *compliance: mandatory -- This method must be implemented.*
+
+        """
+        self._notifications.append({str(notification_id): asset_ids})
+
+    def changed_assets(self, notification_id, asset_ids):
+        """The callback for notification of updated assets.
+
+        :param notification_id: the notification ``Id``
+        :type notification_id: ``osid.id.Id``
+        :param asset_ids: the ``Ids`` of the updated ``Assets``
+        :type asset_ids: ``osid.id.IdList``
+
+
+        *compliance: mandatory -- This method must be implemented.*
+
+        """
+        self._notifications.append({str(notification_id): asset_ids})
+
+    def deleted_assets(self, notification_id, asset_ids):
+        """the callback for notification of deleted assets.
+
+        :param notification_id: the notification ``Id``
+        :type notification_id: ``osid.id.Id``
+        :param asset_ids: the ``Ids`` of the deleted ``Assets``
+        :type asset_ids: ``osid.id.IdList``
+
+
+        *compliance: mandatory -- This method must be implemented.*
+
+        """
+        self._notifications.append({str(notification_id): asset_ids})

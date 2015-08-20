@@ -39,8 +39,7 @@ div.action-menu {
     flex: 0 1 20px;
 }
 
-.vertical-footer span.display-name:hover,
-.vertical-footer span.description:hover {
+.vertical-footer span.clickable:hover {
     cursor: pointer;
     font-weight: bold;
 }
@@ -328,4 +327,8 @@ ul.repository-navbar button.repository-btn {
 .resource-run {
     font-size: 0.7em;
     color: gray;
+}
+
+#notifications-region {
+    z-index: 999;
 }

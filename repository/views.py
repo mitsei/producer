@@ -724,20 +724,20 @@ class RepositorySearch(ProducerAPIViews):
                                 # these are assessments, too)
                                 assessment = asset.get_enclosed_object()
                                 items = bank.get_assessment_items(assessment.ident)
-                                for item in items:
-                                    if self._query_positive(item):
-                                        add_to_run_count = True
-                                        item_tag = item.genus_type.identifier
-                                        if item_tag not in asset_counts:
-                                            asset_counts[item_tag] = 0
-                                        asset_counts[item_tag] += 1
+                                filtered_items = [i for i in items if self._query_positive(i)]
+                                for item in filtered_items:
+                                    add_to_run_count = True
+                                    item_tag = item.genus_type.identifier
+                                    if item_tag not in asset_counts:
+                                        asset_counts[item_tag] = 0
+                                    asset_counts[item_tag] += 1
 
-                                        if self._showable(item_tag, run_name):
-                                            item_map = item.object_map
-                                            item_map.update({
-                                                'runName': run_name
-                                            })
-                                            object_list.append(item_map)
+                                    # if self._showable(item_tag, run_name):
+                                    item_map = item.object_map
+                                    item_map.update({
+                                        'runName': run_name
+                                    })
+                                    object_list.append(item_map)
                             except TypeError:
                                 if self._query_positive(asset):
                                     add_to_run_count = True
@@ -747,13 +747,13 @@ class RepositorySearch(ProducerAPIViews):
                                         asset_counts[asset_tag] = 0
                                     asset_counts[asset_tag] += 1
 
-                                    if self._showable(asset_tag, run_name):
-                                        asset_map = asset.object_map
+                                    # if self._showable(asset_tag, run_name):
+                                    asset_map = asset.object_map
 
-                                        asset_map.update({
-                                            'runName': run_name
-                                        })
-                                        object_list.append(asset_map)
+                                    asset_map.update({
+                                        'runName': run_name
+                                    })
+                                    object_list.append(asset_map)
 
                             # do the counts for included assets, including enclosed ones
                             if add_to_run_count:

@@ -69,3 +69,6 @@ static/*
 media/
 *.zip
 tmp.xml
+
+oplog.timestamp
+mongo-connector.log*
