@@ -187,6 +187,23 @@ class DocManager(DocManagerBase):
                 asset_document = self.elastic.get(index=index, doc_type='Asset',
                                                   id=u(asset_doc_id))
 
+                if 'enclosedObjectId' in asset_document['_source']:
+                    am = get_session_data(dummy_request, 'am')
+                    bank = am.get_bank(clean_id(asset_document['_source']['repositoryId']))
+                    items = bank.get_assessment_items(
+                        clean_id(asset_document['_source']['enclosedObjectId']))
+                    try:
+                        item_text = ' '.join([i.get_text('edxml') for i in items])
+                    except AttributeError:
+                        item_text = ''
+                else:
+                    item_text = ' '.join([ac['text']['text']
+                                          for ac in asset_document['_source']['assetContents']])
+                full_text = '{0} {1} {2}'.format(
+                    asset_document['_source']['displayName']['text'],
+                    asset_document['_source']['description']['text'],
+                    item_text)
+
                 denormalized_asset = asset_document['_source'].copy()
                 add_metadata(denormalized_asset,
                              'runs',
@@ -197,6 +214,9 @@ class DocManager(DocManagerBase):
                 add_metadata(denormalized_asset,
                              'domains',
                              str(domain_repo.ident))
+                add_metadata(denormalized_asset,
+                             'fullText',
+                             full_text)
 
                 updated_asset = self.apply_update(asset_document['_source'], denormalized_asset)
                 # _id is immutable in MongoDB, so won't have changed in update

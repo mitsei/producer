@@ -1,3 +1,5 @@
+import requests
+
 from bson.errors import InvalidId
 
 from rest_framework.response import Response
@@ -10,7 +12,7 @@ from dlkit_django.errors import PermissionDenied, InvalidArgument, IllegalState,
     NotFound, NoAccess
 from dlkit_django.primordium import Type
 from dlkit.mongo.records.types import EDX_COMPOSITION_GENUS_TYPES,\
-    COMPOSITION_RECORD_TYPES, REPOSITORY_GENUS_TYPES
+    COMPOSITION_RECORD_TYPES, REPOSITORY_GENUS_TYPES, OSID_OBJECT_RECORD_TYPES
 
 from dysonx.dysonx import get_or_create_user_repo
 
@@ -22,6 +24,7 @@ from producer.views import ProducerAPIViews
 EDX_COMPOSITION_RECORD_TYPE = Type(**COMPOSITION_RECORD_TYPES['edx-composition'])
 EDX_COMPOSITION_GENUS_TYPES_STR = [str(Type(**genus_type))
                                    for k, genus_type in EDX_COMPOSITION_GENUS_TYPES.iteritems()]
+ENCLOSURE_TYPE = Type(**OSID_OBJECT_RECORD_TYPES['enclosure'])
 
 
 def get_facets_values(params, facet_prefix):
@@ -658,14 +661,8 @@ class RepositorySearch(ProducerAPIViews):
         text_haystack = text_haystack.lower()
         return any(qt in text_haystack for qt in query_terms)
 
-    def _showable(self, resource_tag, course_run_name):
-        return ((self.facet_resource_types is None or resource_tag in self.facet_resource_types) and
-                (self.facet_course_runs is None or course_run_name in self.facet_course_runs))
-
     def get(self, request, repository_id, format=None):
         try:
-            self.facet_resource_types = get_facets_values(self.data, 'resource_type_exact')
-            self.facet_course_runs = get_facets_values(self.data, 'course_exact')
             self.query_params = get_query_values(self.data.get('q', None))
 
             facets = {
@@ -690,6 +687,9 @@ class RepositorySearch(ProducerAPIViews):
                     for course in repo_nodes['childNodes']
                     for r in course['childNodes']]
 
+            domain_repo = self.rm.get_repository(gutils.clean_id(repository_id))
+            domain_repo.use_federated_repository_view()
+
             # First, get IDs of all assets that match text of the query param
             # in the user_repo,
             # and also the assessment items in the bank.
@@ -701,8 +701,15 @@ class RepositorySearch(ProducerAPIViews):
             # else:
             #     asset_querier = user_repo.get_asset_query()
             #     asset_querier.match_keyword()
-
             for run_pkg in runs:
+                if self.query_params is None or self.query_params == ['']:
+                    all_domain_assets = domain_repo.get_assets()  # generator so need to call this each time
+                else:
+                    asset_querier = domain_repo.get_asset_query()
+                    for term in self.query_params:
+                        asset_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
+                    all_domain_assets = domain_repo.get_assets_by_query(asset_querier)
+
                 course_name = run_pkg[0]
                 run = run_pkg[1]
 
@@ -710,57 +717,48 @@ class RepositorySearch(ProducerAPIViews):
                                            run['displayName']['text'])
 
                 course_run_counts[run_name] = 0
-
-                services_repo = self.rm.get_repository(gutils.clean_id(run['id']))
-                for composition in self.rm.get_compositions_by_repository(services_repo.ident):
-                    # get the assets! -- finally
+                for asset in all_domain_assets:
                     try:
-                        assets = services_repo.get_composition_assets(composition.ident)
-                        for asset in assets:
-                            add_to_run_count = False
+                        asset_tag = asset.get_asset_contents().next().genus_type.identifier
 
-                            try:
-                                # for now, assume you want the item of the assessment (assume
-                                # these are assessments, too)
-                                assessment = asset.get_enclosed_object()
-                                items = bank.get_assessment_items(assessment.ident)
-                                filtered_items = [i for i in items if self._query_positive(i)]
-                                for item in filtered_items:
-                                    add_to_run_count = True
-                                    item_tag = item.genus_type.identifier
-                                    if item_tag not in asset_counts:
-                                        asset_counts[item_tag] = 0
-                                    asset_counts[item_tag] += 1
+                        if asset_tag not in asset_counts:
+                            asset_counts[asset_tag] = 0
+                        asset_counts[asset_tag] += 1
 
-                                    # if self._showable(item_tag, run_name):
-                                    item_map = item.object_map
-                                    item_map.update({
-                                        'runName': run_name
-                                    })
-                                    object_list.append(item_map)
-                            except TypeError:
-                                if self._query_positive(asset):
-                                    add_to_run_count = True
-                                    asset_tag = asset.get_asset_contents().next().genus_type.identifier
+                        asset_map = asset.object_map
 
-                                    if asset_tag not in asset_counts:
-                                        asset_counts[asset_tag] = 0
-                                    asset_counts[asset_tag] += 1
+                        asset_map.update({
+                            'runName': run_name
+                        })
+                        object_list.append(asset_map)
 
-                                    # if self._showable(asset_tag, run_name):
-                                    asset_map = asset.object_map
+                        # do the counts for included assets, including enclosed ones
+                        course_run_counts[run_name] += 1
+                    except StopIteration:
+                        pass # no asset contents
 
-                                    asset_map.update({
-                                        'runName': run_name
-                                    })
-                                    object_list.append(asset_map)
+                # now check for enclosed assets
+                run_repo = self.rm.get_repository(gutils.clean_id(run['id']))
+                querier = run_repo.get_asset_query()
+                querier.match_record_type(ENCLOSURE_TYPE, True)
+                enclosed_assets = run_repo.get_assets_by_query(querier)
+                for asset in enclosed_assets:
+                    assessment = asset.get_enclosed_object()
+                    items = bank.get_assessment_items(assessment.ident)
+                    filtered_items = [i for i in items if self._query_positive(i)]
+                    for item in filtered_items:
+                        item_tag = item.genus_type.identifier
+                        if item_tag not in asset_counts:
+                            asset_counts[item_tag] = 0
+                        asset_counts[item_tag] += 1
 
-                            # do the counts for included assets, including enclosed ones
-                            if add_to_run_count:
-                                course_run_counts[run_name] += 1
+                        item_map = item.object_map
+                        item_map.update({
+                            'runName': run_name
+                        })
+                        object_list.append(item_map)
+                        course_run_counts[run_name] += 1
 
-                    except NotFound:
-                        pass
             for k, v in asset_counts.iteritems():
                 facets['resource_type'].append((k, v))
 

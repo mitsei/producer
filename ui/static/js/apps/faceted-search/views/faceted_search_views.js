@@ -94,10 +94,25 @@ define(["app",
                 keywords = $e.val();
 
             if (e.keyCode === 13) {
-                this.getKeywordSearchResults(keywords);
+                this.triggerQuery(keywords);
             }
         },
         getKeywordSearchResults: function (keywords) {
+            var _this = this;
+            $('#search-components-menu').unbind('shown.bs.drawer')
+                .on('shown.bs.drawer', function () {
+                _this.triggerQuery(keywords);
+            });
+        },
+        keywordFilter: function (e) {
+            var keywords = $('.input-search').val();
+
+            this.triggerQuery(keywords);
+        },
+        toggleDrawer: function () {
+            $('#search-components-menu').drawer('toggle');
+        },
+        triggerQuery: function (keywords) {
             // show spinner while searching
             $('.processing-spinner').removeClass('hidden');
             $.ajax({
@@ -115,14 +130,6 @@ define(["app",
                 // remove spinner
                 $('.processing-spinner').addClass('hidden');
             });
-        },
-        keywordFilter: function (e) {
-            var keywords = $('.input-search').val();
-
-            this.getKeywordSearchResults(keywords);
-        },
-        toggleDrawer: function () {
-            $('#search-components-menu').drawer('toggle');
         }
     });
 

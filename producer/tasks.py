@@ -3,6 +3,9 @@ Celery tasks for import module.
 """
 from __future__ import unicode_literals
 
+import os
+import shutil
+
 from celery import Task
 from django.core.files.storage import default_storage
 
@@ -34,7 +37,10 @@ class ErrorHandlingTask(Task):
                             id_list=[msg],
                             status='error')
         default_storage.delete(targs[0])
-        # shutil.rmtree(extract_path)
+        extracted_path = targs[0].replace('.zip', '').replace('.tar.gz', '')
+        if os.path.isdir(extracted_path):
+            shutil.rmtree(extracted_path)
+
 
     def on_success(self, retval, task_id, targs, tkwargs):
         """
@@ -52,7 +58,9 @@ class ErrorHandlingTask(Task):
                             id_list=["Upload successful. You may now view your course."],
                             status='success')
         default_storage.delete(targs[0])
-        # shutil.rmtree(extract_path)
+        extracted_path = targs[0].replace('.zip', '').replace('.tar.gz', '')
+        if os.path.isdir(extracted_path):
+            shutil.rmtree(extracted_path)
 
 
 @app.task(base=ErrorHandlingTask)
