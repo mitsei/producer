@@ -178,7 +178,7 @@ define(["app",
                         } else {
                             var genusTypeStr = obj.assetContents[0].genusTypeId;
                         }
-                        if (obj.runName == facetValue ||
+                        if (obj.runNames.indexOf(facetValue) >= 0 ||
                             Utils.parseGenusType(genusTypeStr) == facetValue) {
                             filteredObjects.push(obj);
                         }
