@@ -1,3 +1,33 @@
-<div class="repositoryAsset">
-    <%- obj.displayName.text %>
+<div class="<%- resourceType %> resource-object-wrapper" data-obj="<%- rawObject %>">
+    <div class="resource-row">
+        <div class="drag-handles"></div>
+        <div class="toggle-me"></div>
+        <div class="resource-icon resource-<%- resourceType %>">
+            <div class="ic-custom"></div>
+        </div>
+        <div class="vertical-box">
+            <div class="vertical-content">
+                <span class="display-name">
+                    <%- resource.displayName.text %>
+                </span>
+                <span class="description">
+                    <%- resource.description.text %>
+                </span>
+            </div>
+            <div class="vertical-footer">
+                <div class="resource-actions">
+                    <span class="preview-resource clickable">
+                        <i aria-hidden="true" class="fa fa-eye"></i>
+                        Preview
+                    </span>
+                    <span class="export-resource clickable">
+                        <i aria-hidden="true" class="fa fa-arrow-right"></i>
+                        Export
+                    </span>
+                </div>
+            </div>
+        </div>
+        <div class="pull-right resource-move-options">
+        </div>
+    </div>
 </div>

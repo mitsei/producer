@@ -403,8 +403,6 @@ class CompositionsList(ProducerAPIViews):
                     str(Type(**EDX_COMPOSITION_GENUS_TYPES['chapter'])))
                 for chapter in chapters:
                     compositions.append(self._get_map_with_children(chapter))
-                # hack...
-                compositions = sorted(compositions, key=lambda k: k['id'])
             else:
                 allowable_query_terms = ['displayName', 'description', 'course', 'chapter',
                                          'sequential', 'split_test', 'vertical']
@@ -426,7 +424,8 @@ class CompositionsList(ProducerAPIViews):
                                                    'are allowed.')
                 else:
                     compositions = composition_lookup_session.get_compositions()
-
+            # hack...
+            compositions = sorted(compositions, key=lambda k: k['id'])
             data = gutils.extract_items(request, compositions)
 
             return Response(data)
@@ -650,8 +649,8 @@ class RepositorySearch(ProducerAPIViews):
                                                   include_siblings=False)
         repo_nodes = repo_nodes.get_object_node_map()
 
-        runs = [(r['id'], '{0}, {1}'.format(course['displayName']['text'],
-                                            r['displayName']['text']))
+        runs = [(gutils.clean_id(r['id']).identifier, '{0}, {1}'.format(course['displayName']['text'],
+                                                                        r['displayName']['text']))
                 for course in repo_nodes['childNodes']
                 for r in course['childNodes']]
 
@@ -663,11 +662,17 @@ class RepositorySearch(ProducerAPIViews):
 
     def _get_run_names(self, run_map, asset_map):
         names = []
-        if asset_map['repositoryId'] in run_map:
-            names.append(run_map[asset_map['repositoryId']])
+        if 'repository.Asset' in asset_map['id']:
+            key = 'repositoryId'
+        else:
+            key = 'bankId'
+        if asset_map[key] in run_map:
+            identifier = gutils.clean_id(asset_map[key]).identifier
+            names.append(run_map[identifier])
         for assigned_repo_id in asset_map['assignedCatalogIds']:
-            if assigned_repo_id in run_map:
-                names.append(run_map[assigned_repo_id])
+            identifier = gutils.clean_id(assigned_repo_id).identifier
+            if identifier in run_map:
+                names.append(run_map[identifier])
         return names
 
 
@@ -716,13 +721,8 @@ class RepositorySearch(ProducerAPIViews):
             # Then iterate through runs, and only accept items / assets
             # whose IDs are in the list. If no query params, then
             # just iterate through.
-            # if self.query_params is None or len(self.query_params) == 0:
-            #     pass
-            # else:
-            #     asset_querier = user_repo.get_asset_query()
-            #     asset_querier.match_keyword()
             if self.query_params is None or self.query_params == ['']:
-                all_domain_assets = domain_repo.get_assets()  # generator so need to call this each time
+                all_domain_assets = domain_repo.get_assets()
             else:
                 asset_querier = domain_repo.get_asset_query()
                 for term in self.query_params:
@@ -751,34 +751,39 @@ class RepositorySearch(ProducerAPIViews):
                             course_run_counts[run_name] = 0
                         course_run_counts[run_name] += 1
                 except StopIteration:
-                    pass # no asset contents
+                    pass # no asset contents / enclosed asset
 
             # now check for enclosed assets
-            querier = domain_repo.get_asset_query()
-            querier.match_record_type(ENCLOSURE_TYPE, True)
-            enclosed_assets = domain_repo.get_assets_by_query(querier)
-            for asset in enclosed_assets:
-                assessment = asset.get_enclosed_object()
+            # ASSUME that all items in the related bank are from
+            # enclosed assets
+            domain_bank = self.am.get_bank(domain_repo.ident)
+            domain_bank.use_federated_bank_view()
 
-                run_names = self._get_run_names(run_map, asset.object_map)
-                items = bank.get_assessment_items(assessment.ident)
-                filtered_items = [i for i in items if self._query_positive(i)]
-                for item in filtered_items:
-                    item_tag = item.genus_type.identifier
-                    if item_tag not in asset_counts:
-                        asset_counts[item_tag] = 0
-                    asset_counts[item_tag] += 1
+            if self.query_params is None or self.query_params == ['']:
+                all_domain_items = domain_bank.get_items()
+            else:
+                item_querier = domain_bank.get_item_query()
+                for term in self.query_params:
+                    item_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
+                all_domain_items = domain_bank.get_items_by_query(item_querier)
 
-                    item_map = item.object_map
+            for item in all_domain_items:
+                run_names = self._get_run_names(run_map, item.object_map)
+                item_tag = item.genus_type.identifier
+                if item_tag not in asset_counts:
+                    asset_counts[item_tag] = 0
+                asset_counts[item_tag] += 1
 
-                    item_map.update({
-                        'runNames': '; '.join(run_names)
-                    })
-                    object_list.append(item_map)
-                    for run_name in run_names:
-                        if run_name not in course_run_counts:
-                            course_run_counts[run_name] = 0
-                        course_run_counts[run_name] += 1
+                item_map = item.object_map
+
+                item_map.update({
+                    'runNames': '; '.join(run_names)
+                })
+                object_list.append(item_map)
+                for run_name in run_names:
+                    if run_name not in course_run_counts:
+                        course_run_counts[run_name] = 0
+                    course_run_counts[run_name] += 1
 
             for k, v in asset_counts.iteritems():
                 facets['resource_type'].append((k, v))

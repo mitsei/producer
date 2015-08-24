@@ -15,6 +15,10 @@ define(["jquery", "underscore"],
             });
         };
 
+        utils.doneProcessing = function () {
+            $('.nav > .processing-spinner').addClass('hidden');
+        };
+
         utils.getMatchingDomainOption = function (path) {
             var domainRepoOptions = $('.repositories-menu li a'),
                 domainMatch;
@@ -38,6 +42,10 @@ define(["jquery", "underscore"],
         utils.parseGenusType = function (genusTypeStr) {
             return genusTypeStr.slice(genusTypeStr.indexOf('%3A') + 3,
                                       genusTypeStr.indexOf('%40'));
+        };
+
+        utils.processing = function () {
+            $('.nav > .processing-spinner').removeClass('hidden');
         };
 
         utils.selectedRepoId = function (path) {

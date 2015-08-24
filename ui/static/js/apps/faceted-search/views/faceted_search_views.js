@@ -252,6 +252,15 @@ define(["app",
                 objects: serializedModel.options.objects
             });
         },
+        onShow: function () {
+            // initialize the sortables here and connect to the course view
+            $('div.resource').draggable({
+                handle: 'div.drag-handles',
+                helper: 'clone',
+                revert: 'invalid',
+                connectToSortable: '#composition-region'
+            });
+        },
         events: {
             'click .show-preview': 'togglePreview'
         },
@@ -282,6 +291,7 @@ define(["app",
                     $e.toggleClass('collapsed');
 
                     if (objId.indexOf('assessment.Item') >= 0) {
+//                        $target.attr('srcdoc', data['texts']['edxml']);
                         $target.attr('srcdoc', wrapText(data['texts']['edxml']));
                     } else {
                         assetText = data['assetContents'][0]['text']['text'];
@@ -294,9 +304,14 @@ define(["app",
                             $target[0].removeAttribute('srcdoc');
                             $target.attr('src', '//www.youtube.com/embed/' + youtubeId);
                         } else {
+//                            $target.attr('srcdoc', assetText);
                             $target.attr('srcdoc', wrapText(assetText));
                         }
                     }
+
+//                    var mathjaxScript = $('<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/2.4-latest/MathJax.js?config=TeX-MML-AM_HTMLorMML-full">' +
+//                        '</script>');
+//                    $target.contents()[0].head.appendChild(mathjaxScript[0]);
                 }).always(function () {
                     // remove spinner
                     $spinner.addClass('hidden');

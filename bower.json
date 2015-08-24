@@ -26,11 +26,11 @@
   "dependencies": {
     "backbone": "~1.2.1",
     "bootstrap": "~3.3.5",
-    "fontawesome": "~4.3.0",
-    "lodash": "~3.10.0",
-    "requirejs": "~2.1.20",
     "bootstrap-drawer": "~1.0.1",
-    "jquery-bootpag": "git@github.com:botmonster/jquery-bootpag.git#~1.0.7"
+    "fontawesome": "~4.3.0",
+    "jquery-bootpag": "git@github.com:botmonster/jquery-bootpag.git#~1.0.7",
+    "lodash": "~3.10.0",
+    "requirejs": "~2.1.20"
   },
   "devDependencies": {
     "marionette": "~2.4.2",
