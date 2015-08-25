@@ -80,8 +80,11 @@ define([
                 }
 
                 ProducerManager.Routers.trigger('start');
-//                ProducerManager.startSubApp("NavbarApp");
 
+                // http://stackoverflow.com/questions/5902822/stopping-fixed-position-scrolling-at-a-certain-point
+                $(window).scroll(function(){
+                    $("#preview-region").css("top", Math.max(0, 115 - $(this).scrollTop()));
+                });
                 Backbone.history.start();
             });
         }

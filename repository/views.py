@@ -47,6 +47,40 @@ def get_query_values(params):
     return params
 
 
+class CompositionMapMixin(object):
+    def _get_map_with_children(self, obj, renderable=False):
+        obj_map = obj.object_map
+        obj_map['children'] = []
+        for child in obj.get_children():
+            obj_map['children'].append(self._get_map_with_children(child))
+        obj_map['assets'] = []
+        try:
+            asset_repo = self.rm.get_repository(gutils.clean_id(obj_map['repositoryId']))
+            for asset in asset_repo.get_composition_assets(obj.ident):
+                asset_map = asset.object_map
+                if 'enclosedObjectId' in asset_map:
+                    assessment = asset.get_enclosed_object()
+                    for item in self.am.get_bank(
+                            gutils.clean_id(assessment.object_map['bankId'])).get_assessment_items(assessment.ident):
+                        if renderable:
+                            item_map = item.object_map
+                            item_map['texts']['edxml'] = item.get_edxml_with_aws_urls()
+                            obj_map['assets'].append(item_map)
+                        else:
+                            obj_map['assets'].append(item.object_map)
+                else:
+                    if renderable:
+                        obj_map['assets'].append(
+                            rutils.update_asset_urls(asset_repo,
+                                                     asset,
+                                                     {'renderable_edxml': True}))
+                    else:
+                        obj_map['assets'].append(asset_map)
+        except NotFound:
+            # no assets
+            pass
+        return obj_map
+
 class AssetDetails(ProducerAPIViews):
     """
     Get asset details
@@ -267,7 +301,7 @@ class CompositionAssetsList(ProducerAPIViews):
             gutils.handle_exceptions(ex)
 
 
-class CompositionDetails(ProducerAPIViews):
+class CompositionDetails(ProducerAPIViews, CompositionMapMixin):
     """
     Get asset details
     api/v1/repository/compositions/<composition_id>/
@@ -306,7 +340,12 @@ class CompositionDetails(ProducerAPIViews):
                                                       'composition')
 
             composition = repository.get_composition(gutils.clean_id(composition_id))
-            composition_map = composition.object_map
+            if 'fullMap' in self.data:
+                # add in the assets and children compositions, in renderable_edxml format
+                composition_map = self._get_map_with_children(composition, renderable=True)
+            else:
+                composition_map = composition.object_map
+
             gutils.update_links(request, composition_map)
 
             return Response(composition_map)
@@ -358,7 +397,7 @@ class CompositionDetails(ProducerAPIViews):
             gutils.handle_exceptions(ex)
 
 
-class CompositionsList(ProducerAPIViews):
+class CompositionsList(ProducerAPIViews, CompositionMapMixin):
     """
     Get or add compositions to a repository
     api/v1/repository/compositions/
@@ -375,25 +414,6 @@ class CompositionsList(ProducerAPIViews):
         "description": "high",
         "childIds": ["abc@1:MIT"]}
     """
-    def _get_map_with_children(self, obj):
-        obj_map = obj.object_map
-        obj_map['children'] = []
-        for child in obj.get_children():
-            obj_map['children'].append(self._get_map_with_children(child))
-        obj_map['assets'] = []
-        try:
-            for asset in self.rm.get_repository(
-                    gutils.clean_id(obj_map['repositoryId'])).get_composition_assets(obj.ident):
-                asset_map = asset.object_map
-                if 'enclosedObjectId' in asset_map:
-                    obj_map['assets'].append(asset.get_enclosed_object().object_map)
-                else:
-                    obj_map['assets'].append(asset_map)
-        except NotFound:
-            # no assets
-            pass
-        return obj_map
-
     def get(self, request, repository_id=None, format=None):
         try:
             if repository_id is None:
@@ -687,25 +707,6 @@ class RepositorySearch(ProducerAPIViews):
                 names.append(run_map[identifier])
         return names
 
-
-    def _query_positive(self, resource):
-        """takes a DLKit object and checks if any of the self.query_params are found in
-        the edxml / description / displayName"""
-        if self.query_params is None or len(self.query_params) == 0:
-            return True
-
-        query_terms = [qt.lower().encode('utf-8') for qt in self.query_params]
-        if 'repository.Asset' in str(resource.ident):
-            text_haystack = '{} {} {}'.format(resource.display_name.text.encode('utf-8'),
-                                              resource.description.text.encode('utf-8'),
-                                              resource.get_asset_contents().next().get_text().text.encode('utf-8'))
-        else:
-            text_haystack = '{} {} {}'.format(resource.display_name.text.encode('utf-8'),
-                                              resource.description.text.encode('utf-8'),
-                                              resource.get_text('edxml').encode('utf-8'))
-        text_haystack = text_haystack.lower()
-        return any(qt in text_haystack for qt in query_terms)
-
     def get(self, request, repository_id, format=None):
         try:
             self.query_params = get_query_values(self.data.get('q', None))
@@ -718,9 +719,6 @@ class RepositorySearch(ProducerAPIViews):
 
             asset_counts = {}
             course_run_counts = {}
-
-            user_repo = get_or_create_user_repo(request.user.username)
-            bank = self.am.get_bank(user_repo.ident)
 
             domain_repo = self.rm.get_repository(gutils.clean_id(repository_id))
             domain_repo.use_federated_repository_view()

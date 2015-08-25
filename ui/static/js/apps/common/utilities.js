@@ -41,6 +41,7 @@ define(["jquery", "underscore"],
             $repoBtn.find('span.repository-placeholder').text($(domainMatch).text());
             $('.repositories-menu').data('id', $(domainMatch).data('id'));
             $("ul.repository-navbar li").removeClass('hidden');
+            $('#notifications-region').html('');
         };
 
         utils.parseGenusType = function (genusTypeStr) {

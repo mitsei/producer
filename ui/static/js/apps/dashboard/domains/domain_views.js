@@ -100,7 +100,7 @@ define(["app",
             // Render the assets manually...not sure how to get two collections into
             // a single CompositeView?
             var resources = this.model.get('assets'),
-                $target = this.$el.find('ul.children-compositions'),
+                $target = this.$el.children('ul.children-compositions'),
                 $resourceWrapper;
 
             _.each(resources, function (resource) {
@@ -201,7 +201,9 @@ define(["app",
             $wrapper.addClass('alert alert-info');
 
             if (rawObj.type === 'Composition') {
-
+                ProducerManager.regions.preview.show(new PreviewViews.CompositionView({
+                    objId: objId
+                }));
             } else {
                 ProducerManager.regions.preview.show(new PreviewViews.ResourceView({
                     objId: objId

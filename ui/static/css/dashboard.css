@@ -411,12 +411,16 @@ li.composition.no-children {
 }
 
 #preview-region {
-    margin-top: 100px;
+    position: fixed;
+    width: 50%;
+    padding-right: 2%;
+    top: 115px;
 }
 
 #preview-region iframe {
     width: 100%;
-    height: 100em;
+    max-height: 40em;
+    resize: vertical;
 }
 
 .content-wrapper {
@@ -426,9 +430,58 @@ li.composition.no-children {
 
 .class-canvas {
     flex: 1 1 50%;
+    padding-right: 10px;
+    border-right: dashed lightcoral;
 }
 
 .preview-canvas {
     flex: 1 1 50%;
     margin-left: 10px;
+}
+
+.composition-preview-wrapper {
+    display: flex;
+    display: -webkit-flex;
+}
+
+.sidebar {
+    flex: 1 1 200px;
+    display: flex;
+    display: -webkit-flex;
+    flex-direction: column;
+    margin-right: 10px;
+}
+
+.sidebar-header {
+    font-size: 1.25em;
+    font-weight: bold;
+    padding-top: 10px;
+    padding-left: 10px;
+}
+
+.sidebar-list {
+    display: flex;
+    display: -webkit-flex;
+    flex-direction: column;
+    margin-top: 100px;
+    flex: 1 1 100%;
+}
+
+.vertical-content-wrapper {
+    display: flex;
+    display: -webkit-flex;
+    flex-direction: column;
+    flex: 1 1 100%;
+}
+
+.vertical-list {
+    display: flex;
+    display: -webkit-flex;
+    flex: 1 1 75px;
+}
+
+.content-list {
+    flex: 1 1 100%;
+    overflow: scroll;
+    height: 100vh;
 }

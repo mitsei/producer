@@ -4,7 +4,7 @@ define(["backbone"],
     function(Backbone){
 
     var Composition = Backbone.Model.extend({
-        initialize: function () {
+        initialize: function (options) {
             var children = this.get("children"),
                 _this = this;
             if (children) {
@@ -14,9 +14,17 @@ define(["backbone"],
                         _this.unset("children");
                 });
             }
+            this.options = options;
+            return this;
         },
         url: function () {
-            return this.id ? '/api/v1/repository/compositions/' + this.id : '/api/v1/repository/compositions/';
+            var url = this.id ? '/api/v1/repository/compositions/' + this.id : '/api/v1/repository/compositions/';
+
+            if (this.options.renderable) {
+                return url + '?fullMap';
+            } else {
+                return url;
+            }
         }
     });
     return Composition;
