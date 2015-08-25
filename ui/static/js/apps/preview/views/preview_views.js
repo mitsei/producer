@@ -103,6 +103,14 @@ define(["app",
         clearVerticalBtns: function () {
             $('.vertical-list').empty();
         },
+        hideAssetsByClass: function (classToHide, classToRemove) {
+            var $contentList = $('.content-list');
+
+            $contentList.children('.' + classToHide + '-asset')
+                .addClass('hidden');
+            $contentList.children('.' + classToRemove + '-asset')
+                .remove();
+        },
         setActiveState: function ($e) {
             $e.siblings().removeClass('active');
         },
@@ -117,9 +125,9 @@ define(["app",
 
             _this.setActiveState($e);
 
-            _this.toggleAssets('sidebar', 'vertical');
             if (!$e.hasClass('active')) {
                 Utils.processing();
+                _this.hideAssetsByClass('sidebar', 'vertical');
 
                 _.each(contents, function (content) {
                     var resource = new AssetModel({
@@ -136,7 +144,17 @@ define(["app",
                         }
                     });
                 });
+            } else {
+                _this.showAssetsByClass('sidebar', 'vertical');
             }
+        },
+        showAssetsByClass: function (classToShow, classToRemove) {
+            var $contentList = $('.content-list');
+
+            $contentList.children('.' + classToShow + '-asset')
+                .removeClass('hidden');
+            $contentList.children('.' + classToRemove + '-asset')
+                .remove();
         },
         showChildrenCompositions: function (e) {
             var $e = $(e.currentTarget),
@@ -152,10 +170,9 @@ define(["app",
 
             _this.clearVerticalBtns();
 
-            _this.toggleAssets('chapter', 'sidebar');
-
             if (!$e.hasClass('active')) {
                 _this.updateButtons($verticalList, $children, 'vertical');
+                _this.hideAssetsByClass('chapter', 'sidebar');
 
                 Utils.processing();
 
@@ -175,15 +192,9 @@ define(["app",
                         }
                     });
                 });
+            } else {
+                _this.showAssetsByClass('chapter', 'sidebar');
             }
-        },
-        toggleAssets: function (classToToggle, classToRemove) {
-            var $contentList = $('.content-list');
-
-            $contentList.children('.' + classToToggle + '-asset')
-                .toggleClass('hidden');
-            $contentList.children('.' + classToRemove + '-asset')
-                .remove();
         },
         updateButtons: function ($list, $items, tag) {
             if ($items.length === 0) {
