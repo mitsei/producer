@@ -90,7 +90,7 @@ define(["app",
 
                 _this.updateButtons($sidebarList, sidebars, 'sidebar');
                 _this.clearContents();
-                _this.updateContents(contents);
+                _this.updateContents(contents, 'chapter');
             });
         },
         events: {
@@ -117,12 +117,9 @@ define(["app",
 
             _this.setActiveState($e);
 
+            _this.toggleAssets('sidebar', 'vertical');
             if (!$e.hasClass('active')) {
                 Utils.processing();
-                $contentList.children('.sidebar-asset')
-                    .addClass('hidden');
-                $contentList.children('.vertical-asset')
-                    .remove();
 
                 _.each(contents, function (content) {
                     var resource = new AssetModel({
@@ -139,12 +136,6 @@ define(["app",
                         }
                     });
                 });
-            } else {
-                // remove the vertical-assets and show the sidebar-assets
-                $contentList.children('.vertical-asset')
-                    .remove();
-                $contentList.children('.sidebar-asset')
-                    .removeClass('hidden');
             }
         },
         showChildrenCompositions: function (e) {
@@ -159,8 +150,9 @@ define(["app",
 
             _this.setActiveState($e);
 
-            _this.clearContents();
             _this.clearVerticalBtns();
+
+            _this.toggleAssets('chapter', 'sidebar');
 
             if (!$e.hasClass('active')) {
                 _this.updateButtons($verticalList, $children, 'vertical');
@@ -179,12 +171,19 @@ define(["app",
                         if (--numContents === 0) {
                             Utils.doneProcessing();
 
-                            _this.clearContents();
                             _this.updateContents(renderableContents, 'sidebar');
                         }
                     });
                 });
             }
+        },
+        toggleAssets: function (classToToggle, classToRemove) {
+            var $contentList = $('.content-list');
+
+            $contentList.children('.' + classToToggle + '-asset')
+                .toggleClass('hidden');
+            $contentList.children('.' + classToRemove + '-asset')
+                .remove();
         },
         updateButtons: function ($list, $items, tag) {
             if ($items.length === 0) {
