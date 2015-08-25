@@ -480,6 +480,10 @@ li.composition.no-children {
     flex: 1 1 75px;
 }
 
+.vertical-list button.vertical-btn {
+    max-width: 25%;
+}
+
 .content-list {
     flex: 1 1 100%;
     overflow: scroll;

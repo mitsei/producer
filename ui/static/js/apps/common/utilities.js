@@ -91,55 +91,55 @@ define(["jquery", "underscore"],
                   '});' +
                   'MathJax.Hub.Configured();</script>');
 
-
-            if (textBlob.indexOf('<html') >= 0 && (textBlob.indexOf('<video') === -1)) {
-                try {
-                    var wrapper = $(textBlob);
-                    if (typeof wrapper.attr('outerHTML') === 'undefined') {
-                        throw 'InvalidText';
-                    }
-                } catch (e) {
+            try {
+                if (textBlob.indexOf('<html') >= 0 && (textBlob.indexOf('<video') === -1)) {
                     try {
-                        var wrapper = $($.parseXML(textBlob));
+                        var wrapper = $(textBlob);
+                        if (typeof wrapper.attr('outerHTML') === 'undefined') {
+                            throw 'InvalidText';
+                        }
                     } catch (e) {
-                        return textBlob;
+                        var wrapper = $($.parseXML(textBlob));
                     }
-                }
 
-                if (wrapper.find('head').length > 0) {
-                    if (textBlob.indexOf('[mathjax') >= 0) {
-                        wrapper.find('head').append(configMathjax);
+                    if (wrapper.find('head').length > 0) {
+                        if (textBlob.indexOf('[mathjax') >= 0) {
+                            wrapper.find('head').append(configMathjax);
+                        }
+                        wrapper.find('head').append(mathjaxScript);
+                    } else {
+                        var head = $('<head></head>');
+                        if (textBlob.indexOf('[mathjax') >= 0) {
+                            head.append(configMathjax);
+                        }
+                        head.append(mathjaxScript);
+                        wrapper.prepend(head);
                     }
-                    wrapper.find('head').append(mathjaxScript);
-                } else {
-                    var head = $('<head></head>');
+                } else if (textBlob.indexOf('<problem') >= 0) {
+                    var wrapper = $('<html></html>'),
+                        head = $('<head></head>'),
+                        body = $('<body></body>');
+                    body.append(textBlob);
                     if (textBlob.indexOf('[mathjax') >= 0) {
                         head.append(configMathjax);
                     }
                     head.append(mathjaxScript);
-                    wrapper.prepend(head);
+                    wrapper.append(head);
+                    wrapper.append(body);
+                } else if (textBlob.indexOf('<video') >= 0) {
+                    wrapper = $(textBlob);
+                } else {
+                    wrapper = $(textBlob);
                 }
-            } else if (textBlob.indexOf('<problem') >= 0) {
-                var wrapper = $('<html></html>'),
-                    head = $('<head></head>'),
-                    body = $('<body></body>');
-                body.append(textBlob);
-                if (textBlob.indexOf('[mathjax') >= 0) {
-                    head.append(configMathjax);
-                }
-                head.append(mathjaxScript);
-                wrapper.append(head);
-                wrapper.append(body);
-            } else if (textBlob.indexOf('<video') >= 0) {
-                wrapper = $(textBlob);
-            } else {
-                wrapper = $(textBlob);
-            }
 
-            if ($.isXMLDoc(wrapper[0])) {
-                return utils.cleanUp(wrapper.contents().prop('outerHTML'));
-            } else {
-                return utils.cleanUp(wrapper.prop('outerHTML'));
+                if ($.isXMLDoc(wrapper[0])) {
+                    return utils.cleanUp(wrapper.contents().prop('outerHTML'));
+                } else {
+                    return utils.cleanUp(wrapper.prop('outerHTML'));
+                }
+            } catch (e) {
+                // return the textBlob if all else fails
+                return textBlob;
             }
         };
 

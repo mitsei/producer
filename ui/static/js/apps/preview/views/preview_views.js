@@ -6,7 +6,8 @@ define(["app",
         "apps/dashboard/compositions/models/composition",
         "text!apps/preview/templates/resource_preview.html",
         "text!apps/preview/templates/composition_preview.html",
-        "text!apps/preview/templates/unit_button.html"],
+        "text!apps/preview/templates/unit_button.html",
+        "bootstrap"],
        function(ProducerManager, Utils, AssetModel, CompositionModel,
                 ResourceTemplate, CompositionTemplate, UnitButtonTemplate){
   ProducerManager.module("PreviewApp.View", function(View, ProducerManager, Backbone, Marionette, $, _){
@@ -76,9 +77,7 @@ define(["app",
                 _this = this,
                 $sidebarHeader = $('.sidebar-header'),
                 $sidebarList = $('.sidebar-list'),
-                $verticalList = $('.vertical-list'),
-                $contentList = $('.content-list'),
-                sidebars, verticals, contents, sourceDoc;
+                sidebars, contents, sourceDoc;
 
             Utils.processing();
 
@@ -89,43 +88,85 @@ define(["app",
                 sidebars = data.children;
                 contents = data.assets;
 
-                if (sidebars.length === 0) {
-                    $sidebarList.addClass('hidden');
-                } else {
-                    $sidebarList.removeClass('hidden');
-                    _.each(sidebars, function (sidebar) {
-                        $sidebarList.append(_.template(UnitButtonTemplate)({
-                            buttonType: 'sidebar',
-                            displayName: sidebar.displayName.text,
-                            rawObj: JSON.stringify(sidebar)
-                        }));
-                    })
-                }
-
-                if (contents.length > 0) {
-                    $contentList.empty();
-                    _.each(contents, function (content) {
-                        if (content.type === 'Asset') {
-                            sourceDoc = Utils.wrapText(content.assetContents[0].text.text);
-                        } else {
-                            sourceDoc = Utils.wrapText(content.texts.edxml);
-                        }
-                        $contentList.append(_.template(ResourceTemplate) ({
-                            displayName: content.displayName.text,
-                            resource: sourceDoc
-                        }));
-                    });
-
-                    $contentList.find('iframe').each(function() {
-                        $(this).load(function () {
-                            $(this).css('height', $(this).contents().height());
-                        });
-                    });
-                }
+                _this.updateButtons($sidebarList, sidebars, 'sidebar');
+                _this.updateContents(contents);
             });
         },
         events: {
+            'click button.sidebar-btn': 'showChildrenCompositions'
+        },
+        setActiveState: function ($e) {
+            $e.siblings().removeClass('active');
+        },
+        showChildrenCompositions: function (e) {
+            var $e = $(e.currentTarget),
+                $obj = $e.data('obj'),
+                $children = $obj.children,
+                $verticalList = $('.vertical-list'),
+                contents = $obj.assets,
+                numContents = contents.length,
+                renderableContents = [],
+                _this = this;
 
+            _this.setActiveState($e);
+            _this.updateButtons($verticalList, $children, 'vertical');
+
+            Utils.processing();
+
+            _.each(contents, function (content) {
+                var resource = new AssetModel({
+                        id: content.id,
+                        renderable: true
+                    }),
+                    promise = resource.fetch();
+
+                promise.done(function (data) {
+                    renderableContents.push(data);
+                    if (--numContents === 0) {
+                        Utils.doneProcessing();
+                        _this.updateContents(renderableContents);
+                    }
+                });
+            });
+        },
+        updateButtons: function ($list, $items, tag) {
+            if ($items.length === 0) {
+                $list.addClass('hidden');
+            } else {
+                $list.removeClass('hidden');
+                $list.empty();
+                _.each($items, function (item) {
+                    $list.append(_.template(UnitButtonTemplate)({
+                        buttonType: tag,
+                        displayName: item.displayName.text,
+                        rawObj: JSON.stringify(item)
+                    }));
+                })
+            }
+        },
+        updateContents: function (contents) {
+            var $contentList = $('.content-list');
+
+            if (contents.length > 0) {
+                $contentList.empty();
+                _.each(contents, function (content) {
+                    if (content.type === 'Asset') {
+                        sourceDoc = Utils.wrapText(content.assetContents[0].text.text);
+                    } else {
+                        sourceDoc = Utils.wrapText(content.texts.edxml);
+                    }
+                    $contentList.append(_.template(ResourceTemplate)({
+                        displayName: content.displayName.text,
+                        resource: sourceDoc
+                    }));
+                });
+
+                $contentList.find('iframe').each(function () {
+                    $(this).load(function () {
+                        $(this).css('height', $(this).contents().height());
+                    });
+                });
+            }
         }
     });
 
