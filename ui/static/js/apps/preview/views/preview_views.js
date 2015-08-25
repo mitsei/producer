@@ -89,14 +89,63 @@ define(["app",
                 contents = data.assets;
 
                 _this.updateButtons($sidebarList, sidebars, 'sidebar');
+                _this.clearContents();
                 _this.updateContents(contents);
             });
         },
         events: {
-            'click button.sidebar-btn': 'showChildrenCompositions'
+            'click button.sidebar-btn': 'showChildrenCompositions',
+            'click button.vertical-btn': 'showAssets'
+        },
+        clearContents: function () {
+            $('.content-list').empty();
+        },
+        clearVerticalBtns: function () {
+            $('.vertical-list').empty();
         },
         setActiveState: function ($e) {
             $e.siblings().removeClass('active');
+        },
+        showAssets: function (e) {
+            var $e = $(e.currentTarget),
+                $obj = $e.data('obj'),
+                contents = $obj.assets,
+                numContents = contents.length,
+                renderableContents = [],
+                $contentList = $('.content-list'),
+                _this = this;
+
+            _this.setActiveState($e);
+
+            if (!$e.hasClass('active')) {
+                Utils.processing();
+                $contentList.children('.sidebar-asset')
+                    .addClass('hidden');
+                $contentList.children('.vertical-asset')
+                    .remove();
+
+                _.each(contents, function (content) {
+                    var resource = new AssetModel({
+                            id: content.id,
+                            renderable: true
+                        }),
+                        promise = resource.fetch();
+
+                    promise.done(function (data) {
+                        renderableContents.push(data);
+                        if (--numContents === 0) {
+                            Utils.doneProcessing();
+                            _this.updateContents(renderableContents, 'vertical');
+                        }
+                    });
+                });
+            } else {
+                // remove the vertical-assets and show the sidebar-assets
+                $contentList.children('.vertical-asset')
+                    .remove();
+                $contentList.children('.sidebar-asset')
+                    .removeClass('hidden');
+            }
         },
         showChildrenCompositions: function (e) {
             var $e = $(e.currentTarget),
@@ -109,32 +158,40 @@ define(["app",
                 _this = this;
 
             _this.setActiveState($e);
-            _this.updateButtons($verticalList, $children, 'vertical');
 
-            Utils.processing();
+            _this.clearContents();
+            _this.clearVerticalBtns();
 
-            _.each(contents, function (content) {
-                var resource = new AssetModel({
-                        id: content.id,
-                        renderable: true
-                    }),
-                    promise = resource.fetch();
+            if (!$e.hasClass('active')) {
+                _this.updateButtons($verticalList, $children, 'vertical');
 
-                promise.done(function (data) {
-                    renderableContents.push(data);
-                    if (--numContents === 0) {
-                        Utils.doneProcessing();
-                        _this.updateContents(renderableContents);
-                    }
+                Utils.processing();
+
+                _.each(contents, function (content) {
+                    var resource = new AssetModel({
+                            id: content.id,
+                            renderable: true
+                        }),
+                        promise = resource.fetch();
+
+                    promise.done(function (data) {
+                        renderableContents.push(data);
+                        if (--numContents === 0) {
+                            Utils.doneProcessing();
+
+                            _this.clearContents();
+                            _this.updateContents(renderableContents, 'sidebar');
+                        }
+                    });
                 });
-            });
+            }
         },
         updateButtons: function ($list, $items, tag) {
             if ($items.length === 0) {
                 $list.addClass('hidden');
             } else {
                 $list.removeClass('hidden');
-                $list.empty();
+                this.clearVerticalBtns();
                 _.each($items, function (item) {
                     $list.append(_.template(UnitButtonTemplate)({
                         buttonType: tag,
@@ -144,21 +201,23 @@ define(["app",
                 })
             }
         },
-        updateContents: function (contents) {
-            var $contentList = $('.content-list');
+        updateContents: function (contents, className) {
+            var $contentList = $('.content-list'),
+                $wrapper = $('<div></div>');
 
             if (contents.length > 0) {
-                $contentList.empty();
                 _.each(contents, function (content) {
                     if (content.type === 'Asset') {
                         sourceDoc = Utils.wrapText(content.assetContents[0].text.text);
                     } else {
                         sourceDoc = Utils.wrapText(content.texts.edxml);
                     }
-                    $contentList.append(_.template(ResourceTemplate)({
+                    $wrapper.append(_.template(ResourceTemplate)({
                         displayName: content.displayName.text,
                         resource: sourceDoc
                     }));
+                    $wrapper.addClass(className + '-asset');
+                    $contentList.append($wrapper);
                 });
 
                 $contentList.find('iframe').each(function () {

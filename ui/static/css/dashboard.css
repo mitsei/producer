@@ -80,6 +80,7 @@ div.ic-custom {
     display: flex;
     display: -webkit-flex;
     flex-direction: column;
+    -webkit-flex-direction: column;
     width: 100%;
 }
 
@@ -329,6 +330,7 @@ li.resource.resortable div.resource-row .vertical-box {
     display: flex;
     display: -webkit-flex;
     flex-direction: column;
+    -webkit-flex-direction: column;
 }
 
 .show-preview {
@@ -366,6 +368,7 @@ li.resource.resortable div.resource-row .vertical-box {
 #faceted-search-results-wrapper {
     display: flex;
     flex-direction: column;
+    -webkit-flex-direction: column;
     display: -webkit-flex;
 }
 
@@ -449,6 +452,7 @@ li.composition.no-children {
     display: flex;
     display: -webkit-flex;
     flex-direction: column;
+    -webkit-flex-direction: column;
     margin-right: 10px;
 }
 
@@ -463,6 +467,7 @@ li.composition.no-children {
     display: flex;
     display: -webkit-flex;
     flex-direction: column;
+    -webkit-flex-direction: column;
     margin-top: 100px;
     flex: 1 1 100%;
 }
@@ -471,6 +476,7 @@ li.composition.no-children {
     display: flex;
     display: -webkit-flex;
     flex-direction: column;
+    -webkit-flex-direction: column;
     flex: 1 1 100%;
 }
 
