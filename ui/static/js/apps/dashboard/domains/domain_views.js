@@ -4,13 +4,14 @@ define(["app",
         "apps/dashboard/domains/collections/courses",
         "apps/dashboard/domains/collections/single_run",
         "apps/dashboard/compositions/collections/compositions",
+        "apps/preview/views/preview_views",
         "apps/common/utilities",
         "text!apps/dashboard/domains/templates/repo_selector.html",
         "text!apps/dashboard/compositions/templates/composition_template.html",
         "text!apps/dashboard/compositions/templates/compositions_template.html",
         "text!apps/dashboard/assets/templates/asset_template.html"],
        function(ProducerManager, CourseCollection, RunCollection, CompositionsCollection,
-                Utils,
+                PreviewViews, Utils,
                 RepoSelectorTemplate, CompositionTemplate, CompositionsTemplate,
                 ResourceTemplate){
   ProducerManager.module("ProducerApp.Domain.View", function(View, ProducerManager, Backbone, Marionette, $, _){
@@ -96,6 +97,23 @@ define(["app",
             });
         },
         onShow: function () {
+            // Render the assets manually...not sure how to get two collections into
+            // a single CompositeView?
+            var resources = this.model.get('assets'),
+                $target = this.$el.find('ul.children-compositions'),
+                $resourceWrapper;
+
+            _.each(resources, function (resource) {
+                $resourceWrapper = $('<li></li>').addClass('resource resortable list-group-item');
+                $resourceWrapper.append(_.template(ResourceTemplate)({
+                    resource: resource,
+                    resourceType: Utils.parseGenusType(resource),
+                    rawObject: JSON.stringify(resource)
+                }));
+                $target.append($resourceWrapper);
+            });
+
+
             _.each(this.$el.find('ul.children-compositions'), function (childList) {
                 if ($(childList).children('li.resortable').length > 1) {
                     $(childList).children('li.no-children').addClass('hidden');
@@ -127,19 +145,13 @@ define(["app",
                 tolerance: 'intersect',
                 receive: function (e, ui) {
                     var rawObj = ui.item.data('obj'),
-                        $newObj = $('<li></li>').addClass('list-group-item resortable'),
-                        genusType;
-                    if (rawObj.type === 'Asset') {
-                        genusType = rawObj.assetContents[0].genusTypeId;
-                    } else {
-                        genusType = rawObj.genusTypeId;
-                    }
+                        $newObj = $('<li></li>').addClass('list-group-item resortable');
 
                     if (rawObj.type === 'Composition') {
                         $newObj.addClass('composition');
                         $newObj.append(_.template(CompositionsTemplate)({
                             composition: rawObj,
-                            compositionType: Utils.parseGenusType(genusType),
+                            compositionType: Utils.parseGenusType(rawObj),
                             rawObject: JSON.stringify(rawObj)
                         }));
 
@@ -171,10 +183,30 @@ define(["app",
             });
         },
         events: {
-            'click .toggle-composition-children': 'toggleCompositionChildren'
+            'click .toggle-composition-children': 'toggleCompositionChildren',
+            'click .preview': 'previewObject'
+        },
+        clearActiveElement: function () {
+            $('div.object-wrapper').removeClass('alert alert-info');
         },
         hideNoChildren: function (el) {
             $(el).siblings('li.no-children').addClass('hidden');
+        },
+        previewObject: function (e) {
+            var $wrapper = $(e.currentTarget).closest('div.object-wrapper'),
+                rawObj = $wrapper.data('obj'),
+                objId = rawObj.id;
+
+            this.clearActiveElement();
+            $wrapper.addClass('alert alert-info');
+
+            if (rawObj.type === 'Composition') {
+
+            } else {
+                ProducerManager.regions.preview.show(new PreviewViews.ResourceView({
+                    objId: objId
+                }));
+            }
         },
         toggleCompositionChildren: function (e) {
             var $e = $(e.currentTarget),
@@ -182,6 +214,7 @@ define(["app",
                 $composition = $e.parent().parent().parent(),
                 $children = $composition.children('.children-compositions');
 
+//            this.clearActiveElement();
             $children.toggleClass('hidden');
             $footer.toggleClass('expanded');
             $e.find('.children-icon').toggleClass('fa-chevron-up')

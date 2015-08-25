@@ -380,6 +380,18 @@ class CompositionsList(ProducerAPIViews):
         obj_map['children'] = []
         for child in obj.get_children():
             obj_map['children'].append(self._get_map_with_children(child))
+        obj_map['assets'] = []
+        try:
+            for asset in self.rm.get_repository(
+                    gutils.clean_id(obj_map['repositoryId'])).get_composition_assets(obj.ident):
+                asset_map = asset.object_map
+                if 'enclosedObjectId' in asset_map:
+                    obj_map['assets'].append(asset.get_enclosed_object().object_map)
+                else:
+                    obj_map['assets'].append(asset_map)
+        except NotFound:
+            # no assets
+            pass
         return obj_map
 
     def get(self, request, repository_id=None, format=None):

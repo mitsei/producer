@@ -1,8 +1,8 @@
-<div class="<%- resourceType %> resource-object-wrapper" data-obj="<%- rawObject %>">
+<div class="<%- resourceType %> resource-object-wrapper object-wrapper" data-obj="<%- rawObject %>">
     <div class="resource-row">
         <div class="drag-handles"></div>
         <div class="toggle-me"></div>
-        <div class="resource-icon resource-<%- resourceType %>">
+        <div class="resource-icon resource-<%- resourceType %>" title="<%- resourceType %>">
             <div class="ic-custom"></div>
         </div>
         <div class="vertical-box">
@@ -16,11 +16,11 @@
             </div>
             <div class="vertical-footer">
                 <div class="resource-actions">
-                    <span class="preview-resource clickable">
+                    <span class="preview-resource preview clickable">
                         <i aria-hidden="true" class="fa fa-eye"></i>
                         Preview
                     </span>
-                    <span class="export-resource clickable">
+                    <span class="export-resource export clickable">
                         <i aria-hidden="true" class="fa fa-arrow-right"></i>
                         Export
                     </span>

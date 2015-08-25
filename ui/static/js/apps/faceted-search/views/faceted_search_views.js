@@ -11,75 +11,6 @@ define(["app",
        function(ProducerManager, Utils, FacetsTemplate, FacetResultsTemplate,
                 FacetPaginationTemplate){
   ProducerManager.module("FacetedSearchApp.View", function(View, ProducerManager, Backbone, Marionette, $, _){
-    function cleanUp (text) {
-        return text;
-    }
-
-    function wrapText (textBlob) {
-        var mathjaxScript = $('<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/2.4-latest/MathJax.js?config=TeX-MML-AM_HTMLorMML-full">' +
-                '</script>'),
-            configMathjax = $('<script type="text/x-mathjax-config">' +
-                'MathJax.Hub.Config({' +
-                'tex2jax: {' +
-                  'inlineMath: [' +
-                    "['\\(','\\)']," +
-                    "['[mathjaxinline]','[/mathjaxinline]']" +
-                  '],' +
-                  'displayMath: [' +
-                    '["\\[","\\]"],' +
-                    "['[mathjax]','[/mathjax]']" +
-                  ']' +
-                '}' +
-              '});' +
-              'MathJax.Hub.Configured();</script>');
-
-
-        if (textBlob.indexOf('<html') >= 0 && (textBlob.indexOf('<video') === -1)) {
-            try {
-                var wrapper = $(textBlob);
-                if (typeof wrapper.attr('outerHTML') === 'undefined') {
-                    throw 'InvalidText';
-                }
-            } catch (e) {
-                var wrapper = $($.parseXML(textBlob));
-            }
-
-            if (wrapper.find('head').length > 0) {
-                if (textBlob.indexOf('[mathjax') >= 0) {
-                    wrapper.find('head').append(configMathjax);
-                }
-                wrapper.find('head').append(mathjaxScript);
-            } else {
-                var head = $('<head></head>');
-                if (textBlob.indexOf('[mathjax') >= 0) {
-                    head.append(configMathjax);
-                }
-                head.append(mathjaxScript);
-                wrapper.prepend(head);
-            }
-        } else if (textBlob.indexOf('<problem') >= 0) {
-            var wrapper = $('<html></html>'),
-                head = $('<head></head>'),
-                body = $('<body></body>');
-            body.append(textBlob);
-            if (textBlob.indexOf('[mathjax') >= 0) {
-                head.append(configMathjax);
-            }
-            head.append(mathjaxScript);
-            wrapper.append(head);
-            wrapper.append(body);
-        } else if (textBlob.indexOf('<video') >= 0) {
-            wrapper = $(textBlob);
-        } else {
-            wrapper = $(textBlob);
-        }
-
-        if ($.isXMLDoc(wrapper[0])) {
-            return cleanUp(wrapper.contents().prop('outerHTML'));
-        } else {
-            return cleanUp(wrapper.prop('outerHTML'));
-        }
-    }
 
     View.HeaderView = Marionette.ItemView.extend({
         template: false,
@@ -268,7 +199,8 @@ define(["app",
             var $e = $(e.currentTarget),
                 $target = $e.siblings('iframe.preview-frame'),
                 $spinner = $e.siblings('.preview-processing'),
-                objId = $e.parents('div.resource').data('obj').id,
+                $resource = $e.closest('div.resource'),
+                objId = $resource.data('obj').id,
                 url;
 
             if ($e.hasClass('collapsed') && !$e.hasClass('cached')) {
@@ -289,10 +221,11 @@ define(["app",
 
                     $target.toggleClass('hidden');
                     $e.toggleClass('collapsed');
+                    $resource.data('obj', data);
 
                     if (objId.indexOf('assessment.Item') >= 0) {
 //                        $target.attr('srcdoc', data['texts']['edxml']);
-                        $target.attr('srcdoc', wrapText(data['texts']['edxml']));
+                        $target.attr('srcdoc', Utils.wrapText(data['texts']['edxml']));
                     } else {
                         assetText = data['assetContents'][0]['text']['text'];
                         if (assetText.indexOf('youtube=') >= 0) {
@@ -305,7 +238,7 @@ define(["app",
                             $target.attr('src', '//www.youtube.com/embed/' + youtubeId);
                         } else {
 //                            $target.attr('srcdoc', assetText);
-                            $target.attr('srcdoc', wrapText(assetText));
+                            $target.attr('srcdoc', Utils.wrapText(assetText));
                         }
                     }
 

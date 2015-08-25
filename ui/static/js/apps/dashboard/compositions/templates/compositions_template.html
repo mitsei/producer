@@ -1,8 +1,8 @@
-<div class="<%- compositionType %> composition-object-wrapper" data-obj="<%- rawObject %>">
+<div class="<%- compositionType %> composition-object-wrapper object-wrapper" data-obj="<%- rawObject %>">
     <div class="composition-row">
         <div class="drag-handles"></div>
         <div class="toggle-me"></div>
-        <div class="composition-icon composition-<%- compositionType %>">
+        <div class="composition-icon composition-<%- compositionType %>" title="<%- compositionType %>">
             <div class="ic-custom"></div>
         </div>
         <div class="vertical-box">
@@ -16,11 +16,11 @@
             </div>
             <div class="vertical-footer">
                 <div class="composition-actions">
-                    <span class="preview-composition clickable">
+                    <span class="preview-composition preview clickable">
                         <i aria-hidden="true" class="fa fa-eye"></i>
                         Preview
                     </span>
-                    <span class="export-composition clickable">
+                    <span class="export-composition export clickable">
                         <i aria-hidden="true" class="fa fa-arrow-right"></i>
                         Export
                     </span>
