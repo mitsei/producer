@@ -16,6 +16,57 @@ define(["app",
                 RepoSelectorTemplate, CompositionTemplate, CompositionsTemplate,
                 ResourceTemplate){
   ProducerManager.module("ProducerApp.Domain.View", function(View, ProducerManager, Backbone, Marionette, $, _){
+
+    function updateCompositionChildrenAndAssets ($obj) {
+        // TODO: What if they drop it as a chapter -- no parent
+        // the below throws an exception...which is okay for now
+        // because there are rarely course-level assets
+
+        // $obj is assumed to be an <li .resortable></li> tag
+        var assetIds = [],
+            childIds = [],
+            parentObj,
+            parentComposition,
+            $parent;
+
+        if (!$obj.is('li.resortable')) {
+            return false;
+        }
+        $parent = $obj.parent();
+        if ($parent.is('ul.run-list')) {
+            if ($obj.is('li.resource')) {
+                $obj.remove();
+                ProducerManager.vent.trigger("msg:error",
+                    'You cannot add resources to the root level.');
+            } else {
+                var runId = $('select.run-selector').val(),
+                    parentRun = new RunCollection([], {id: runId});
+
+                $parent.children(':visible').not('.no-children,.ui-sortable-helper').each(function () {
+                    var thisObj = $(this).children('div.object-wrapper').data('obj');
+                    childIds.push(thisObj.id);
+                });
+                parentRun.set('childIds', childIds);
+                parentRun.save();
+            }
+        } else {
+            parentObj = $parent.siblings('.composition-object-wrapper')
+                .data('obj');
+            parentComposition = new CompositionModel(parentObj);
+            $parent.children(':visible').not('.no-children,.ui-sortable-helper').each(function () {
+                var thisObj = $(this).children('div.object-wrapper').data('obj');
+                if (thisObj.type === 'Composition') {
+                    childIds.push(thisObj.id);
+                } else {
+                    assetIds.push(thisObj.id);
+                }
+            });
+            parentComposition.set('assetIds', assetIds);
+            parentComposition.set('childIds', childIds);
+            parentComposition.save();
+        }
+    }
+
     View.CoursesView = Marionette.ItemView.extend({
       template: function (serializedData) {
           return _.template(RepoSelectorTemplate)({
@@ -69,6 +120,7 @@ define(["app",
                 ProducerManager.regions.composition.show(runView);
                 ProducerManager.regions.preview.$el.html('');
                 Utils.doneProcessing();
+
             });
             console.log('showing a single run');
         }
@@ -127,7 +179,7 @@ define(["app",
     View.SingleRunView = Marionette.CollectionView.extend({
         // this should probably be a layout of some sort...
         childView: View.CompositionsView,
-        className: "list-group",
+        className: "list-group run-list",
         tagName: 'ul',
         onRender: function () {
             $('div.action-menu').removeClass('hidden');
@@ -144,11 +196,15 @@ define(["app",
                 placeholder: 'sortable-placeholder',
                 revert: 250,
                 tolerance: 'intersect',
+                change: function (e, ui) {
+                    // ui.item.parent() is the original parent here, before
+                    // DOM position change. Remove the item from the
+                    // parent list.
+                    updateCompositionChildrenAndAssets(ui.item);
+                },
                 receive: function (e, ui) {
                     var rawObj = ui.item.data('obj'),
-                        $newObj = $('<li></li>').addClass('list-group-item resortable'),
-                        assetIds = [],
-                        parentObj, parentComposition;
+                        $newObj = $('<li></li>').addClass('list-group-item resortable');
 
                     if (rawObj.type === 'Composition') {
                         $newObj.addClass('composition');
@@ -171,33 +227,25 @@ define(["app",
                     $(this).data('ui-sortable').currentItem.replaceWith($newObj);
                     _this.hideNoChildren($newObj);
 
-                    // TODO need to save this new item back to the server
-                    if (rawObj.type === 'Composition') {
-                        // something
-                    } else {
-                        // update the parent composition model
-                        parentObj = $newObj.parent()
-                            .siblings('.composition-object-wrapper')
-                            .data('obj');
-                        parentComposition = new CompositionModel(parentObj);
-                        $newObj.parent().children().not('.no-children').each(function () {
-                            assetIds.push($(this).children('div.resource-object-wrapper').data('obj').id);
-                        });
-                        parentComposition.set('assetIds', assetIds);
-                        parentComposition.save();
-                    }
+                    // save this new item back to the server
+                    // update the parent composition model
+                    updateCompositionChildrenAndAssets($newObj);
                 },
                 update: function (e, ui) {
                     // hide the no-children warning for this list
                     _this.hideNoChildren(ui.item);
 
                     // update the sequence order of sibling elements
+                    updateCompositionChildrenAndAssets(ui.item);
+
+                    // remove the item from the previous parent??
                     // TODO
 
                     // check other lists .. if this item's old list
                     // now has no children, re-show the warning
                     _.each(_this.$el.find('ul.children-compositions'), function (childList) {
-                        if ($(childList).children('li.resortable:visible').length === 0) {
+                        if ($(childList).children('li.list-group-item.resource,li.list-group-item.composition')
+                                .length === 0) {
                             $(childList).children('li.no-children').removeClass('hidden');
                         }
                     });

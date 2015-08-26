@@ -2,7 +2,7 @@ import time
 
 from dlkit_django import RUNTIME, PROXY_SESSION
 from dlkit_django.primordium import DataInputStream, DateTime
-from dlkit_django.errors import IllegalState
+from dlkit_django.errors import IllegalState, AlreadyExists
 
 from dysonx.dysonx import get_or_create_user_repo, get_enclosed_object_asset
 
@@ -186,7 +186,10 @@ def update_composition_assets(am, rm, username, repository, composition_id, asse
             querier.match_item_id(clean_id(asset_id), True)
             assessment = user_bank.get_assessments_by_query(querier).next()  # assume only one??
             enclosed_asset = get_enclosed_object_asset(user_repo, assessment)
-            rm.assign_asset_to_repository(enclosed_asset.ident, repository.ident)
+            try:
+                rm.assign_asset_to_repository(enclosed_asset.ident, repository.ident)
+            except AlreadyExists:
+                pass
 
             # finally, add the enclosure asset to the run repository composition
             repository.add_asset(enclosed_asset.ident,
@@ -211,3 +214,10 @@ def update_edx_composition_date(form, date_type, date_dict):
     elif date_type == 'start':
         form.set_start_date(DateTime(**date_dict))
     return form
+
+
+def update_repository_compositions(rm, repository_id, child_ids):
+    rm.remove_child_repositories(clean_id(repository_id))
+    for child_id in child_ids:
+        rm.add_child_repository(clean_id(repository_id),
+                                     clean_id(child_id))

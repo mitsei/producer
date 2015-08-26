@@ -42,6 +42,7 @@ define(["app",
         },
         toggleDrawer: function () {
             $('#search-components-menu').drawer('toggle');
+            $('#add-new-components-btn').button('toggle');
         },
         triggerQuery: function (keywords) {
             // show spinner while searching

@@ -366,15 +366,24 @@ class CompositionDetails(ProducerAPIViews, CompositionMapMixin):
 
             if str(composition.genus_type) in EDX_COMPOSITION_GENUS_TYPES_STR:
                 if 'startDate' in self.data:
-                    form = rutils.update_edx_composition_date(form, 'start', self.data['startDate'])
+                    try:
+                        form = rutils.update_edx_composition_date(form, 'start', self.data['startDate'])
+                    except IllegalState:
+                        pass
 
                 if 'endDate' in self.data:
-                    form = rutils.update_edx_composition_date(form, 'end', self.data['endDate'])
+                    try:
+                        form = rutils.update_edx_composition_date(form, 'end', self.data['endDate'])
+                    except IllegalState:
+                        pass
 
                 if 'visibleToStudents' in self.data:
-                    form = rutils.update_edx_composition_boolean(form,
-                                                                 'visible_to_students',
-                                                                 bool(self.data['visibleToStudents']))
+                    try:
+                        form = rutils.update_edx_composition_boolean(form,
+                                                                     'visible_to_students',
+                                                                     bool(self.data['visibleToStudents']))
+                    except IllegalState:
+                        pass
 
                 if 'draft' in self.data:
                     try:
@@ -556,11 +565,19 @@ class RepositoryDetails(ProducerAPIViews):
     def put(self, request, repository_id, format=None):
         try:
             form = self.rm.get_repository_form_for_update(gutils.clean_id(repository_id))
-            gutils.verify_at_least_one_key_present(self.data, ['displayName', 'description'])
+            gutils.verify_at_least_one_key_present(self.data, ['displayName', 'description',
+                                                               'childIds'])
 
             form = gutils.set_form_basics(form, self.data)
 
             updated_repository = self.rm.update_repository(form)
+
+            if 'childIds' in self.data:
+                rutils.update_repository_compositions(self.rm,
+                                                      repository_id,
+                                                      self.data['childIds'])
+                updated_repository = self.rm.get_repository(updated_repository.ident)
+
             updated_repository = gutils.convert_dl_object(updated_repository)
 
             return gutils.UpdatedResponse(updated_repository)
@@ -664,10 +681,9 @@ class RepositoryChildrenList(ProducerAPIViews):
         """
         try:
             gutils.verify_keys_present(self.data, ['childIds'])
-            self.rm.remove_child_repositories(gutils.clean_id(repository_id))
-            for child_id in self.data['childIds']:
-                self.rm.add_child_repository(gutils.clean_id(repository_id),
-                                             gutils.clean_id(child_id))
+            rutils.update_repository_compositions(self.rm,
+                                                  repository_id,
+                                                  self.data['childIds'])
             return gutils.UpdatedResponse()
         except (PermissionDenied, InvalidArgument, NotFound, KeyError) as ex:
             gutils.handle_exceptions(ex)

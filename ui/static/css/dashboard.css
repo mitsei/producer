@@ -210,7 +210,7 @@ ul.repository-navbar button.repository-btn {
 .dismiss-notification {
     position: absolute;
     top: 3px;
-    right: 20px;
+    right: 5px;
 }
 
 .faceted-search-header {
@@ -390,7 +390,8 @@ li.resource.resortable div.resource-row .vertical-box {
 }
 
 #notifications-region {
-    z-index: 999;
+    z-index: 1500;
+    position: relative;
 }
 
 .drag-handles {

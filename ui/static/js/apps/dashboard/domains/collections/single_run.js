@@ -14,6 +14,11 @@ define(["backbone",
         },
         parse: function (response) {
             return response.data.results;
+        },
+        save: function (options) {
+            // hack the URL...which means you won't be able to fetch this again...
+            this.url = '/api/v1/repository/repositories/' + this.id;
+            this.sync('update', this, options);
         }
     });
 
