@@ -4,6 +4,7 @@ define(["app",
         "apps/dashboard/domains/collections/courses",
         "apps/dashboard/domains/collections/single_run",
         "apps/dashboard/compositions/collections/compositions",
+        "apps/dashboard/compositions/models/composition",
         "apps/preview/views/preview_views",
         "apps/common/utilities",
         "text!apps/dashboard/domains/templates/repo_selector.html",
@@ -11,7 +12,7 @@ define(["app",
         "text!apps/dashboard/compositions/templates/compositions_template.html",
         "text!apps/dashboard/assets/templates/asset_template.html"],
        function(ProducerManager, CourseCollection, RunCollection, CompositionsCollection,
-                PreviewViews, Utils,
+                CompositionModel, PreviewViews, Utils,
                 RepoSelectorTemplate, CompositionTemplate, CompositionsTemplate,
                 ResourceTemplate){
   ProducerManager.module("ProducerApp.Domain.View", function(View, ProducerManager, Backbone, Marionette, $, _){
@@ -145,7 +146,9 @@ define(["app",
                 tolerance: 'intersect',
                 receive: function (e, ui) {
                     var rawObj = ui.item.data('obj'),
-                        $newObj = $('<li></li>').addClass('list-group-item resortable');
+                        $newObj = $('<li></li>').addClass('list-group-item resortable'),
+                        assetIds = [],
+                        parentObj, parentComposition;
 
                     if (rawObj.type === 'Composition') {
                         $newObj.addClass('composition');
@@ -160,17 +163,36 @@ define(["app",
                         $newObj.addClass('resource');
                         $newObj.append(_.template(ResourceTemplate)({
                             resource: rawObj,
-                            resourceType: Utils.parseGenusType(genusType),
+                            resourceType: Utils.parseGenusType(rawObj),
                             rawObject: JSON.stringify(rawObj)
                         }));
                     }
 
                     $(this).data('ui-sortable').currentItem.replaceWith($newObj);
                     _this.hideNoChildren($newObj);
+
+                    // TODO need to save this new item back to the server
+                    if (rawObj.type === 'Composition') {
+                        // something
+                    } else {
+                        // update the parent composition model
+                        parentObj = $newObj.parent()
+                            .siblings('.composition-object-wrapper')
+                            .data('obj');
+                        parentComposition = new CompositionModel(parentObj);
+                        $newObj.parent().children().not('.no-children').each(function () {
+                            assetIds.push($(this).children('div.resource-object-wrapper').data('obj').id);
+                        });
+                        parentComposition.set('assetIds', assetIds);
+                        parentComposition.save();
+                    }
                 },
                 update: function (e, ui) {
                     // hide the no-children warning for this list
                     _this.hideNoChildren(ui.item);
+
+                    // update the sequence order of sibling elements
+                    // TODO
 
                     // check other lists .. if this item's old list
                     // now has no children, re-show the warning

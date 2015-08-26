@@ -396,7 +396,7 @@ li.resource.resortable div.resource-row .vertical-box {
 .drag-handles {
     background-image: url('/static/images/drag-handles.png');
     background-repeat: repeat-y;
-    width: 8px;
+    width: 12px;
     margin-left: -8px;
     margin-right: 10px;
     cursor: pointer;

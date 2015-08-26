@@ -164,17 +164,17 @@ class AssetCrUDTests(RepositoryTestCase):
             1
         )
         asset_contents = assets[0]['assetContents']
-        deprecated_asset_contents = assets[0]['assetContent']
+        # deprecated_asset_contents = assets[0]['assetContent']
 
         self.assertEqual(
             len(asset_contents),
             1
         )
-
-        self.assertEqual(
-            asset_contents,
-            deprecated_asset_contents
-        )
+        #
+        # self.assertEqual(
+        #     asset_contents,
+        #     deprecated_asset_contents
+        # )
 
         self.is_cloudfront_url(asset_contents[0]['url'])
 

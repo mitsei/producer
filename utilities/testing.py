@@ -25,7 +25,8 @@ ABS_PATH = os.path.abspath(os.path.join(PROJECT_PATH, os.pardir))
 @override_settings(DLKIT_MONGO_DB_PREFIX='test_',
                    CLOUDFRONT_DISTRO='d1v4o60a4yrgi8.cloudfront.net',
                    CLOUDFRONT_DISTRO_ID='E1OEKZHRUO35M9',
-                   S3_BUCKET='mitodl-repository-test')
+                   S3_BUCKET='mitodl-repository-test',
+                   CELERY_ALWAYS_EAGER=True)
 class DjangoTestCase(APITestCase, MockTestCase):
     """
     A TestCase class that combines minimocktest and django.test.TestCase

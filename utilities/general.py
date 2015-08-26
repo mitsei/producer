@@ -469,10 +469,16 @@ def paginate(data, request, items_per_page=10):
 
 def set_form_basics(form, data):
     if 'displayName' in data:
-        form.display_name = data['displayName']
+        if isinstance(data['displayName'], basestring):
+            form.display_name = data['displayName']
+        else:
+            form.display_name = data['displayName']['text']
 
     if 'description' in data:
-        form.description = data['description']
+        if isinstance(data['description'], basestring):
+            form.description = data['description']
+        else:
+            form.description = data['description']['text']
 
     if 'genusTypeId' in data:
         form.set_genus_type(Type(data['genusTypeId']))

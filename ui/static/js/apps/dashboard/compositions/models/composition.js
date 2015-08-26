@@ -25,6 +25,13 @@ define(["backbone"],
             } else {
                 return url;
             }
+        },
+        updateAssets: function (assetIds) {
+            // update the composition's assetIds via PUT to <compositionId>/assets/
+            if (this.id) {
+                var url = '/api/v1/repository/compositions/' + this.id + '/assets/';
+
+            }
         }
     });
     return Composition;

@@ -4,6 +4,8 @@ from dlkit_django import RUNTIME, PROXY_SESSION
 from dlkit_django.primordium import DataInputStream, DateTime
 from dlkit_django.errors import IllegalState
 
+from dysonx.dysonx import get_or_create_user_repo, get_enclosed_object_asset
+
 from .general import *
 
 
@@ -148,6 +150,52 @@ def update_asset_urls(repository, asset, params=None):
 
     return asset_map
 
+def update_composition_assets(am, rm, username, repository, composition_id, asset_ids):
+    # remove current assets first, if they exist
+    try:
+        for asset in repository.get_composition_assets(clean_id(composition_id)):
+            repository.remove_asset(asset.ident,
+                                    clean_id(composition_id))
+    except NotFound:
+        pass
+
+    if not isinstance(asset_ids, list):
+        asset_ids = [asset_ids]
+
+    # TODO: assign assets / items to the orchestrated repos / banks,
+    # if necessary
+
+    # TODO: find the assessments for an item, if given the itemId?
+    # assume that only one assessment per item (because edX does not
+    # differentiate between them...?
+
+    for asset_id in asset_ids:
+        if 'assessment.Item' in asset_id:
+            # repository == for the run
+            # make sure the item is assigned to repository's orchestrated bank
+            run_bank = am.get_bank(repository.ident)
+            try:
+                run_bank.get_item(clean_id(asset_id))
+            except NotFound:
+                am.assign_item_to_bank(clean_id(asset_id), run_bank.ident)
+
+            # need to find the assessment associated with this item from user_bank
+            user_repo = get_or_create_user_repo(username)
+            user_bank = am.get_bank(user_repo.ident)
+            querier = user_bank.get_assessment_query()
+            querier.match_item_id(clean_id(asset_id), True)
+            assessment = user_bank.get_assessments_by_query(querier).next()  # assume only one??
+            enclosed_asset = get_enclosed_object_asset(user_repo, assessment)
+            rm.assign_asset_to_repository(enclosed_asset.ident, repository.ident)
+
+            # finally, add the enclosure asset to the run repository composition
+            repository.add_asset(enclosed_asset.ident,
+                                 clean_id(composition_id))
+        else:
+            repository.add_asset(clean_id(asset_id),
+                                 clean_id(composition_id))
+    return repository.get_composition_assets(clean_id(composition_id))
+
 def update_edx_composition_boolean(form, bool_type, bool_value):
     if bool_type == 'visible_to_students':
         form.set_visible_to_students(bool(bool_value))
@@ -159,11 +207,7 @@ def update_edx_composition_boolean(form, bool_type, bool_value):
 def update_edx_composition_date(form, date_type, date_dict):
     verify_keys_present(date_dict, ['year', 'month', 'day'])
     if date_type == 'end':
-        form.set_end_date(DateTime(year=date_dict['year'],
-                                   month=date_dict['month'],
-                                   day=date_dict['day']))
+        form.set_end_date(DateTime(**date_dict))
     elif date_type == 'start':
-        form.set_start_date(DateTime(year=date_dict['year'],
-                                     month=date_dict['month'],
-                                     day=date_dict['day']))
+        form.set_start_date(DateTime(**date_dict))
     return form

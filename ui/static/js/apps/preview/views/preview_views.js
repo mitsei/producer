@@ -173,6 +173,7 @@ define(["app",
             if (!$e.hasClass('active')) {
                 _this.updateButtons($verticalList, $children, 'vertical');
                 _this.hideAssetsByClass('chapter', 'sidebar');
+                _this.hideAssetsByClass('chapter', 'vertical');
 
                 Utils.processing();
 

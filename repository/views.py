@@ -279,21 +279,12 @@ class CompositionAssetsList(ProducerAPIViews):
 
             gutils.verify_keys_present(self.data, ['assetIds'])
 
-            # remove current assets first, if they exist
-            try:
-                for asset in repository.get_composition_assets(gutils.clean_id(composition_id)):
-                    repository.remove_asset(asset.ident,
-                                            gutils.clean_id(composition_id))
-            except NotFound:
-                pass
-
-            if not isinstance(self.data['assetIds'], list):
-                self.data['assetIds'] = [self.data['assetIds']]
-
-            for asset_id in self.data['assetIds']:
-                repository.add_asset(gutils.clean_id(asset_id),
-                                     gutils.clean_id(composition_id))
-            assets = repository.get_composition_assets(gutils.clean_id(composition_id))
+            assets = rutils.update_composition_assets(self.am,
+                                                      self.rm,
+                                                      request.user.username,
+                                                      repository,
+                                                      composition_id,
+                                                      self.data['assetIds'])
             data = gutils.extract_items(request, assets)
 
             return gutils.UpdatedResponse(data)
@@ -357,7 +348,7 @@ class CompositionDetails(ProducerAPIViews, CompositionMapMixin):
             gutils.verify_at_least_one_key_present(self.data,
                                                    ['displayName', 'description', 'childIds',
                                                     'startDate', 'endDate', 'visibleToStudents',
-                                                    'draft'])
+                                                    'draft', 'assetIds'])
 
             repository = rutils.get_object_repository(self.rm,
                                                       composition_id,
@@ -386,11 +377,23 @@ class CompositionDetails(ProducerAPIViews, CompositionMapMixin):
                                                                  bool(self.data['visibleToStudents']))
 
                 if 'draft' in self.data:
-                    form = rutils.update_edx_composition_boolean(form,
-                                                                 'draft',
-                                                                 bool(self.data['draft']))
+                    try:
+                        form = rutils.update_edx_composition_boolean(form,
+                                                                     'draft',
+                                                                     bool(self.data['draft']))
+                    except IllegalState:
+                        pass
 
             composition = repository.update_composition(form)
+
+            if 'assetIds' in self.data:
+                rutils.update_composition_assets(self.am,
+                                                 self.rm,
+                                                 request.user.username,
+                                                 repository,
+                                                 composition_id,
+                                                 self.data['assetIds'])
+                composition = repository.get_composition(composition.ident)
 
             return gutils.UpdatedResponse(composition.object_map)
         except (PermissionDenied, InvalidArgument, InvalidId, KeyError) as ex:
@@ -457,7 +460,11 @@ class CompositionsList(ProducerAPIViews, CompositionMapMixin):
                 else:
                     compositions = composition_lookup_session.get_compositions()
             # hack...
-            compositions = sorted(compositions, key=lambda k: k['id'])
+            try:
+                compositions = list(compositions)
+                compositions = sorted(compositions, key=lambda k: k['id'])
+            except AttributeError:
+                compositions = sorted(compositions, key=lambda k: str(k.ident))
             data = gutils.extract_items(request, compositions)
 
             return Response(data)
@@ -794,6 +801,8 @@ class RepositorySearch(ProducerAPIViews):
                     if run_name not in course_run_counts:
                         course_run_counts[run_name] = 0
                     course_run_counts[run_name] += 1
+
+            # TODO Also get the compositions so we can drag those over...
 
             for k, v in asset_counts.iteritems():
                 facets['resource_type'].append((k, v))
