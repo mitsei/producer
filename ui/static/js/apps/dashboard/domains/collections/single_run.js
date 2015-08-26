@@ -17,8 +17,18 @@ define(["backbone",
         },
         save: function (options) {
             // hack the URL...which means you won't be able to fetch this again...
-            this.url = '/api/v1/repository/repositories/' + this.id;
-            this.sync('update', this, options);
+            var url = '/api/v1/repository/repositories/' + this.id,
+                payload = {childIds: this.childIds};
+
+            Backbone.ajax({
+                url: url,
+                data: JSON.stringify(payload),
+                contentType: 'application/json',
+                type: 'PUT',
+                success: function () {
+                    console.log('saved a run');
+                }
+            });
         }
     });
 

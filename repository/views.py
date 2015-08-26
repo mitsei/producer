@@ -355,10 +355,6 @@ class CompositionDetails(ProducerAPIViews, CompositionMapMixin):
                                                       'composition')
 
             form = repository.get_composition_form_for_update(gutils.clean_id(composition_id))
-            if 'childIds' in self.data:
-                form.clear_children()
-                self.data['childIds'] = rutils.convert_to_id_list(self.data['childIds'])
-                form.set_children(self.data['childIds'])
 
             form = gutils.set_form_basics(form, self.data)
 
@@ -404,6 +400,12 @@ class CompositionDetails(ProducerAPIViews, CompositionMapMixin):
                                                  self.data['assetIds'])
                 composition = repository.get_composition(composition.ident)
 
+            if 'childIds' in self.data:
+                rutils.update_composition_children(repository,
+                                                   composition_id,
+                                                   self.data['childIds'])
+                composition = repository.get_composition(composition.ident)
+
             return gutils.UpdatedResponse(composition.object_map)
         except (PermissionDenied, InvalidArgument, InvalidId, KeyError) as ex:
             gutils.handle_exceptions(ex)
@@ -443,10 +445,10 @@ class CompositionsList(ProducerAPIViews, CompositionMapMixin):
             elif ((len(self.data) == 1 and 'nested' in self.data) or
                   (len(self.data) == 2 and 'nested' in self.data and 'page' in self.data)):
                 compositions = []
-                chapters = composition_query_session.get_compositions_by_genus_type(
-                    str(Type(**EDX_COMPOSITION_GENUS_TYPES['chapter'])))
-                for chapter in chapters:
-                    compositions.append(self._get_map_with_children(chapter))
+                course_node = composition_query_session.get_compositions_by_genus_type(
+                    str(Type(**EDX_COMPOSITION_GENUS_TYPES['course']))).next()  # assume only one; abstract it out as if sequestered
+                compositions.append(self._get_map_with_children(course_node))
+                compositions = compositions[0]['children']
             else:
                 allowable_query_terms = ['displayName', 'description', 'course', 'chapter',
                                          'sequential', 'split_test', 'vertical']
@@ -468,12 +470,7 @@ class CompositionsList(ProducerAPIViews, CompositionMapMixin):
                                                    'are allowed.')
                 else:
                     compositions = composition_lookup_session.get_compositions()
-            # hack...
-            try:
-                compositions = list(compositions)
-                compositions = sorted(compositions, key=lambda k: k['id'])
-            except AttributeError:
-                compositions = sorted(compositions, key=lambda k: str(k.ident))
+
             data = gutils.extract_items(request, compositions)
 
             return Response(data)
@@ -573,8 +570,7 @@ class RepositoryDetails(ProducerAPIViews):
             updated_repository = self.rm.update_repository(form)
 
             if 'childIds' in self.data:
-                rutils.update_repository_compositions(self.rm,
-                                                      repository_id,
+                rutils.update_repository_compositions(updated_repository,
                                                       self.data['childIds'])
                 updated_repository = self.rm.get_repository(updated_repository.ident)
 

@@ -46,7 +46,7 @@ define(["app",
                     var thisObj = $(this).children('div.object-wrapper').data('obj');
                     childIds.push(thisObj.id);
                 });
-                parentRun.set('childIds', childIds);
+                parentRun.childIds = childIds;
                 parentRun.save();
             }
         } else {
@@ -195,12 +195,12 @@ define(["app",
                 opacity: .6,
                 placeholder: 'sortable-placeholder',
                 revert: 250,
-                tolerance: 'intersect',
-                change: function (e, ui) {
-                    // ui.item.parent() is the original parent here, before
+                tolerance: 'pointer',
+                beforeStop: function (e, ui) {
+                    // ui.helper.parent() is the original parent here, before
                     // DOM position change. Remove the item from the
                     // parent list.
-                    updateCompositionChildrenAndAssets(ui.item);
+                    updateCompositionChildrenAndAssets(ui.helper);
                 },
                 receive: function (e, ui) {
                     var rawObj = ui.item.data('obj'),

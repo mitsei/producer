@@ -1,5 +1,7 @@
 import time
 
+from dlkit.mongo.records.types import EDX_COMPOSITION_GENUS_TYPES
+
 from dlkit_django import RUNTIME, PROXY_SESSION
 from dlkit_django.primordium import DataInputStream, DateTime
 from dlkit_django.errors import IllegalState, AlreadyExists
@@ -165,10 +167,6 @@ def update_composition_assets(am, rm, username, repository, composition_id, asse
     # TODO: assign assets / items to the orchestrated repos / banks,
     # if necessary
 
-    # TODO: find the assessments for an item, if given the itemId?
-    # assume that only one assessment per item (because edX does not
-    # differentiate between them...?
-
     for asset_id in asset_ids:
         if 'assessment.Item' in asset_id:
             # repository == for the run
@@ -197,7 +195,17 @@ def update_composition_assets(am, rm, username, repository, composition_id, asse
         else:
             repository.add_asset(clean_id(asset_id),
                                  clean_id(composition_id))
-    return repository.get_composition_assets(clean_id(composition_id))
+    try:
+        return repository.get_composition_assets(clean_id(composition_id))
+    except NotFound:
+        return []
+
+def update_composition_children(repository, composition_id, children_ids):
+    form = repository.get_composition_form_for_update(clean_id(composition_id))
+    form.clear_children()
+    children_ids = convert_to_id_list(children_ids)
+    form.set_children(children_ids)
+    repository.update_composition(form)
 
 def update_edx_composition_boolean(form, bool_type, bool_value):
     if bool_type == 'visible_to_students':
@@ -216,8 +224,8 @@ def update_edx_composition_date(form, date_type, date_dict):
     return form
 
 
-def update_repository_compositions(rm, repository_id, child_ids):
-    rm.remove_child_repositories(clean_id(repository_id))
-    for child_id in child_ids:
-        rm.add_child_repository(clean_id(repository_id),
-                                     clean_id(child_id))
+def update_repository_compositions(repository, children_ids):
+    # update the "root" course composition's children, here
+    course_node = repository.get_compositions_by_genus_type(
+        str(Type(**EDX_COMPOSITION_GENUS_TYPES['course']))).next()  # assume only one; abstract it out as if sequestered
+    update_composition_children(repository, course_node.ident, children_ids)

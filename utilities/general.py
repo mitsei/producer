@@ -143,10 +143,13 @@ def clean_id(_id):
     Django seems to un-url-safe the IDs passed in to the rest framework views,
     so we need to url-safe them, then convert them to OSID IDs
     """
-    if _id.find('@') >= 0:
-        return Id(quote(_id))
+    if isinstance(_id, basestring):
+        if _id.find('@') >= 0:
+            return Id(quote(_id))
+        else:
+            return Id(_id)
     else:
-        return Id(_id)
+        return _id
 
 def clean_up_dl_objects(data):
     """
