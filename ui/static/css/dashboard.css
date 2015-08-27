@@ -18,8 +18,11 @@ div.action-menu {
     margin-top: 5px;
     margin-bottom: 5px;
     display: -webkit-flex;
-    display: flex !important;  /* override drawer . li */
     position: static !important;  /* override bootstrap list-group-item */
+}
+
+.drawer .resource {
+    display: flex !important;  /* override drawer . li */
 }
 
 .resource {

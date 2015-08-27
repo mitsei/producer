@@ -10,7 +10,7 @@
         <% } %>
         <% var objectType = genusTypeStr.slice(genusTypeStr.indexOf('%3A') + 3, genusTypeStr.indexOf('%40')); %>
         <% var objMap = JSON.stringify(object); %>
-        <li class="<%- objectType %> resource list-group-item" data-run="<%- object.runNames %>" data-obj="<%- objMap %>">
+        <li class="<%- objectType %> resource list-group-item search-result" data-run="<%- object.runNames %>" data-obj="<%- objMap %>">
             <div class="object-wrapper">
                 <div class="drag-handles" aria-label="Drag handles for moving the resource">
 

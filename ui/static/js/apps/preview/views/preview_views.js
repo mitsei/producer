@@ -11,6 +11,21 @@ define(["app",
        function(ProducerManager, Utils, AssetModel, CompositionModel,
                 ResourceTemplate, CompositionTemplate, UnitButtonTemplate){
   ProducerManager.module("PreviewApp.View", function(View, ProducerManager, Backbone, Marionette, $, _){
+    function matchListOrder (originalList, secondList) {
+        // sort a secondList according to the order in originalList
+        // assumes the exact same items are in both lists, just in
+        // different order
+        var temporaryList = [];
+
+        _.each(originalList, function (item) {
+            temporaryList.push(_.filter(secondList, function (item2) {
+                return item.id === item2.id;
+            })[0]);
+        });
+
+        return temporaryList;
+    }
+
     View.ResourceView = Marionette.ItemView.extend({
         initialize: function (options) {
             this.options = options;
@@ -187,6 +202,10 @@ define(["app",
                     promise.done(function (data) {
                         renderableContents.push(data);
                         if (--numContents === 0) {
+                            // need to re-order renderableContents per
+                            // the order in the original contents
+                            renderableContents = matchListOrder(contents, renderableContents);
+
                             Utils.doneProcessing();
 
                             _this.updateContents(renderableContents, 'sidebar');

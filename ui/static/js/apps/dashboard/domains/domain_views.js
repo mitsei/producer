@@ -200,7 +200,51 @@ define(["app",
                     if(!container.options.drop) {
                         $item.clone().insertAfter($item);
                     }
+
+                    // Try to save an item in the pre-move parent
+                    // use the no-children one because it is guaranteed to be present
+                    $item.data('pre-move-parent-obj', $item.parent().children('li.no-children'));
                     _super($item, container);
+                },
+                onDrop: function ($item, container, _super, e) {
+                    // transform the item if it came from the no-drop area
+                    var $preMoveObj = $item.data('pre-move-parent-obj'),
+                        $newObj;
+                    if($item.hasClass('search-result')) {
+                        var rawObj = $item.data('obj'),
+                            $newObj = $('<li></li>').addClass('list-group-item resortable');
+
+                        if (rawObj.type === 'Composition') {
+                            $newObj.addClass('composition');
+                            $newObj.append(_.template(CompositionsTemplate)({
+                                composition: rawObj,
+                                compositionType: Utils.parseGenusType(rawObj),
+                                rawObject: JSON.stringify(rawObj)
+                            }));
+
+                            // TODO: here still need to figure out how to get the children...
+                        } else {
+                            $newObj.addClass('resource');
+                            $newObj.append(_.template(ResourceTemplate)({
+                                resource: rawObj,
+                                resourceType: Utils.parseGenusType(rawObj),
+                                rawObject: JSON.stringify(rawObj)
+                            }));
+                        }
+
+                        $item.replaceWith($newObj);
+                    } else {
+                        $newObj = $item;
+                    }
+                    _super($newObj, container);
+
+                    // update the object's current parent and the old parent...
+                    updateCompositionChildrenAndAssets($newObj);
+                    if ($preMoveObj.parent()[0] != $newObj.parent()[0]) {
+                        updateCompositionChildrenAndAssets($preMoveObj);
+                    }
+
+                    _this.refreshNoChildrenWarning();
                 }
             });
 //            $('#composition-region').sortable({
@@ -295,6 +339,16 @@ define(["app",
                     objId: objId
                 }));
             }
+        },
+        refreshNoChildrenWarning: function () {
+            _.each(this.$el.find('ul.children-compositions'), function (childList) {
+                if ($(childList).children('li.list-group-item.resource,li.list-group-item.composition')
+                        .length === 0) {
+                    $(childList).children('li.no-children').removeClass('hidden');
+                } else {
+                    $(childList).children('li.no-children').addClass('hidden');
+                }
+            });
         },
         toggleCompositionChildren: function (e) {
             var $e = $(e.currentTarget),
