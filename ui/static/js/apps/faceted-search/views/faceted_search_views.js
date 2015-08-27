@@ -7,7 +7,8 @@ define(["app",
         "text!apps/faceted-search/templates/facet_pagination.html",
         "bootstrap",
         "bootstrap-drawer",
-        "jquery-bootpag"],
+        "jquery-bootpag",
+        "jquery-sortable"],
        function(ProducerManager, Utils, FacetsTemplate, FacetResultsTemplate,
                 FacetPaginationTemplate){
   ProducerManager.module("FacetedSearchApp.View", function(View, ProducerManager, Backbone, Marionette, $, _){
@@ -186,12 +187,16 @@ define(["app",
         },
         onShow: function () {
             // initialize the sortables here and connect to the course view
-            $('div.resource').draggable({
-                handle: 'div.drag-handles',
-                helper: 'clone',
-                revert: 'invalid',
-                connectToSortable: '#composition-region'
+            $('ul.facet-results-list').sortable({
+                group: 'producer',
+                drop: false
             });
+//            $('div.resource').draggable({
+//                handle: 'div.drag-handles',
+//                helper: 'clone',
+//                revert: 'invalid',
+//                connectToSortable: '#composition-region'
+//            });
         },
         events: {
             'click .show-preview': 'togglePreview'
@@ -200,7 +205,7 @@ define(["app",
             var $e = $(e.currentTarget),
                 $target = $e.siblings('iframe.preview-frame'),
                 $spinner = $e.siblings('.preview-processing'),
-                $resource = $e.closest('div.resource'),
+                $resource = $e.closest('li.resource'),
                 objId = $resource.data('obj').id,
                 url;
 

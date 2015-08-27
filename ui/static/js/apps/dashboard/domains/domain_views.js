@@ -10,7 +10,8 @@ define(["app",
         "text!apps/dashboard/domains/templates/repo_selector.html",
         "text!apps/dashboard/compositions/templates/composition_template.html",
         "text!apps/dashboard/compositions/templates/compositions_template.html",
-        "text!apps/dashboard/assets/templates/asset_template.html"],
+        "text!apps/dashboard/assets/templates/asset_template.html",
+        "jquery-sortable"],
        function(ProducerManager, CourseCollection, RunCollection, CompositionsCollection,
                 CompositionModel, PreviewViews, Utils,
                 RepoSelectorTemplate, CompositionTemplate, CompositionsTemplate,
@@ -187,70 +188,85 @@ define(["app",
         onShow: function () {
             var _this = this;
             // make the sections sortable
-            $('#composition-region').sortable({
-                forcePlaceholderSize: true,
+            $('ul.run-list').sortable({
+                group: 'producer',
                 handle: 'div.drag-handles',
-                helper: 'clone',
-                items: 'li.resortable',
-                opacity: .6,
-                placeholder: 'sortable-placeholder',
-                revert: 250,
-                tolerance: 'pointer',
-                beforeStop: function (e, ui) {
-                    // ui.helper.parent() is the original parent here, before
-                    // DOM position change. Remove the item from the
-                    // parent list.
-                    updateCompositionChildrenAndAssets(ui.helper);
-                },
-                receive: function (e, ui) {
-                    var rawObj = ui.item.data('obj'),
-                        $newObj = $('<li></li>').addClass('list-group-item resortable');
-
-                    if (rawObj.type === 'Composition') {
-                        $newObj.addClass('composition');
-                        $newObj.append(_.template(CompositionsTemplate)({
-                            composition: rawObj,
-                            compositionType: Utils.parseGenusType(rawObj),
-                            rawObject: JSON.stringify(rawObj)
-                        }));
-
-                        // TODO: here still need to figure out how to get the children...
-                    } else {
-                        $newObj.addClass('resource');
-                        $newObj.append(_.template(ResourceTemplate)({
-                            resource: rawObj,
-                            resourceType: Utils.parseGenusType(rawObj),
-                            rawObject: JSON.stringify(rawObj)
-                        }));
+                itemSelector: 'li.resortable:not(.no-children), li.resource',
+                pullPlaceholder: false,
+                placeholderClass: 'sortable-placeholder',
+                placeholder: '<li class="sortable-placeholder"></li>',
+                onDragStart: function ($item, container, _super) {
+                    // Duplicate items of the no drop area
+                    if(!container.options.drop) {
+                        $item.clone().insertAfter($item);
                     }
-
-                    $(this).data('ui-sortable').currentItem.replaceWith($newObj);
-                    _this.hideNoChildren($newObj);
-
-                    // save this new item back to the server
-                    // update the parent composition model
-                    updateCompositionChildrenAndAssets($newObj);
-                },
-                update: function (e, ui) {
-                    // hide the no-children warning for this list
-                    _this.hideNoChildren(ui.item);
-
-                    // update the sequence order of sibling elements
-                    updateCompositionChildrenAndAssets(ui.item);
-
-                    // remove the item from the previous parent??
-                    // TODO
-
-                    // check other lists .. if this item's old list
-                    // now has no children, re-show the warning
-                    _.each(_this.$el.find('ul.children-compositions'), function (childList) {
-                        if ($(childList).children('li.list-group-item.resource,li.list-group-item.composition')
-                                .length === 0) {
-                            $(childList).children('li.no-children').removeClass('hidden');
-                        }
-                    });
+                    _super($item, container);
                 }
             });
+//            $('#composition-region').sortable({
+//                forcePlaceholderSize: true,
+//                handle: 'div.drag-handles',
+//                helper: 'clone',
+//                items: 'li.resortable',
+//                opacity: .6,
+//                placeholder: 'sortable-placeholder',
+//                revert: 250,
+//                tolerance: 'pointer',
+//                beforeStop: function (e, ui) {
+//                    // ui.helper.parent() is the original parent here, before
+//                    // DOM position change. Remove the item from the
+//                    // parent list.
+//                    updateCompositionChildrenAndAssets(ui.helper);
+//                },
+//                receive: function (e, ui) {
+//                    var rawObj = ui.item.data('obj'),
+//                        $newObj = $('<li></li>').addClass('list-group-item resortable');
+//
+//                    if (rawObj.type === 'Composition') {
+//                        $newObj.addClass('composition');
+//                        $newObj.append(_.template(CompositionsTemplate)({
+//                            composition: rawObj,
+//                            compositionType: Utils.parseGenusType(rawObj),
+//                            rawObject: JSON.stringify(rawObj)
+//                        }));
+//
+//                        // TODO: here still need to figure out how to get the children...
+//                    } else {
+//                        $newObj.addClass('resource');
+//                        $newObj.append(_.template(ResourceTemplate)({
+//                            resource: rawObj,
+//                            resourceType: Utils.parseGenusType(rawObj),
+//                            rawObject: JSON.stringify(rawObj)
+//                        }));
+//                    }
+//
+//                    $(this).data('ui-sortable').currentItem.replaceWith($newObj);
+//                    _this.hideNoChildren($newObj);
+//
+//                    // save this new item back to the server
+//                    // update the parent composition model
+//                    updateCompositionChildrenAndAssets($newObj);
+//                },
+//                update: function (e, ui) {
+//                    // hide the no-children warning for this list
+//                    _this.hideNoChildren(ui.item);
+//
+//                    // update the sequence order of sibling elements
+//                    updateCompositionChildrenAndAssets(ui.item);
+//
+//                    // remove the item from the previous parent??
+//                    // TODO
+//
+//                    // check other lists .. if this item's old list
+//                    // now has no children, re-show the warning
+//                    _.each(_this.$el.find('ul.children-compositions'), function (childList) {
+//                        if ($(childList).children('li.list-group-item.resource,li.list-group-item.composition')
+//                                .length === 0) {
+//                            $(childList).children('li.no-children').removeClass('hidden');
+//                        }
+//                    });
+//                }
+//            });
         },
         events: {
             'click .toggle-composition-children': 'toggleCompositionChildren',

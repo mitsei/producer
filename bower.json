@@ -29,6 +29,7 @@
     "bootstrap-drawer": "~1.0.1",
     "fontawesome": "~4.3.0",
     "jquery-bootpag": "git@github.com:botmonster/jquery-bootpag.git#~1.0.7",
+    "jquery-sortable": "https://github.com/johnny/jquery-sortable.git#~0.9.13",
     "lodash": "~3.10.0",
     "requirejs": "~2.1.20"
   },
