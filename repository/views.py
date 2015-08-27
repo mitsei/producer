@@ -445,10 +445,9 @@ class CompositionsList(ProducerAPIViews, CompositionMapMixin):
             elif ((len(self.data) == 1 and 'nested' in self.data) or
                   (len(self.data) == 2 and 'nested' in self.data and 'page' in self.data)):
                 compositions = []
-                course_node = composition_query_session.get_compositions_by_genus_type(
-                    str(Type(**EDX_COMPOSITION_GENUS_TYPES['course']))).next()  # assume only one; abstract it out as if sequestered
+                course_node = rutils.get_course_node(composition_query_session)
                 compositions.append(self._get_map_with_children(course_node))
-                compositions = compositions[0]['children']
+                compositions = compositions[0]['children']  # remove the phantom course_node
             else:
                 allowable_query_terms = ['displayName', 'description', 'course', 'chapter',
                                          'sequential', 'split_test', 'vertical']
@@ -489,6 +488,9 @@ class CompositionsList(ProducerAPIViews, CompositionMapMixin):
                 form = repository.get_composition_form_for_create([EDX_COMPOSITION_RECORD_TYPE])
                 edx_type = self.data['genusTypeId']  # assumes type is full genusType string
                 try:
+                    if 'course' in edx_type:
+                        raise KeyError
+
                     if edx_type not in EDX_COMPOSITION_GENUS_TYPES_STR:
                         raise KeyError
                     form.set_genus_type(Type(edx_type))
@@ -520,6 +522,15 @@ class CompositionsList(ProducerAPIViews, CompositionMapMixin):
                 form.set_children(self.data['childIds'])
 
             composition = repository.create_composition(form)
+
+            # add the composition to the root course_node if no parentId supplied
+            if 'parentId' not in self.data:
+                course_node = rutils.get_course_node(repository)
+                rutils.append_child_composition(repository, course_node, composition)
+            else:
+                parent_composition = repository.get_composition(gutils.clean_id(self.data['parentId']))
+                rutils.append_child_composition(repository, parent_composition, composition)
+
             return gutils.CreatedResponse(composition.object_map)
         except (PermissionDenied, InvalidArgument, IllegalState, KeyError) as ex:
             gutils.handle_exceptions(ex)
@@ -677,9 +688,10 @@ class RepositoryChildrenList(ProducerAPIViews):
         """
         try:
             gutils.verify_keys_present(self.data, ['childIds'])
-            rutils.update_repository_compositions(self.rm,
-                                                  repository_id,
-                                                  self.data['childIds'])
+            repository_id = gutils.clean_id(repository_id)
+            self.rm.remove_child_repositories(repository_id)
+            for child_id in self.data['childIds']:
+                self.rm.add_child_repository(repository_id, gutils.clean_id(child_id))
             return gutils.UpdatedResponse()
         except (PermissionDenied, InvalidArgument, NotFound, KeyError) as ex:
             gutils.handle_exceptions(ex)

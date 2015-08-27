@@ -1229,7 +1229,7 @@ class EdXCompositionCrUDTests(RepositoryTestCase):
         payload = {
             'displayName': 'test composition',
             'description': 'for testing',
-            'genusTypeId': 'edx-composition%3Acourse%40EDX.ORG',
+            'genusTypeId': 'edx-composition%3Avertical%40EDX.ORG',
             'repositoryId': str(self.repo.ident)
         }
 
@@ -1250,7 +1250,7 @@ class EdXCompositionCrUDTests(RepositoryTestCase):
         )
         self.assertEqual(
             composition['genusTypeId'],
-            str(Type(**EDX_COMPOSITION_GENUS_TYPES['course']))
+            str(Type(**EDX_COMPOSITION_GENUS_TYPES['vertical']))
         )
         self.assertIn(
             str(Type(**COMPOSITION_RECORD_TYPES['edx-composition'])),
@@ -1553,17 +1553,6 @@ class EdXCompositionCrUDTests(RepositoryTestCase):
         payload = {
             'displayName': 'test composition',
             'description': 'for testing',
-            'repositoryId': str(self.repo.ident)
-        }
-
-        req = self.client.post(url, payload, format='json')
-        self.created(req)
-        composition = self.json(req)
-
-        payload = {
-            'displayName': 'test composition',
-            'description': 'for testing',
-            'childIds': [composition['id']],
             'repositoryId': str(self.repo.ident),
             'genusTypeId': 'edx-composition%3Achapter%40EDX.ORG',
         }
@@ -1571,6 +1560,18 @@ class EdXCompositionCrUDTests(RepositoryTestCase):
         req = self.client.post(url, payload, format='json')
         self.created(req)
         composition2 = self.json(req)
+
+        payload = {
+            'displayName': 'test composition',
+            'description': 'for testing',
+            'repositoryId': str(self.repo.ident),
+            'genusTypeId': 'edx-composition%3Asequential%40EDX.ORG',
+            'parentId': composition2['id']
+        }
+
+        req = self.client.post(url, payload, format='json')
+        self.created(req)
+        composition = self.json(req)
 
         url = self.base_url + 'repository/repositories/' + str(self.repo.ident) + '/compositions/?nested'
         req = self.client.get(url)
@@ -1888,7 +1889,7 @@ class RepositoryCrUDTests(AssessmentTestCase, RepositoryTestCase):
             self.code(req, 500)
             self.message(req,
                          'At least one of the following must be passed in: ' +
-                         '[\\"displayName\\", \\"description\\"]')
+                         '[\\"displayName\\", \\"description\\", \\"childIds\\"]')
 
         self.num_repos(1)
         req = self.client.get(url)

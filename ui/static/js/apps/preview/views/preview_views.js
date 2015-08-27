@@ -154,6 +154,8 @@ define(["app",
                     promise.done(function (data) {
                         renderableContents.push(data);
                         if (--numContents === 0) {
+                            renderableContents = matchListOrder(contents, renderableContents);
+
                             Utils.doneProcessing();
                             _this.updateContents(renderableContents, 'vertical');
                         }

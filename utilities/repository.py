@@ -1,6 +1,6 @@
 import time
 
-from dlkit.mongo.records.types import EDX_COMPOSITION_GENUS_TYPES
+from dlkit.mongo.records.types import EDX_COMPOSITION_GENUS_TYPES, COMPOSITION_RECORD_TYPES
 
 from dlkit_django import RUNTIME, PROXY_SESSION
 from dlkit_django.primordium import DataInputStream, DateTime
@@ -9,6 +9,11 @@ from dlkit_django.errors import IllegalState, AlreadyExists
 from dysonx.dysonx import get_or_create_user_repo, get_enclosed_object_asset
 
 from .general import *
+
+EDX_COMPOSITION_RECORD_TYPE = Type(**COMPOSITION_RECORD_TYPES['edx-composition'])
+
+def _get_genus_type(type_label):
+    return Type(**EDX_COMPOSITION_GENUS_TYPES[type_label])
 
 
 def activate_managers(request):
@@ -22,6 +27,17 @@ def activate_managers(request):
         set_session_data(request, 'rm', RUNTIME.get_service_manager('REPOSITORY', proxy=proxy))
 
     return request
+
+def append_child_composition(repository, parent, child):
+    parent = repository.get_composition(parent.ident)
+    current_children_ids = parent.get_children_ids()
+    child_ids_str = [str(i) for i in current_children_ids]
+    child_ids_str.append(str(child.ident))
+    current_children_ids = [clean_id(i) for i in child_ids_str]
+    form = repository.get_composition_form_for_update(parent.ident)
+    form.set_children(current_children_ids)
+    repository.update_composition(form)
+    return repository.get_composition(child.ident)
 
 def attach_asset_content_to_asset(bundle):
     repository = bundle['repository']
@@ -81,6 +97,21 @@ def get_asset_content_type_from_runtime(repository):
     except AttributeError:
         pass
     return type_list
+
+def get_course_node(repository):
+    repository.use_unsequestered_composition_view()
+    try:
+        course_node = repository.get_compositions_by_genus_type(
+            str(Type(**EDX_COMPOSITION_GENUS_TYPES['course']))).next()  # assume only one; abstract it out as if sequestered
+    except StopIteration:
+        form = repository.get_composition_form_for_create([EDX_COMPOSITION_RECORD_TYPE])
+        form.display_name = 'Phantom course composition node'
+        form.description = ''
+        form.set_genus_type(_get_genus_type('course'))
+        form.set_file_name('/xbundle/course')
+        form.set_sequestered(True)
+        course_node = repository.create_composition(form)
+    return course_node
 
 def get_enclosed_object_provider_id(request, catalog, enclosed_object):
     activate_managers(request)
@@ -226,6 +257,5 @@ def update_edx_composition_date(form, date_type, date_dict):
 
 def update_repository_compositions(repository, children_ids):
     # update the "root" course composition's children, here
-    course_node = repository.get_compositions_by_genus_type(
-        str(Type(**EDX_COMPOSITION_GENUS_TYPES['course']))).next()  # assume only one; abstract it out as if sequestered
+    course_node = get_course_node(repository)
     update_composition_children(repository, course_node.ident, children_ids)
