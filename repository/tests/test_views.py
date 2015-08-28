@@ -10,6 +10,7 @@ from copy import deepcopy
 from dlkit.mongo.records.types import COMPOSITION_RECORD_TYPES, EDX_COMPOSITION_GENUS_TYPES,\
     REPOSITORY_GENUS_TYPES
 
+from dlkit_django.errors import NotFound
 from dlkit_django.primordium import Id, DataInputStream, Type
 
 from django.conf import settings
@@ -51,9 +52,14 @@ class RepositoryTestCase(DjangoTestCase):
             val
         )
 
-    def num_compositions(self, val):
+    def num_compositions(self, val, unsequestered=False):
+        repo = self.get_repo(self.repo.ident)
+        if unsequestered:
+            repo.use_unsequestered_composition_view()
+        else:
+            repo.use_sequestered_composition_view()
         self.assertEqual(
-            self.get_repo(self.repo.ident).get_compositions().available(),
+            repo.get_compositions().available(),
             val
         )
 
@@ -115,12 +121,13 @@ class RepositoryTestCase(DjangoTestCase):
         rm = gutils.get_session_data(self.req, 'rm')
         repo = rm.get_repository(Id(repository_id))
 
-        new_asset = self.setup_asset(repository_id)
+        # new_asset = self.setup_asset(repository_id)
 
         form = repo.get_composition_form_for_create([])
         form.display_name = 'my test composition'
         form.description = 'foobar'
-        form.set_children([new_asset.ident])
+        form.set_children([])
+        # form.set_children([new_asset.ident])
         composition = repo.create_composition(form)
         return composition
 
@@ -735,7 +742,7 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
         composition = self.json(req)
         self.assertEqual(
             len(composition['childIds']),
-            1
+            0
         )
         self.assertEqual(
             composition['displayName']['text'],
@@ -767,80 +774,82 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
                 payload[key]
             )
 
-    def test_updating_child_ids_removes_previous_ones(self):
-        composition = self.setup_composition(self.repo_id)
-        self.num_compositions(1)
-        url = self.url + unquote(str(composition.ident))
+    # DEPRECATED
+    # def test_updating_child_ids_removes_previous_ones(self):
+    #     composition = self.setup_composition(self.repo_id)
+    #     self.num_compositions(1)
+    #     url = self.url + unquote(str(composition.ident))
+    #
+    #     # get the original asset id
+    #     req = self.client.get(url)
+    #     data = self.json(req)
+    #     old_asset_id = data['childIds'][0]
+    #
+    #     new_asset = self.setup_asset(self.repo_id)
+    #
+    #     payload = {
+    #         'childIds': str(new_asset.ident)
+    #     }
+    #
+    #     req = self.client.put(url, payload, format='json')
+    #     self.updated(req)
+    #     data = self.json(req)
+    #     self.assertNotEqual(
+    #         old_asset_id,
+    #         str(new_asset.ident)
+    #     )
+    #     self.assertEqual(
+    #         data['childIds'],
+    #         [str(new_asset.ident)]
+    #     )
+    #     self.num_compositions(1)
 
-        # get the original asset id
-        req = self.client.get(url)
-        data = self.json(req)
-        old_asset_id = data['childIds'][0]
-
-        new_asset = self.setup_asset(self.repo_id)
-
-        payload = {
-            'childIds': str(new_asset.ident)
-        }
-
-        req = self.client.put(url, payload, format='json')
-        self.updated(req)
-        data = self.json(req)
-        self.assertNotEqual(
-            old_asset_id,
-            str(new_asset.ident)
-        )
-        self.assertEqual(
-            data['childIds'],
-            [str(new_asset.ident)]
-        )
-        self.num_compositions(1)
-
-    def test_updating_child_ids_preserves_order(self):
-        composition = self.setup_composition(self.repo_id)
-        self.num_compositions(1)
-        url = self.url + unquote(str(composition.ident))
-
-        # get the original asset id
-        req = self.client.get(url)
-        data = self.json(req)
-        old_asset_id = data['childIds'][0]
-
-        new_asset = self.setup_asset(self.repo_id)
-
-        payload = {
-            'childIds': [old_asset_id, str(new_asset.ident)]
-        }
-
-        req = self.client.put(url, payload, format='json')
-        self.updated(req)
-        data = self.json(req)
-        self.assertNotEqual(
-            old_asset_id,
-            str(new_asset.ident)
-        )
-        self.assertEqual(
-            data['childIds'],
-            [old_asset_id, str(new_asset.ident)]
-        )
-        self.num_compositions(1)
-
-        payload = {
-            'childIds': [str(new_asset.ident), old_asset_id]
-        }
-
-        req = self.client.put(url, payload, format='json')
-        self.updated(req)
-        data = self.json(req)
-        self.assertNotEqual(
-            old_asset_id,
-            str(new_asset.ident)
-        )
-        self.assertEqual(
-            data['childIds'],
-            [str(new_asset.ident), old_asset_id]
-        )
-        self.num_compositions(1)
+    # DEPRECATED
+    # def test_updating_child_ids_preserves_order(self):
+    #     composition = self.setup_composition(self.repo_id)
+    #     self.num_compositions(1)
+    #     url = self.url + unquote(str(composition.ident))
+    #
+    #     # get the original asset id
+    #     req = self.client.get(url)
+    #     data = self.json(req)
+    #     old_asset_id = data['childIds'][0]
+    #
+    #     new_asset = self.setup_asset(self.repo_id)
+    #
+    #     payload = {
+    #         'childIds': [old_asset_id, str(new_asset.ident)]
+    #     }
+    #
+    #     req = self.client.put(url, payload, format='json')
+    #     self.updated(req)
+    #     data = self.json(req)
+    #     self.assertNotEqual(
+    #         old_asset_id,
+    #         str(new_asset.ident)
+    #     )
+    #     self.assertEqual(
+    #         data['childIds'],
+    #         [old_asset_id, str(new_asset.ident)]
+    #     )
+    #     self.num_compositions(1)
+    #
+    #     payload = {
+    #         'childIds': [str(new_asset.ident), old_asset_id]
+    #     }
+    #
+    #     req = self.client.put(url, payload, format='json')
+    #     self.updated(req)
+    #     data = self.json(req)
+    #     self.assertNotEqual(
+    #         old_asset_id,
+    #         str(new_asset.ident)
+    #     )
+    #     self.assertEqual(
+    #         data['childIds'],
+    #         [str(new_asset.ident), old_asset_id]
+    #     )
+    #     self.num_compositions(1)
 
     def test_update_with_no_parameters_throws_exception(self):
         new_composition = self.setup_composition(self.repo_id)
@@ -910,7 +919,7 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
         assessment = self.create_assessment_for_item(bank, item)
 
         composition = self.setup_composition(self.repo_id)
-        self.num_assets(1)
+        self.num_assets(0)
 
         self.attach_ids_to_composition(str(composition.ident), [str(assessment.ident)])
 
@@ -947,7 +956,7 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
             'assessment%3AAssessment%40osid.org'
         )
 
-        self.num_assets(2)
+        self.num_assets(1)
 
     def test_can_attach_one_asset_to_composition(self):
         composition = self.setup_composition(self.repo_id)
@@ -1116,7 +1125,7 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
 
         asset = self.setup_asset(self.repo_id)
         composition = self.setup_composition(self.repo_id)
-        self.num_assets(2)
+        self.num_assets(1)
 
         self.attach_ids_to_composition(str(composition.ident), [str(asset.ident)])
 
@@ -1207,6 +1216,155 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
             data['assetContents'][0]['url']
         )
         self.is_cloudfront_url(data['assetContents'][0]['url'])
+
+    def test_adding_asset_id_to_children_creates_sequestered_wrapper(self):
+        self.num_compositions(0, True)
+        composition = self.setup_composition(self.repo_id)
+        self.num_compositions(1, True)
+        url = self.url + unquote(str(composition.ident))
+
+        asset = self.setup_asset(self.repo_id)
+
+        payload = {
+            'childIds': str(asset.ident)
+        }
+
+        req = self.client.put(url, payload, format='json')
+        self.updated(req)
+        data = self.json(req)
+        self.assertNotEqual(
+            data['childIds'],
+            [str(asset.ident)]
+        )
+        self.assertEqual(
+            len(data['childIds']),
+            1
+        )
+        self.num_compositions(2, True)
+        self.num_compositions(1)
+
+        wrapper_id = data['childIds'][0]
+
+        self.repo.use_sequestered_composition_view()
+        self.assertRaises(NotFound, self.repo.get_composition, Id(wrapper_id))
+
+        self.repo.use_unsequestered_composition_view()
+        wrapper = self.repo.get_composition(Id(wrapper_id))
+        wrapped_assets = self.repo.get_composition_assets(wrapper.ident)
+        self.assertEqual(
+            wrapped_assets.available(),
+            1
+        )
+        self.assertEqual(
+            str(asset.ident),
+            str(wrapped_assets.next().ident)
+        )
+
+    def test_removing_asset_children_removes_sequestered_wrappers(self):
+        self.num_compositions(0, True)
+        composition = self.setup_composition(self.repo_id)
+        self.num_compositions(1, True)
+        url = self.url + unquote(str(composition.ident))
+
+        asset = self.setup_asset(self.repo_id)
+
+        payload = {
+            'childIds': str(asset.ident)
+        }
+
+        req = self.client.put(url, payload, format='json')
+        self.updated(req)
+        data = self.json(req)
+        self.assertNotEqual(
+            data['childIds'],
+            [str(asset.ident)]
+        )
+        self.assertEqual(
+            len(data['childIds']),
+            1
+        )
+        self.num_compositions(2, True)
+        self.num_compositions(1)
+
+        payload = {
+            'childIds': []
+        }
+        req = self.client.put(url, payload, format='json')
+        self.updated(req)
+        data = self.json(req)
+        self.assertEqual(
+            data['childIds'],
+            []
+        )
+        self.num_compositions(1, True)
+        self.num_compositions(1)
+
+    def test_can_reorder_asset_children_and_wrappers_are_garbage_collected(self):
+        self.num_compositions(0, True)
+        composition = self.setup_composition(self.repo_id)
+        self.num_compositions(1, True)
+        url = self.url + unquote(str(composition.ident))
+
+        asset_1 = self.setup_asset(self.repo_id)
+        asset_2 = self.setup_asset(self.repo_id)
+
+
+        test_cases = [(asset_1, asset_2),
+                      (asset_2, asset_1)]
+
+        for case in test_cases:
+            a1 = case[0]
+            a2 = case[1]
+            payload = {
+                'childIds': [str(a1.ident), str(a2.ident)]
+            }
+
+            req = self.client.put(url, payload, format='json')
+            self.updated(req)
+            data = self.json(req)
+            self.assertNotEqual(
+                data['childIds'],
+                [str(a1.ident), str(a2.ident)]
+            )
+            self.assertEqual(
+                len(data['childIds']),
+                2
+            )
+            self.num_compositions(3, True)
+            self.num_compositions(1)
+
+            wrapper_1_id = data['childIds'][0]
+            wrapper_2_id = data['childIds'][1]
+
+            self.repo.use_sequestered_composition_view()
+            self.assertRaises(NotFound, self.repo.get_composition, Id(wrapper_1_id))
+            self.assertRaises(NotFound, self.repo.get_composition, Id(wrapper_2_id))
+
+            self.repo.use_unsequestered_composition_view()
+            wrapper_1 = self.repo.get_composition(Id(wrapper_1_id))
+            wrapper_2 = self.repo.get_composition(Id(wrapper_2_id))
+            wrapped_asset_1 = self.repo.get_composition_assets(wrapper_1.ident)
+            wrapped_asset_2 = self.repo.get_composition_assets(wrapper_2.ident)
+            self.assertEqual(
+                wrapped_asset_1.available(),
+                1
+            )
+            self.assertEqual(
+                str(a1.ident),
+                str(wrapped_asset_1.next().ident)
+            )
+
+            self.assertEqual(
+                wrapped_asset_2.available(),
+                1
+            )
+            self.assertEqual(
+                str(a2.ident),
+                str(wrapped_asset_2.next().ident)
+            )
+
+        self.num_compositions(3, True)
+        self.num_compositions(1)
 
 
 class EdXCompositionCrUDTests(RepositoryTestCase):

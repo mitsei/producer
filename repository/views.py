@@ -248,6 +248,8 @@ class CompositionAssetsList(ProducerAPIViews):
     Get or add assets to a repository
     api/v1/repository/compositions/<composition_id>/assets/
 
+    DEPRECATED
+
     GET, PUT
     GET to view a composition's current assets
     PUT to append one or more assets to the composition. The assets / assessments must already
@@ -402,19 +404,25 @@ class CompositionDetails(ProducerAPIViews, CompositionMapMixin):
 
             composition = repository.update_composition(form)
 
-            if 'assetIds' in self.data:
-                rutils.update_composition_assets(self.am,
-                                                 self.rm,
-                                                 request.user.username,
-                                                 repository,
-                                                 composition_id,
-                                                 self.data['assetIds'])
-                composition = repository.get_composition(composition.ident)
+            # if 'assetIds' in self.data:
+            #     rutils.update_composition_assets(self.am,
+            #                                      self.rm,
+            #                                      request.user.username,
+            #                                      repository,
+            #                                      composition_id,
+            #                                      self.data['assetIds'])
+            #     composition = repository.get_composition(composition.ident)
 
             if 'childIds' in self.data:
+                if not isinstance(self.data['childIds'], list):
+                    self.data['childIds'] = [self.data['childIds']]
+
                 rutils.update_composition_children(repository,
                                                    composition_id,
-                                                   self.data['childIds'])
+                                                   self.data['childIds'],
+                                                   am=self.am,
+                                                   rm=self.rm,
+                                                   username=request.user.username)
                 composition = repository.get_composition(composition.ident)
 
             return gutils.UpdatedResponse(composition.object_map)

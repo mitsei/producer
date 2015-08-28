@@ -19,13 +19,8 @@ define(["app",
   ProducerManager.module("ProducerApp.Domain.View", function(View, ProducerManager, Backbone, Marionette, $, _){
 
     function updateCompositionChildrenAndAssets ($obj) {
-        // TODO: What if they drop it as a chapter -- no parent
-        // the below throws an exception...which is okay for now
-        // because there are rarely course-level assets
-
         // $obj is assumed to be an <li .resortable></li> tag
-        var assetIds = [],
-            childIds = [],
+        var childIds = [],
             parentObj,
             parentComposition,
             $parent;
@@ -56,13 +51,8 @@ define(["app",
             parentComposition = new CompositionModel(parentObj);
             $parent.children(':visible').not('.no-children,.ui-sortable-helper').each(function () {
                 var thisObj = $(this).children('div.object-wrapper').data('obj');
-                if (thisObj.type === 'Composition') {
-                    childIds.push(thisObj.id);
-                } else {
-                    assetIds.push(thisObj.id);
-                }
+                childIds.push(thisObj.id);
             });
-            parentComposition.set('assetIds', assetIds);
             parentComposition.set('childIds', childIds);
             parentComposition.save();
         }

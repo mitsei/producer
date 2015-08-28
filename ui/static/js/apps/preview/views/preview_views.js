@@ -106,7 +106,7 @@ define(["app",
                 _this = this,
                 $sidebarHeader = $('.sidebar-header'),
                 $sidebarList = $('.sidebar-list'),
-                sidebars, contents, sourceDoc;
+                sidebars;
 
             Utils.processing();
 
@@ -115,11 +115,10 @@ define(["app",
 
                 $sidebarHeader.text(data.displayName.text);
                 sidebars = getCompositions(data.children);
-                contents = getAssets(data.children);
 
                 _this.updateButtons($sidebarList, sidebars, 'sidebar');
                 _this.clearContents();
-                _this.updateContents(contents, 'chapter');
+                _this.updateContents([], 'chapter');
             });
         },
         events: {

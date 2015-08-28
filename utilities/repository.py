@@ -87,6 +87,15 @@ def create_asset(repository, asset):
 
     return asset[0], str(new_asset.ident)
 
+def create_resource_wrapper(repository, resource):
+    form = repository.get_composition_form_for_create([EDX_COMPOSITION_RECORD_TYPE])
+    form.display_name = 'Wrapper for {0}'.format(resource.display_name.text)
+    form.description = 'A sequestered wrapper'
+    form.set_genus_type(_get_genus_type('resource-node'))
+    form.set_sequestered(True)
+    composition = repository.create_composition(form)
+    repository.add_asset(resource.ident, composition.ident)
+    return repository.get_composition(composition.ident)
 
 def get_asset_content_type_from_runtime(repository):
     type_list = []
@@ -232,11 +241,66 @@ def update_composition_assets(am, rm, username, repository, composition_id, asse
     except NotFound:
         return []
 
-def update_composition_children(repository, composition_id, children_ids):
+def update_composition_children(repository, composition_id, children_ids,
+                                am=None, rm=None, username=None):
+    # in addition to clearing children, if a composition is of the sequestered resource-node
+    # type, we need to delete it to prevent clutter...
+    composition = repository.get_composition(clean_id(composition_id))
+    original_children_ids = composition.get_child_ids()
+    repository.use_unsequestered_composition_view()
+    for original_child_id in original_children_ids:
+        try:
+            child = repository.get_composition(original_child_id)
+            if child.is_sequestered():
+                repository.delete_composition(child.ident)
+        except NotFound:
+            pass
+
     form = repository.get_composition_form_for_update(clean_id(composition_id))
     form.clear_children()
-    children_ids = convert_to_id_list(children_ids)
-    form.set_children(children_ids)
+
+    # if an assetId or itemId is part of the childrenIds, then need to
+    # make sure they are in the right orchestrated bank, as well as
+    # add them to this composition as children of a sequestered composition..
+    unified_list = []
+    for child_id in children_ids:
+        if 'repository.Composition' in child_id:
+            unified_list.append(clean_id(child_id))
+        elif 'repository.Asset' in child_id:
+            try:
+                rm.assign_asset_to_repository(clean_id(child_id), repository.ident)
+            except AlreadyExists:
+                pass
+            asset = repository.get_asset(clean_id(child_id))
+            # Create a new sequestered, resource-node composition...
+            wrapper_composition = create_resource_wrapper(repository, asset)
+            unified_list.append(wrapper_composition.ident)
+        elif 'assessment.Item' in child_id:
+            # repository == for the run
+            # make sure the item is assigned to repository's orchestrated bank
+            run_bank = am.get_bank(repository.ident)
+            try:
+                run_bank.get_item(clean_id(child_id))
+            except NotFound:
+                am.assign_item_to_bank(clean_id(child_id), run_bank.ident)
+
+            # need to find the assessment associated with this item from user_bank
+            user_repo = get_or_create_user_repo(username)
+            user_bank = am.get_bank(user_repo.ident)
+            querier = user_bank.get_assessment_query()
+            querier.match_item_id(clean_id(child_id), True)
+            assessment = user_bank.get_assessments_by_query(querier).next()  # assume only one??
+            enclosed_asset = get_enclosed_object_asset(user_repo, assessment)
+            try:
+                rm.assign_asset_to_repository(enclosed_asset.ident, repository.ident)
+            except AlreadyExists:
+                pass
+
+            # Create a new sequestered, resource-node composition...
+            wrapper_composition = create_resource_wrapper(repository, enclosed_asset)
+            unified_list.append(wrapper_composition.ident)
+
+    form.set_children(unified_list)
     repository.update_composition(form)
 
 def update_edx_composition_boolean(form, bool_type, bool_value):
