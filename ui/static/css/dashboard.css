@@ -523,6 +523,7 @@ li.composition.no-children {
 
 .vertical-list-wrapper {
     display: flex;
+    padding-left: 0px;
 }
 
 .vertical-list .vertical-btn {
@@ -530,6 +531,7 @@ li.composition.no-children {
     /*white-space: pre-line;*/
     height: 100%;
     max-width: 25%;
+    cursor: pointer;
 }
 
 .vertical-list button {
@@ -548,6 +550,12 @@ li.composition.no-children {
 
 .sidebar-btn {
     overflow: hidden;
+    cursor: pointer;
+}
+
+.sidebar-btn.active button,
+.vertical-btn.active button {
+    color: white;
 }
 
 /*From:*/

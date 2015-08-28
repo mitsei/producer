@@ -126,6 +126,9 @@ define(["app",
             'click .sidebar-btn': 'showChildrenCompositions',
             'click .vertical-btn': 'showAssets'
         },
+        clearActiveSelf: function ($e) {
+            $e.removeClass('active');
+        },
         clearContents: function () {
             $('.content-list').empty();
         },
@@ -142,6 +145,7 @@ define(["app",
         },
         setActiveState: function ($e) {
             $e.siblings().removeClass('active');
+            $e.addClass('active');
         },
         showAssets: function (e) {
             var $e = $(e.currentTarget),
@@ -151,9 +155,8 @@ define(["app",
                 renderableContents = [],
                 _this = this;
 
-            _this.setActiveState($e);
-
             if (!$e.hasClass('active')) {
+                _this.setActiveState($e);
                 Utils.processing();
                 _this.hideAssetsByClass('sidebar', 'vertical');
 
@@ -179,6 +182,7 @@ define(["app",
                     _this.updateContents([], 'vertical');
                 }
             } else {
+                _this.clearActiveSelf($e);
                 _this.showAssetsByClass('sidebar', 'vertical');
             }
         },
@@ -200,11 +204,10 @@ define(["app",
                 renderableContents = [],
                 _this = this;
 
-            _this.setActiveState($e);
-
-            _this.clearVerticalBtns();
-
             if (!$e.hasClass('active')) {
+                _this.setActiveState($e);
+
+                _this.clearVerticalBtns();
                 _this.updateButtons($verticalList, $children, 'vertical');
                 _this.hideAssetsByClass('chapter', 'sidebar');
                 _this.hideAssetsByClass('chapter', 'vertical');
@@ -238,7 +241,11 @@ define(["app",
                     _this.updateContents([], 'sidebar');
                 }
             } else {
+                _this.clearActiveSelf($e);
                 _this.showAssetsByClass('chapter', 'sidebar');
+                _this.clearVerticalBtns();
+                _this.clearContents();
+                _this.updateContents([], 'sidebar');
             }
         },
         updateButtons: function ($list, $items, tag) {
