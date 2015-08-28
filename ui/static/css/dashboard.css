@@ -517,17 +517,55 @@ li.composition.no-children {
 }
 
 .vertical-list {
-    display: flex;
-    display: -webkit-flex;
+    display: table;
     flex: 1 1 75px;
 }
 
-.vertical-list button.vertical-btn {
+.vertical-list-wrapper {
+    display: flex;
+}
+
+.vertical-list .vertical-btn {
+    flex: 1 1 auto;
+    /*white-space: pre-line;*/
+    height: 100%;
     max-width: 25%;
+}
+
+.vertical-list button {
+    white-space: pre-line;
 }
 
 .content-list {
     flex: 1 1 100%;
     overflow: scroll;
     height: 100vh;
+}
+
+.no-preview-content {
+    margin-top: 50px;
+}
+
+.sidebar-btn {
+    overflow: hidden;
+}
+
+/*From:*/
+/*https://gist.github.com/danielflippance/d6401c926b4fb2442e15*/
+
+.list-group-horizontal .list-group-item {
+	display: inline-block;
+}
+.list-group-horizontal .list-group-item {
+	margin-bottom: 0;
+	margin-left:-4px;
+	margin-right: 0;
+}
+.list-group-horizontal .list-group-item:first-child {
+	border-top-right-radius:0;
+	border-bottom-left-radius:4px;
+}
+.list-group-horizontal .list-group-item:last-child {
+	border-top-right-radius:4px;
+	border-bottom-left-radius:0;
 }

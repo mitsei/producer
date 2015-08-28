@@ -7,10 +7,24 @@ define(["app",
         "text!apps/preview/templates/resource_preview.html",
         "text!apps/preview/templates/composition_preview.html",
         "text!apps/preview/templates/unit_button.html",
+        "text!apps/preview/templates/no_content.html",
         "bootstrap"],
        function(ProducerManager, Utils, AssetModel, CompositionModel,
-                ResourceTemplate, CompositionTemplate, UnitButtonTemplate){
+                ResourceTemplate, CompositionTemplate, UnitButtonTemplate,
+                NoContentTemplate){
   ProducerManager.module("PreviewApp.View", function(View, ProducerManager, Backbone, Marionette, $, _){
+    function getAssets (childrenList) {
+        return _.filter(childrenList, function (child) {
+            return child.type !== 'Composition';
+        });
+    }
+
+    function getCompositions (childrenList) {
+        return _.filter(childrenList, function (child) {
+            return child.type === 'Composition';
+        });
+    }
+
     function matchListOrder (originalList, secondList) {
         // sort a secondList according to the order in originalList
         // assumes the exact same items are in both lists, just in
@@ -100,8 +114,8 @@ define(["app",
                 Utils.doneProcessing();
 
                 $sidebarHeader.text(data.displayName.text);
-                sidebars = data.children;
-                contents = data.assets;
+                sidebars = getCompositions(data.children);
+                contents = getAssets(data.children);
 
                 _this.updateButtons($sidebarList, sidebars, 'sidebar');
                 _this.clearContents();
@@ -109,14 +123,14 @@ define(["app",
             });
         },
         events: {
-            'click button.sidebar-btn': 'showChildrenCompositions',
-            'click button.vertical-btn': 'showAssets'
+            'click .sidebar-btn': 'showChildrenCompositions',
+            'click .vertical-btn': 'showAssets'
         },
         clearContents: function () {
             $('.content-list').empty();
         },
         clearVerticalBtns: function () {
-            $('.vertical-list').empty();
+            $('.vertical-list-wrapper').empty();
         },
         hideAssetsByClass: function (classToHide, classToRemove) {
             var $contentList = $('.content-list');
@@ -132,10 +146,9 @@ define(["app",
         showAssets: function (e) {
             var $e = $(e.currentTarget),
                 $obj = $e.data('obj'),
-                contents = $obj.assets,
+                contents = getAssets($obj.children),// at this level don't need to filter out...only assets
                 numContents = contents.length,
                 renderableContents = [],
-                $contentList = $('.content-list'),
                 _this = this;
 
             _this.setActiveState($e);
@@ -144,23 +157,27 @@ define(["app",
                 Utils.processing();
                 _this.hideAssetsByClass('sidebar', 'vertical');
 
-                _.each(contents, function (content) {
-                    var resource = new AssetModel({
-                            id: content.id,
-                            renderable: true
-                        }),
-                        promise = resource.fetch();
+                if (contents.length > 0) {
+                    _.each(contents, function (content) {
+                        var resource = new AssetModel({
+                                id: content.id,
+                                renderable: true
+                            }),
+                            promise = resource.fetch();
 
-                    promise.done(function (data) {
-                        renderableContents.push(data);
-                        if (--numContents === 0) {
-                            renderableContents = matchListOrder(contents, renderableContents);
+                        promise.done(function (data) {
+                            renderableContents.push(data);
+                            if (--numContents === 0) {
+                                renderableContents = matchListOrder(contents, renderableContents);
 
-                            Utils.doneProcessing();
-                            _this.updateContents(renderableContents, 'vertical');
-                        }
+                                _this.updateContents(renderableContents, 'vertical');
+                            }
+                        });
                     });
-                });
+                } else {
+                    // put up a no content message
+                    _this.updateContents([], 'vertical');
+                }
             } else {
                 _this.showAssetsByClass('sidebar', 'vertical');
             }
@@ -176,9 +193,9 @@ define(["app",
         showChildrenCompositions: function (e) {
             var $e = $(e.currentTarget),
                 $obj = $e.data('obj'),
-                $children = $obj.children,
-                $verticalList = $('.vertical-list'),
-                contents = $obj.assets,
+                $children = getCompositions($obj.children),
+                $verticalList = $('.vertical-list-wrapper'),
+                contents = getAssets($obj.children),
                 numContents = contents.length,
                 renderableContents = [],
                 _this = this;
@@ -192,28 +209,34 @@ define(["app",
                 _this.hideAssetsByClass('chapter', 'sidebar');
                 _this.hideAssetsByClass('chapter', 'vertical');
 
+                $verticalList.find('.vertical-btn')
+                    .css('max-width', Math.floor(100 / $children.length) + '%');
+
                 Utils.processing();
 
-                _.each(contents, function (content) {
-                    var resource = new AssetModel({
-                            id: content.id,
-                            renderable: true
-                        }),
-                        promise = resource.fetch();
+                if (contents.length > 0) {
+                    _.each(contents, function (content) {
+                        var resource = new AssetModel({
+                                id: content.id,
+                                renderable: true
+                            }),
+                            promise = resource.fetch();
 
-                    promise.done(function (data) {
-                        renderableContents.push(data);
-                        if (--numContents === 0) {
-                            // need to re-order renderableContents per
-                            // the order in the original contents
-                            renderableContents = matchListOrder(contents, renderableContents);
+                        promise.done(function (data) {
+                            renderableContents.push(data);
+                            if (--numContents === 0) {
+                                // need to re-order renderableContents per
+                                // the order in the original contents
+                                renderableContents = matchListOrder(contents, renderableContents);
 
-                            Utils.doneProcessing();
-
-                            _this.updateContents(renderableContents, 'sidebar');
-                        }
+                                _this.updateContents(renderableContents, 'sidebar');
+                            }
+                        });
                     });
-                });
+                } else {
+                    // put up a No Content message
+                    _this.updateContents([], 'sidebar');
+                }
             } else {
                 _this.showAssetsByClass('chapter', 'sidebar');
             }
@@ -236,7 +259,7 @@ define(["app",
         updateContents: function (contents, className) {
             var $contentList = $('.content-list'),
                 $wrapper = $('<div></div>');
-
+            Utils.doneProcessing();
             if (contents.length > 0) {
                 _.each(contents, function (content) {
                     if (content.type === 'Asset') {
@@ -257,6 +280,10 @@ define(["app",
                         $(this).css('height', $(this).contents().height());
                     });
                 });
+            } else {
+                $wrapper.append(_.template(NoContentTemplate)());
+                $wrapper.addClass(className + '-asset');
+                $contentList.append($wrapper);
             }
         }
     });
