@@ -46,9 +46,11 @@ class RepositoryTestCase(DjangoTestCase):
         rm = gutils.get_session_data(self.req, 'rm')
         return rm.get_repository(repo_id)
 
-    def num_assets(self, val):
+    def num_assets(self, val, repo=None):
+        if repo is None:
+            repo = self.repo
         self.assertEqual(
-            self.get_repo(self.repo.ident).get_assets().available(),
+            self.get_repo(repo.ident).get_assets().available(),
             val
         )
 
@@ -1366,7 +1368,7 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
         self.num_compositions(3, True)
         self.num_compositions(1)
 
-    def test_assigning_items_to_composition_also_assign_to_bank(self):
+    def test_assigning_items_to_composition_also_assign_to_orchestrated_run_bank(self):
         from dysonx.dysonx import get_or_create_user_repo
 
         self.num_compositions(0, True)
@@ -1407,6 +1409,42 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
         self.num_items(orchestrated_bank, 1)
         self.num_items(new_bank, 1)
 
+    def test_assigning_assets_to_composition_also_assign_to_run_repo(self):
+        from dysonx.dysonx import get_or_create_user_repo
+
+        self.num_compositions(0, True)
+        composition = self.setup_composition(self.repo_id)
+
+        self.num_compositions(1, True)
+
+        user_repo = get_or_create_user_repo(self.username)
+        asset = self.setup_asset(user_repo.ident)
+
+        self.num_assets(1, user_repo)
+        self.num_assets(0)
+
+        url = self.url + unquote(str(composition.ident))
+
+        payload = {
+            'childIds': str(asset.ident)
+        }
+
+        req = self.client.put(url, payload, format='json')
+        self.updated(req)
+        data = self.json(req)
+        self.assertNotEqual(
+            data['childIds'],
+            [str(asset.ident)]
+        )
+        self.assertEqual(
+            len(data['childIds']),
+            1
+        )
+        self.num_compositions(2, True)
+        self.num_compositions(1)
+
+        self.num_assets(1, user_repo)
+        self.num_assets(1)
 
 
 
