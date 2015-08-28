@@ -277,27 +277,41 @@ def update_composition_children(repository, composition_id, children_ids,
             unified_list.append(wrapper_composition.ident)
         elif 'assessment.Item' in child_id:
             # repository == for the run
-            # make sure the item is assigned to repository's orchestrated bank
+            # make sure the item is assigned to repository's orchestrated bank'
+            item_id = clean_id(child_id)
             run_bank = am.get_bank(repository.ident)
             try:
-                run_bank.get_item(clean_id(child_id))
+                run_bank.get_item(item_id)
             except NotFound:
-                am.assign_item_to_bank(clean_id(child_id), run_bank.ident)
+                am.assign_item_to_bank(item_id, run_bank.ident)
 
             # need to find the assessment associated with this item from user_bank
             user_repo = get_or_create_user_repo(username)
             user_bank = am.get_bank(user_repo.ident)
+
+            item = user_bank.get_item(item_id)
+
+            # Create a new sequestered, resource-node composition...
+            wrapper_composition = create_resource_wrapper(repository, item)
+
             querier = user_bank.get_assessment_query()
-            querier.match_item_id(clean_id(child_id), True)
-            assessment = user_bank.get_assessments_by_query(querier).next()  # assume only one??
+            querier.match_item_id(item_id, True)
+            try:
+                assessment = user_bank.get_assessments_by_query(querier).next()  # assume only one??
+            except StopIteration:
+                # make an assessment
+                assessment_form = user_bank.get_assessment_form_for_create([])
+                assessment_form.display_name = 'Assessment for {0}'.format(item.display_name.text)
+                assessment = user_bank.create_assessment(assessment_form)
+                user_bank.add_item(assessment.ident, item_id)
+                user_repo.add_asset(assessment.ident, wrapper_composition.ident)
+
             enclosed_asset = get_enclosed_object_asset(user_repo, assessment)
             try:
                 rm.assign_asset_to_repository(enclosed_asset.ident, repository.ident)
             except AlreadyExists:
                 pass
 
-            # Create a new sequestered, resource-node composition...
-            wrapper_composition = create_resource_wrapper(repository, enclosed_asset)
             unified_list.append(wrapper_composition.ident)
 
     form.set_children(unified_list)

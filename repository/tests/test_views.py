@@ -1366,6 +1366,49 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
         self.num_compositions(3, True)
         self.num_compositions(1)
 
+    def test_assigning_items_to_composition_also_assign_to_bank(self):
+        from dysonx.dysonx import get_or_create_user_repo
+
+        self.num_compositions(0, True)
+        composition = self.setup_composition(self.repo_id)
+
+        self.num_compositions(1, True)
+
+        orchestrated_bank = self.get_bank(self.repo_id)
+
+        self.num_items(orchestrated_bank, 0)
+
+        user_repo = get_or_create_user_repo(self.username)
+        new_bank = self.get_bank(user_repo.ident)
+        item = self.create_item(new_bank)
+
+        self.num_items(new_bank, 1)
+
+        url = self.url + unquote(str(composition.ident))
+
+        payload = {
+            'childIds': str(item.ident)
+        }
+
+        req = self.client.put(url, payload, format='json')
+        self.updated(req)
+        data = self.json(req)
+        self.assertNotEqual(
+            data['childIds'],
+            [str(item.ident)]
+        )
+        self.assertEqual(
+            len(data['childIds']),
+            1
+        )
+        self.num_compositions(2, True)
+        self.num_compositions(1)
+
+        self.num_items(orchestrated_bank, 1)
+        self.num_items(new_bank, 1)
+
+
+
 
 class EdXCompositionCrUDTests(RepositoryTestCase):
     """Test the views for composition crud

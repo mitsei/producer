@@ -49,6 +49,18 @@ class AssessmentTestCase(DjangoTestCase):
 
         return item
 
+    def get_bank(self, bank_id):
+        if not isinstance(bank_id, Id):
+            bank_id = Id(bank_id)
+        am = gutils.get_session_data(self.req, 'am')
+        return am.get_bank(bank_id)
+
+    def num_items(self, bank, val):
+        self.assertEqual(
+            bank.items.available(),
+            val
+        )
+
     def setUp(self):
         super(AssessmentTestCase, self).setUp()
         self.url = self.base_url + 'assessment/'
