@@ -27,10 +27,10 @@ class ProducerAPIViews(gutils.DLKitSessionsManager):
             setattr(self, manager, gutils.get_session_data(request, manager))
 
         # for testing only
-        if settings.DEBUG:
-            asset_notification_session = self.rm.get_asset_notification_session(
-                asset_receiver=RabbitMQReceiver(request=request))
-            asset_notification_session.register_for_new_assets()
+        # if settings.DEBUG:
+        #     asset_notification_session = self.rm.get_asset_notification_session(
+        #         asset_receiver=RabbitMQReceiver(request=request))
+        #     asset_notification_session.register_for_new_assets()
 
     def finalize_response(self, request, response, *args, **kwargs):
         """save the updated managers"""

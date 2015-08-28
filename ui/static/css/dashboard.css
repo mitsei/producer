@@ -391,6 +391,10 @@ li.resource.resortable div.resource-row .vertical-box {
     color: gray;
 }
 
+#notifications-region {
+    opacity: 1 !important;
+}
+
 #notifications-region .alert {
     z-index: 1500;
     position: relative;

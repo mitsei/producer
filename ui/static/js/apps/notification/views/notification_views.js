@@ -6,6 +6,8 @@ define(["app",
         "text!apps/notification/templates/success_notification.html"],
        function(ProducerManager, ErrorTemplate, StatusTemplate, SuccessTemplate){
   ProducerManager.module("NotificationApp.View", function(View, ProducerManager, Backbone, Marionette, $, _){
+    var notifier;
+
     var BaseView = Marionette.ItemView.extend({
         initialize: function (options) {
             this.options = options;
@@ -20,16 +22,19 @@ define(["app",
             'click .dismiss-notification': 'removeNotification'
         },
         onShow: function () {
-            setTimeout(this.removeNotification, 15000);
+            if (notifier) {
+                clearTimeout(notifier);
+            }
+            notifier = setTimeout(this.removeNotification, 30000);
         },
         removeNotification: function () {
             try{
                 this.fadeOut("slow", function () {
-                    ProducerManager.regions.notifications.reset();
+                    ProducerManager.regions.notifications.$el.empty();
                 });
             } catch (e) {
                 ProducerManager.regions.notifications.$el.fadeOut("slow", function () {
-                    ProducerManager.regions.notifications.reset();
+                    ProducerManager.regions.notifications.$el.empty();
                 });
             }
         }

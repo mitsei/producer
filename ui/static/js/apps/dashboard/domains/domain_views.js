@@ -127,16 +127,6 @@ define(["app",
         }
     });
 
-    View.CompositionView = Marionette.ItemView.extend({
-        tagName: 'li',
-        className: 'composition',
-        template: function (serializedData) {
-            return _.template(CompositionTemplate)({
-                composition: serializedData
-            });
-        }
-    });
-
     View.CompositionsView = Marionette.CompositeView.extend({
         initialize: function () {
             this.collection = new CompositionsCollection(this.model.get('children'));
@@ -144,29 +134,31 @@ define(["app",
         tagName: 'li',
         className: 'resortable composition list-group-item',
         template: function (serializedData) {
-            return _.template(CompositionsTemplate)({
-                composition: serializedData,
-                compositionType: Utils.parseGenusType(serializedData.genusTypeId),
-                rawObject: JSON.stringify(serializedData)
-            });
+            if (serializedData.type === 'Composition') {
+                return _.template(CompositionsTemplate)({
+                    composition: serializedData,
+                    compositionType: Utils.parseGenusType(serializedData.genusTypeId),
+                    rawObject: JSON.stringify(serializedData)
+                });
+            } else {
+                return _.template(ResourceTemplate)({
+                    resource: serializedData,
+                    resourceType: Utils.parseGenusType(serializedData),
+                    rawObject: JSON.stringify(serializedData)
+                });
+            }
         },
         onShow: function () {
-            // Render the assets manually...not sure how to get two collections into
-            // a single CompositeView?
-            var resources = this.model.get('assets'),
-                $target = this.$el.children('ul.children-compositions'),
-                $resourceWrapper;
-
-            _.each(resources, function (resource) {
-                $resourceWrapper = $('<li></li>').addClass('resource resortable list-group-item');
-                $resourceWrapper.append(_.template(ResourceTemplate)({
-                    resource: resource,
-                    resourceType: Utils.parseGenusType(resource),
-                    rawObject: JSON.stringify(resource)
-                }));
-                $target.append($resourceWrapper);
+            // fix the parent class for the resources...instead of
+            // <li.composition.resortable> they should be <li.resource.resortable>
+            _.each(this.$el.find('li.resortable:not(.no-children)'), function (node) {
+                var $n = $(node),
+                    rawObj = $n.children('div.object-wrapper').data('obj');
+                if (rawObj.type !== 'Composition') {
+                    $n.removeClass('composition')
+                        .addClass('resource');
+                }
             });
-
 
             _.each(this.$el.find('ul.children-compositions'), function (childList) {
                 if ($(childList).children('li.resortable').length > 1) {

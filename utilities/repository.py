@@ -29,6 +29,7 @@ def activate_managers(request):
     return request
 
 def append_child_composition(repository, parent, child):
+    repository.use_unsequestered_composition_view()
     parent = repository.get_composition(parent.ident)
     current_children_ids = parent.get_children_ids()
     child_ids_str = [str(i) for i in current_children_ids]

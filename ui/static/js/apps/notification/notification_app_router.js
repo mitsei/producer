@@ -48,14 +48,14 @@ define(["app",
       });
 
       ProducerManager.vent.on('msg:success', function (data) {
-            ProducerManager.regions.notifications.show(new NotificationViews.SuccessView({
-                msg: data.data
-            }));
             if (data.objType === 'repositories' && data.verb === 'new') {
                 // also update the course dropdown list
                 var currentDomainRepo = window.location.href.split('#')[1].split('/')[1];
                 ProducerManager.trigger("repos:show", currentDomainRepo);
             }
+            ProducerManager.regions.notifications.show(new NotificationViews.SuccessView({
+                msg: data.data
+            }));
       });
 
     });

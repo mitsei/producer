@@ -46,39 +46,50 @@ def get_query_values(params):
             params = [params]
     return params
 
+def increment(dictionary, key):
+    if key not in dictionary:
+        dictionary[key] = 0
+    dictionary[key] += 1
+
 
 class CompositionMapMixin(object):
     def _get_map_with_children(self, obj, renderable=False):
         obj_map = obj.object_map
         obj_map['children'] = []
-        for child in obj.get_children():
-            obj_map['children'].append(self._get_map_with_children(child))
-        obj_map['assets'] = []
-        try:
-            asset_repo = self.rm.get_repository(gutils.clean_id(obj_map['repositoryId']))
-            for asset in asset_repo.get_composition_assets(obj.ident):
-                asset_map = asset.object_map
-                if 'enclosedObjectId' in asset_map:
-                    assessment = asset.get_enclosed_object()
-                    for item in self.am.get_bank(
-                            gutils.clean_id(assessment.object_map['bankId'])).get_assessment_items(assessment.ident):
-                        if renderable:
-                            item_map = item.object_map
-                            item_map['texts']['edxml'] = item.get_edxml_with_aws_urls()
-                            obj_map['assets'].append(item_map)
+        for child_id in obj.get_child_ids():
+            # need to use unsequestered view so get a lookup manager separately
+            composition_lookup_session = rutils.get_session(self.rm, 'composition', 'lookup')
+            composition_lookup_session.use_federated_repository_view()
+            composition_lookup_session.use_unsequestered_composition_view()
+            child = composition_lookup_session.get_composition(child_id)
+            if child.is_sequestered():
+                try:
+                    asset_repo = self.rm.get_repository(gutils.clean_id(obj_map['repositoryId']))
+                    for asset in asset_repo.get_composition_assets(child.ident):
+                        asset_map = asset.object_map
+                        if 'enclosedObjectId' in asset_map:
+                            assessment = asset.get_enclosed_object()
+                            for item in self.am.get_bank(
+                                    gutils.clean_id(assessment.object_map['bankId'])).get_assessment_items(assessment.ident):
+                                if renderable:
+                                    item_map = item.object_map
+                                    item_map['texts']['edxml'] = item.get_edxml_with_aws_urls()
+                                    obj_map['children'].append(item_map)
+                                else:
+                                    obj_map['children'].append(item.object_map)
                         else:
-                            obj_map['assets'].append(item.object_map)
-                else:
-                    if renderable:
-                        obj_map['assets'].append(
-                            rutils.update_asset_urls(asset_repo,
-                                                     asset,
-                                                     {'renderable_edxml': True}))
-                    else:
-                        obj_map['assets'].append(asset_map)
-        except NotFound:
-            # no assets
-            pass
+                            if renderable:
+                                obj_map['children'].append(
+                                    rutils.update_asset_urls(asset_repo,
+                                                             asset,
+                                                             {'renderable_edxml': True}))
+                            else:
+                                obj_map['children'].append(asset_map)
+                except NotFound:
+                    # no assets
+                    pass
+            else:
+                obj_map['children'].append(self._get_map_with_children(child))
         return obj_map
 
 class AssetDetails(ProducerAPIViews):
@@ -727,19 +738,26 @@ class RepositorySearch(ProducerAPIViews):
         names = []
         if 'repository.Asset' in asset_map['id']:
             key = 'repositoryId'
+            assigned_key = 'assignedRepositoryIds'
         else:
             key = 'bankId'
-        if asset_map[key] in run_map:
-            identifier = gutils.clean_id(asset_map[key]).identifier
-            names.append(run_map[identifier])
-        for assigned_repo_id in asset_map['assignedCatalogIds']:
-            identifier = gutils.clean_id(assigned_repo_id).identifier
+            assigned_key = 'assignedBankIds'
+
+        test_ids = [asset_map[key]] + asset_map[assigned_key]
+        test_ids = [gutils.clean_id(i).identifier for i in test_ids]
+        for identifier in test_ids:
             if identifier in run_map:
                 names.append(run_map[identifier])
+
         return names
 
     def get(self, request, repository_id, format=None):
         try:
+            import logging
+            import time
+            import timeit
+            logging.info('start search: ' + str(time.time()))
+
             self.query_params = get_query_values(self.data.get('q', None))
 
             facets = {
@@ -762,6 +780,7 @@ class RepositorySearch(ProducerAPIViews):
             # Then iterate through runs, and only accept items / assets
             # whose IDs are in the list. If no query params, then
             # just iterate through.
+            logging.info('before getting all assets: ' + str(time.time()))
             if self.query_params is None or self.query_params == ['']:
                 all_domain_assets = domain_repo.get_assets()
             else:
@@ -770,35 +789,35 @@ class RepositorySearch(ProducerAPIViews):
                     asset_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
                 all_domain_assets = domain_repo.get_assets_by_query(asset_querier)
 
-            for asset in all_domain_assets:
-                try:
-                    asset_tag = asset.get_asset_contents().next().genus_type.identifier
+            logging.info('after getting all assets: ' + str(time.time()))
+            non_enclosed_assets = [a for a in all_domain_assets
+                                   if a.enclosed_object is None and
+                                   a.get_asset_contents().available() > 0]
+            for asset in non_enclosed_assets:
+                asset_tag = asset.get_asset_contents().next().genus_type.identifier
 
-                    if asset_tag not in asset_counts:
-                        asset_counts[asset_tag] = 0
-                    asset_counts[asset_tag] += 1
+                increment(asset_counts, asset_tag)
 
-                    asset_map = asset.object_map
-                    run_names = self._get_run_names(run_map, asset_map)
+                asset_map = asset.object_map
+                run_names = self._get_run_names(run_map, asset_map)
 
-                    asset_map.update({
-                        'runNames': '; '.join(run_names)
-                    })
-                    object_list.append(asset_map)
+                asset_map.update({
+                    'runNames': '; '.join(run_names)
+                })
+                object_list.append(asset_map)
 
-                    # do the counts for included assets, including enclosed ones
-                    for run_name in run_names:
-                        if run_name not in course_run_counts:
-                            course_run_counts[run_name] = 0
-                        course_run_counts[run_name] += 1
-                except StopIteration:
-                    pass # no asset contents / enclosed asset
+                # do the counts for included assets, including enclosed ones
+                for run_name in run_names:
+                    increment(course_run_counts, run_name)
 
+            logging.info('after serializing assets: ' + str(time.time()))
             # now check for enclosed assets
             # ASSUME that all items in the related bank are from
             # enclosed assets
             domain_bank = self.am.get_bank(domain_repo.ident)
             domain_bank.use_federated_bank_view()
+
+            logging.info('before getting all items: ' + str(time.time()))
 
             if self.query_params is None or self.query_params == ['']:
                 all_domain_items = domain_bank.get_items()
@@ -808,24 +827,21 @@ class RepositorySearch(ProducerAPIViews):
                     item_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
                 all_domain_items = domain_bank.get_items_by_query(item_querier)
 
+            logging.info('after getting all items: ' + str(time.time()))
             for item in all_domain_items:
-                run_names = self._get_run_names(run_map, item.object_map)
-                item_tag = item.genus_type.identifier
-                if item_tag not in asset_counts:
-                    asset_counts[item_tag] = 0
-                asset_counts[item_tag] += 1
-
                 item_map = item.object_map
+                run_names = self._get_run_names(run_map, item_map)
+                item_tag = item.genus_type.identifier
+                increment(asset_counts, item_tag)
 
                 item_map.update({
                     'runNames': '; '.join(run_names)
                 })
                 object_list.append(item_map)
                 for run_name in run_names:
-                    if run_name not in course_run_counts:
-                        course_run_counts[run_name] = 0
-                    course_run_counts[run_name] += 1
+                    increment(course_run_counts, run_name)
 
+            logging.info('after serializing items: ' + str(time.time()))
             # TODO Also get the compositions so we can drag those over...
 
             for k, v in asset_counts.iteritems():
@@ -833,6 +849,10 @@ class RepositorySearch(ProducerAPIViews):
 
             for k, v in course_run_counts.iteritems():
                 facets['course'].append((k, v))
+
+            logging.info('after re-mapping counts: ' + str(time.time()))
+
+            logging.info('number of objects: ' + str(len(object_list)))
 
             return_data = {
                 'facets': facets,
