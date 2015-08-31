@@ -239,9 +239,40 @@ define(["app",
             });
         },
         events: {
+            'change .switch-genus-type': 'changeCompositionGenusType',
             'click .toggle-composition-children': 'toggleCompositionChildren',
             'click .preview': 'previewObject',
             'click .remove-composition': 'removeComposition'
+        },
+        changeCompositionGenusType: function (e) {
+            var $e = $(e.currentTarget),
+                $liParent = $e.parent().parent().parent().parent().parent(),
+                $wrapper = $liParent.children('div.object-wrapper'),
+                $icon = $wrapper.find('.composition-icon'),
+                obj = $wrapper.data('obj'),
+                objId = obj.id,
+                originalGenus = Utils.parseGenusType(obj.genusTypeId),
+                composition = new CompositionModel({id: objId}),
+                newType = $e.val();
+
+            composition.set('genusTypeId', Utils.genusType(newType));
+            composition.save(null, {
+                success: function (model, response) {
+                    // now change it in the UI and update the raw object
+                    $wrapper.removeClass(originalGenus)
+                        .addClass(newType);
+                    $icon.removeClass('composition-' + originalGenus)
+                        .addClass('composition-' + newType);
+                    $icon.attr('title', newType);
+
+                    obj.genusTypeId = response.genusTypeId;
+
+                    $wrapper.data('obj', obj);
+                },
+                error: function (model, response) {
+                    ProducerManager.vent.trigger('msg:error', response);
+                }
+            });
         },
         clearActiveElement: function () {
             $('div.object-wrapper').removeClass('alert alert-info');
@@ -317,6 +348,9 @@ define(["app",
                                     updateCompositionChildrenAndAssets($noChildrenObject);
                                     $(_this).dialog("close");
                                     Utils.doneProcessing();
+                                },
+                                error: function (model, response) {
+                                    ProducerManager.vent.trigger('msg:error', response);
                                 }
                             });
                         }

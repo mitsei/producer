@@ -370,7 +370,7 @@ class CompositionDetails(ProducerAPIViews, CompositionMapMixin):
             gutils.verify_at_least_one_key_present(self.data,
                                                    ['displayName', 'description', 'childIds',
                                                     'startDate', 'endDate', 'visibleToStudents',
-                                                    'draft', 'assetIds'])
+                                                    'draft', 'assetIds', 'genusTypeId'])
 
             repository = rutils.get_object_repository(self.rm,
                                                       composition_id,
