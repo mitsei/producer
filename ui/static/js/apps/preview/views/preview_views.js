@@ -65,15 +65,30 @@ define(["app",
             Utils.processing();
 
             promise.done(function (data) {
+                var video = false;
                 Utils.doneProcessing();
                 if (data.type === 'Asset') {
-                    sourceDoc = Utils.wrapText(data.assetContents[0].text.text);
+                    var assetText = data.assetContents[0].text.text;
+
+                    if (assetText.indexOf('youtube') >= 0) {
+                        var youtubeIds = $(assetText).attr('youtube')
+                                .split(','),
+                            youtubeId = _.filter(youtubeIds, function (speedIdPair) {
+                                return speedIdPair.indexOf('1.0:') >= 0;
+                            })[0].split(':')[1];
+
+                        video = true;
+                        sourceDoc = '//www.youtube.com/embed/' + youtubeId;
+                    } else {
+                        sourceDoc = Utils.wrapText(assetText);
+                    }
                 } else {
                     sourceDoc = Utils.wrapText(data.texts.edxml);
                 }
                 _this.$el.html(_.template(ResourceTemplate) ({
                     displayName: data.displayName.text,
-                    resource: sourceDoc
+                    resource: sourceDoc,
+                    video: video
                 }));
             });
         },
@@ -291,14 +306,29 @@ define(["app",
             Utils.doneProcessing();
             if (contents.length > 0) {
                 _.each(contents, function (content) {
+                    var video = false;
                     if (content.type === 'Asset') {
-                        sourceDoc = Utils.wrapText(content.assetContents[0].text.text);
+                        var assetText = content.assetContents[0].text.text;
+
+                        if (assetText.indexOf('youtube') >= 0) {
+                            var youtubeIds = $(assetText).attr('youtube')
+                                    .split(','),
+                                youtubeId = _.filter(youtubeIds, function (speedIdPair) {
+                                    return speedIdPair.indexOf('1.0:') >= 0;
+                                })[0].split(':')[1];
+
+                            video = true;
+                            sourceDoc = '//www.youtube.com/embed/' + youtubeId;
+                        } else {
+                            sourceDoc = Utils.wrapText(assetText);
+                        }
                     } else {
                         sourceDoc = Utils.wrapText(content.texts.edxml);
                     }
                     $wrapper.append(_.template(ResourceTemplate)({
                         displayName: content.displayName.text,
-                        resource: sourceDoc
+                        resource: sourceDoc,
+                        video: video
                     }));
                     $wrapper.addClass(className + '-asset');
                     $contentList.append($wrapper);

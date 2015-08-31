@@ -532,6 +532,7 @@ li.composition.no-children {
 .vertical-list-wrapper {
     display: flex;
     padding-left: 0px;
+    max-width: 45%;
 }
 
 .vertical-list .vertical-btn {

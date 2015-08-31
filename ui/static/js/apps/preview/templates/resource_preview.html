@@ -1,6 +1,10 @@
 <div class="text-center">
     <h3><%- displayName %></h3>
 </div>
-<iframe srcdoc="<%- resource %>">
+<% if (video) { %>
+    <iframe src="<%- resource %>"></iframe>
+<% } else { %>
+    <iframe srcdoc="<%- resource %>">
 
-</iframe>
+    </iframe>
+<% } %>
