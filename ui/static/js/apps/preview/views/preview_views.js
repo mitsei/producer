@@ -114,7 +114,7 @@ define(["app",
                 Utils.doneProcessing();
 
                 $sidebarHeader.text(data.displayName.text);
-                sidebars = getCompositions(data.children);
+                sidebars = data.children;
 
                 _this.updateButtons($sidebarList, sidebars, 'sidebar');
                 _this.clearContents();
@@ -149,10 +149,22 @@ define(["app",
         showAssets: function (e) {
             var $e = $(e.currentTarget),
                 $obj = $e.data('obj'),
-                contents = getAssets($obj.children),// at this level don't need to filter out...only assets
+                contents = [],// at this level don't need to filter out...only assets
                 numContents = contents.length,
                 renderableContents = [],
                 _this = this;
+
+            if ($obj.hasOwnProperty('children')) {
+                contents = $obj.children;
+                numContents = contents.length;
+            }
+
+            if ($obj.hasOwnProperty('type')) {
+                if ($obj.type === 'Asset' || $obj.type === 'Item') {
+                    contents = [$obj];
+                    numContents = contents.length;
+                }
+            }
 
             if (!$e.hasClass('active')) {
                 _this.setActiveState($e);
@@ -196,12 +208,23 @@ define(["app",
         showChildrenCompositions: function (e) {
             var $e = $(e.currentTarget),
                 $obj = $e.data('obj'),
-                $children = getCompositions($obj.children),
                 $verticalList = $('.vertical-list-wrapper'),
-                contents = getAssets($obj.children),
-                numContents = contents.length,
                 renderableContents = [],
-                _this = this;
+                _this = this,
+                $children = [],
+                contents = [],
+                numContents = contents.length;
+
+            if ($obj.hasOwnProperty('children')) {
+                $children = $obj.children;
+            }
+
+            if ($obj.hasOwnProperty('type')) {
+                if ($obj.type === 'Asset' || $obj.type === 'Item') {
+                    contents = [$obj];
+                    numContents = contents.length;
+                }
+            }
 
             if (!$e.hasClass('active')) {
                 _this.setActiveState($e);

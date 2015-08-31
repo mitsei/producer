@@ -529,7 +529,7 @@ li.composition.no-children {
 .vertical-list .vertical-btn {
     flex: 1 1 auto;
     /*white-space: pre-line;*/
-    height: 100%;
+    /*height: 100%;*/
     max-width: 25%;
     cursor: pointer;
 }
