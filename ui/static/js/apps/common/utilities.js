@@ -123,7 +123,15 @@ define(["jquery", "underscore"],
                             head.append(configMathjax);
                         }
                         head.append(mathjaxScript);
-                        wrapper.prepend(head);
+                        if (textBlob.indexOf('<body') < 0 && textBlob.indexOf('<html') < 0) {
+                            wrapper = $('<html></html>').append(head)
+                                .append('<body>' + textBlob + '</body>');
+                        } else if (textBlob.indexOf('<body') < 0) {
+                            wrapper = $('<html></html>').append(head)
+                                .append('<body>' + wrapper.find('html').html() + '</body>');
+                        } else {
+                            wrapper.find('html').prepend(head);
+                        }
                     }
                 } else if (textBlob.indexOf('<problem') >= 0) {
                     var wrapper = $('<html></html>'),
@@ -149,14 +157,16 @@ define(["jquery", "underscore"],
                 }
             } catch (e) {
                 // return the textBlob if all else fails
-                if (textBlob.indexOf('<script') >= 0) {
-                    var scriptContents = $('<html></html>').append(textBlob)
-                        .find('script')
-                        .text();
-                    return $('<html></html>').append(scriptContents)[0].outerHTML;
-                } else {
-                    return $('<html></html>').append(textBlob)[0].outerHTML;
-                }
+                return $('<html></html>').append(textBlob)[0].outerHTML;
+//                if (textBlob.indexOf('<script') >= 0) {
+//                    var scripts = $('<html></html>').append(textBlob)
+//                        .find('script'),
+//                        $head = $('<head></head>').append(scripts),
+//                        $body = $('<body></body>').append(textBlob);
+//                    return $('<html></html>').append(head).append(body);
+//                } else {
+//                    return $('<html></html>').append(textBlob)[0].outerHTML;
+//                }
             }
         };
 
