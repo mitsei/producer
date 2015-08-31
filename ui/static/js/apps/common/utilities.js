@@ -23,6 +23,12 @@ define(["jquery", "underscore"],
             $('.nav > .processing-spinner').addClass('hidden');
         };
 
+        utils.genusType = function (identifier) {
+            return utils.id('edx-composition',
+                identifier,
+                'EDX.ORG');
+        };
+
         utils.getMatchingDomainOption = function (path) {
             var domainRepoOptions = $('.repositories-menu li a'),
                 domainMatch;
@@ -42,6 +48,10 @@ define(["jquery", "underscore"],
             $('.repositories-menu').data('id', $(domainMatch).data('id'));
             $("ul.repository-navbar li").removeClass('hidden');
             $('#notifications-region').html('');
+        };
+
+        utils.id = function (namespace, identifier, authority) {
+            return namespace + '%3A' + identifier + '%40' + authority;
         };
 
         utils.parseGenusType = function (genusTypeStr) {

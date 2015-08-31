@@ -332,6 +332,15 @@ class CompositionDetails(ProducerAPIViews, CompositionMapMixin):
                                                       composition_id,
                                                       'composition')
 
+            if 'withChildren' in self.data:
+                # remove children compositions too
+                composition = repository.get_composition(gutils.clean_id(composition_id))
+
+                for child_ids in composition.get_child_ids():
+                    # use this instead of get_children() because sequestered
+                    # compositions don't show up with get_children()
+                    repository.delete_composition(child_ids)
+
             repository.delete_composition(gutils.clean_id(composition_id))
             return gutils.DeletedResponse()
         except (PermissionDenied, IllegalState, InvalidId) as ex:
@@ -403,15 +412,6 @@ class CompositionDetails(ProducerAPIViews, CompositionMapMixin):
                         pass
 
             composition = repository.update_composition(form)
-
-            # if 'assetIds' in self.data:
-            #     rutils.update_composition_assets(self.am,
-            #                                      self.rm,
-            #                                      request.user.username,
-            #                                      repository,
-            #                                      composition_id,
-            #                                      self.data['assetIds'])
-            #     composition = repository.get_composition(composition.ident)
 
             if 'childIds' in self.data:
                 if not isinstance(self.data['childIds'], list):

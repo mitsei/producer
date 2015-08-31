@@ -1446,6 +1446,25 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
         self.num_assets(1, user_repo)
         self.num_assets(1)
 
+    def test_can_delete_children_of_composition_with_flag(self):
+        self.num_compositions(0, True)
+        composition = self.setup_composition(self.repo_id)
+        self.num_compositions(1, True)
+        url = self.url + unquote(str(composition.ident))
+
+        asset = self.setup_asset(self.repo_id)
+
+        payload = {
+            'childIds': str(asset.ident)
+        }
+        req = self.client.put(url, payload, format='json')
+        self.updated(req)
+        self.num_compositions(2, True)
+        url += '?withChildren'
+        req = self.client.delete(url)
+        self.deleted(req)
+        self.num_compositions(0, True)
+
 
 
 class EdXCompositionCrUDTests(RepositoryTestCase):

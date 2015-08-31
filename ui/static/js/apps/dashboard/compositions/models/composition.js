@@ -22,6 +22,8 @@ define(["backbone"],
 
             if (this.options.renderable) {
                 return url + '?fullMap';
+            } else if (this.options.withChildren) {
+                return url + '?withChildren';
             } else {
                 return url;
             }

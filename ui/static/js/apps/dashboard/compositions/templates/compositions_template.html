@@ -27,7 +27,33 @@
                 </div>
             </div>
         </div>
-        <div class="pull-right composition-move-options">
+        <div class="pull-right composition-options">
+            <div class="form-group" title="Change the XML component tag">
+                <select class="form-control switch-type">
+                    <option>Switch type...</option>
+                    <% if (compositionType === 'chapter') { %>
+                        <option value="chapter" selected>Chapter</option>
+                    <% } else { %>
+                        <option value="chapter">Chapter</option>
+                    <% } %>
+                    <% if (compositionType === 'sequential') { %>
+                        <option value="sequential" selected>Sequential</option>
+                    <% } else { %>
+                        <option value="sequential">Sequential</option>
+                    <% } %>
+                    <% if (compositionType === 'vertical') { %>
+                        <option value="vertical" selected>Vertical</option>
+                    <% } else { %>
+                        <option value="vertical">Vertical</option>
+                    <% } %>
+                </select>
+            </div>
+            <div class="">
+                <button class="btn btn-warning remove-composition">
+                    <i aria-hidden="true" class="fa fa-trash-o"></i>
+                    Remove Component
+                </button>
+            </div>
         </div>
     </div>
     <div class="composition-footer expanded text-center">

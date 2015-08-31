@@ -11,11 +11,12 @@ define(["app",
         "text!apps/dashboard/compositions/templates/composition_template.html",
         "text!apps/dashboard/compositions/templates/compositions_template.html",
         "text!apps/dashboard/assets/templates/asset_template.html",
+        "text!apps/common/templates/delete_dialog.html",
         "jquery-sortable"],
        function(ProducerManager, CourseCollection, RunCollection, CompositionsCollection,
                 CompositionModel, PreviewViews, Utils,
                 RepoSelectorTemplate, CompositionTemplate, CompositionsTemplate,
-                ResourceTemplate){
+                ResourceTemplate, DeleteConfirmationTemplate){
   ProducerManager.module("ProducerApp.Domain.View", function(View, ProducerManager, Backbone, Marionette, $, _){
 
     function updateCompositionChildrenAndAssets ($obj) {
@@ -190,113 +191,57 @@ define(["app",
                 },
                 onDrop: function ($item, container, _super, e) {
                     // transform the item if it came from the no-drop area
-                    var $preMoveObj = $item.data('pre-move-parent-obj'),
-                        $newObj;
-                    if($item.hasClass('search-result')) {
-                        var rawObj = $item.data('obj'),
-                            $newObj = $('<li></li>').addClass('list-group-item resortable');
+                    if (container.options.drop) {
+                        // if droppable, continue
+                        var $preMoveObj = $item.data('pre-move-parent-obj'),
+                            $newObj;
 
-                        if (rawObj.type === 'Composition') {
-                            $newObj.addClass('composition');
-                            $newObj.append(_.template(CompositionsTemplate)({
-                                composition: rawObj,
-                                compositionType: Utils.parseGenusType(rawObj),
-                                rawObject: JSON.stringify(rawObj)
-                            }));
+                        if ($item.hasClass('search-result')) {
+                            var rawObj = $item.data('obj'),
+                                $newObj = $('<li></li>').addClass('list-group-item resortable');
 
-                            // TODO: here still need to figure out how to get the children...
+                            if (rawObj.type === 'Composition') {
+                                $newObj.addClass('composition');
+                                $newObj.append(_.template(CompositionsTemplate)({
+                                    composition: rawObj,
+                                    compositionType: Utils.parseGenusType(rawObj),
+                                    rawObject: JSON.stringify(rawObj)
+                                }));
+
+                                // TODO: here still need to figure out how to get the children...
+                            } else {
+                                $newObj.addClass('resource');
+                                $newObj.append(_.template(ResourceTemplate)({
+                                    resource: rawObj,
+                                    resourceType: Utils.parseGenusType(rawObj),
+                                    rawObject: JSON.stringify(rawObj)
+                                }));
+                            }
+
+                            $item.replaceWith($newObj);
                         } else {
-                            $newObj.addClass('resource');
-                            $newObj.append(_.template(ResourceTemplate)({
-                                resource: rawObj,
-                                resourceType: Utils.parseGenusType(rawObj),
-                                rawObject: JSON.stringify(rawObj)
-                            }));
+                            $newObj = $item;
+                        }
+                        _super($newObj, container);
+
+                        // update the object's current parent and the old parent...
+                        updateCompositionChildrenAndAssets($newObj);
+                        if ($preMoveObj.parent()[0] != $newObj.parent()[0]) {
+                            updateCompositionChildrenAndAssets($preMoveObj);
                         }
 
-                        $item.replaceWith($newObj);
+                        _this.refreshNoChildrenWarning();
                     } else {
-                        $newObj = $item;
+                        $item.remove();
+                        $('body').removeClass('dragging');
                     }
-                    _super($newObj, container);
-
-                    // update the object's current parent and the old parent...
-                    updateCompositionChildrenAndAssets($newObj);
-                    if ($preMoveObj.parent()[0] != $newObj.parent()[0]) {
-                        updateCompositionChildrenAndAssets($preMoveObj);
-                    }
-
-                    _this.refreshNoChildrenWarning();
                 }
             });
-//            $('#composition-region').sortable({
-//                forcePlaceholderSize: true,
-//                handle: 'div.drag-handles',
-//                helper: 'clone',
-//                items: 'li.resortable',
-//                opacity: .6,
-//                placeholder: 'sortable-placeholder',
-//                revert: 250,
-//                tolerance: 'pointer',
-//                beforeStop: function (e, ui) {
-//                    // ui.helper.parent() is the original parent here, before
-//                    // DOM position change. Remove the item from the
-//                    // parent list.
-//                    updateCompositionChildrenAndAssets(ui.helper);
-//                },
-//                receive: function (e, ui) {
-//                    var rawObj = ui.item.data('obj'),
-//                        $newObj = $('<li></li>').addClass('list-group-item resortable');
-//
-//                    if (rawObj.type === 'Composition') {
-//                        $newObj.addClass('composition');
-//                        $newObj.append(_.template(CompositionsTemplate)({
-//                            composition: rawObj,
-//                            compositionType: Utils.parseGenusType(rawObj),
-//                            rawObject: JSON.stringify(rawObj)
-//                        }));
-//
-//                        // TODO: here still need to figure out how to get the children...
-//                    } else {
-//                        $newObj.addClass('resource');
-//                        $newObj.append(_.template(ResourceTemplate)({
-//                            resource: rawObj,
-//                            resourceType: Utils.parseGenusType(rawObj),
-//                            rawObject: JSON.stringify(rawObj)
-//                        }));
-//                    }
-//
-//                    $(this).data('ui-sortable').currentItem.replaceWith($newObj);
-//                    _this.hideNoChildren($newObj);
-//
-//                    // save this new item back to the server
-//                    // update the parent composition model
-//                    updateCompositionChildrenAndAssets($newObj);
-//                },
-//                update: function (e, ui) {
-//                    // hide the no-children warning for this list
-//                    _this.hideNoChildren(ui.item);
-//
-//                    // update the sequence order of sibling elements
-//                    updateCompositionChildrenAndAssets(ui.item);
-//
-//                    // remove the item from the previous parent??
-//                    // TODO
-//
-//                    // check other lists .. if this item's old list
-//                    // now has no children, re-show the warning
-//                    _.each(_this.$el.find('ul.children-compositions'), function (childList) {
-//                        if ($(childList).children('li.list-group-item.resource,li.list-group-item.composition')
-//                                .length === 0) {
-//                            $(childList).children('li.no-children').removeClass('hidden');
-//                        }
-//                    });
-//                }
-//            });
         },
         events: {
             'click .toggle-composition-children': 'toggleCompositionChildren',
-            'click .preview': 'previewObject'
+            'click .preview': 'previewObject',
+            'click .remove-composition': 'removeComposition'
         },
         clearActiveElement: function () {
             $('div.object-wrapper').removeClass('alert alert-info');
@@ -332,6 +277,54 @@ define(["app",
                 }
             });
         },
+        removeComposition: function (e) {
+            // first destroy the composition
+            // then, update the parent's childIds list
+            var $e = $(e.currentTarget),
+                $liParent = $e.parent().parent().parent().parent().parent(),
+                $noChildrenObject = $liParent.siblings('li.no-children'),
+                obj = $liParent.children('div.object-wrapper').data('obj'),
+                displayName = obj.displayName.text,
+                objId = obj.id;
+
+            ProducerManager.regions.dialog.show(new View.DeleteConfirmationView({}));
+            ProducerManager.regions.dialog.$el.dialog({
+                modal: true,
+                width: 500,
+                height: 400,
+                title: 'Confirm deletion of ' + displayName,
+                buttons: [
+                    {
+                        text: "Cancel",
+                        class: 'btn btn-danger',
+                        click: function () {
+                            $(this).dialog("close");
+                        }
+                    },
+                    {
+                        text: "Yes!",
+                        class: 'btn btn-success',
+                        click: function () {
+                            var compositionModel = new CompositionModel({id: objId,
+                                    withChildren: true}),
+                                _this = this;
+
+                            Utils.processing();
+
+                            compositionModel.destroy({
+                                success: function (model, response) {
+                                    $liParent.remove();
+                                    updateCompositionChildrenAndAssets($noChildrenObject);
+                                    $(_this).dialog("close");
+                                    Utils.doneProcessing();
+                                }
+                            });
+                        }
+                    }
+                ]
+            });
+            Utils.bindDialogCloseEvents();
+        },
         toggleCompositionChildren: function (e) {
             var $e = $(e.currentTarget),
                 $footer = $e.parent(),
@@ -345,6 +338,12 @@ define(["app",
                 .toggleClass('fa-chevron-down');
             $e.find('.children-action-hide').toggleClass('hidden');
             $e.find('.children-action-show').toggleClass('hidden');
+        }
+    });
+
+    View.DeleteConfirmationView = Marionette.ItemView.extend({
+        template: function () {
+            return _.template(DeleteConfirmationTemplate)();
         }
     });
   });
