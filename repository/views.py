@@ -335,6 +335,7 @@ class CompositionDetails(ProducerAPIViews, CompositionMapMixin):
             if 'withChildren' in self.data:
                 # remove children compositions too
                 composition = repository.get_composition(gutils.clean_id(composition_id))
+                repository.use_unsequestered_composition_view()
 
                 for child_ids in composition.get_child_ids():
                     # use this instead of get_children() because sequestered

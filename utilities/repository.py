@@ -291,9 +291,6 @@ def update_composition_children(repository, composition_id, children_ids,
 
             item = user_bank.get_item(item_id)
 
-            # Create a new sequestered, resource-node composition...
-            wrapper_composition = create_resource_wrapper(repository, item)
-
             querier = user_bank.get_assessment_query()
             querier.match_item_id(item_id, True)
             try:
@@ -304,7 +301,9 @@ def update_composition_children(repository, composition_id, children_ids,
                 assessment_form.display_name = 'Assessment for {0}'.format(item.display_name.text)
                 assessment = user_bank.create_assessment(assessment_form)
                 user_bank.add_item(assessment.ident, item_id)
-                user_repo.add_asset(assessment.ident, wrapper_composition.ident)
+
+            # Create a new sequestered, resource-node composition...
+            wrapper_composition = create_resource_wrapper(repository, assessment)
 
             enclosed_asset = get_enclosed_object_asset(user_repo, assessment)
             try:
@@ -315,7 +314,7 @@ def update_composition_children(repository, composition_id, children_ids,
             unified_list.append(wrapper_composition.ident)
 
     form.set_children(unified_list)
-    repository.update_composition(form)
+    return repository.update_composition(form)
 
 def update_edx_composition_boolean(form, bool_type, bool_value):
     if bool_type == 'visible_to_students':

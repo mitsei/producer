@@ -242,7 +242,8 @@ define(["app",
             'change .switch-genus-type': 'changeCompositionGenusType',
             'click .toggle-composition-children': 'toggleCompositionChildren',
             'click .preview': 'previewObject',
-            'click .remove-composition': 'removeComposition'
+            'click .remove-composition': 'removeObject',
+            'click .remove-resource': 'removeObject'
         },
         changeCompositionGenusType: function (e) {
             var $e = $(e.currentTarget),
@@ -308,7 +309,7 @@ define(["app",
                 }
             });
         },
-        removeComposition: function (e) {
+        removeObject: function (e) {
             // first destroy the composition
             // then, update the parent's childIds list
             var $e = $(e.currentTarget),
@@ -336,23 +337,33 @@ define(["app",
                         text: "Yes!",
                         class: 'btn btn-success',
                         click: function () {
-                            var compositionModel = new CompositionModel({id: objId,
-                                    withChildren: true}),
-                                _this = this;
+                            var _this = this;
 
                             Utils.processing();
 
-                            compositionModel.destroy({
-                                success: function (model, response) {
-                                    $liParent.remove();
-                                    updateCompositionChildrenAndAssets($noChildrenObject);
-                                    $(_this).dialog("close");
-                                    Utils.doneProcessing();
-                                },
-                                error: function (model, response) {
-                                    ProducerManager.vent.trigger('msg:error', response);
-                                }
-                            });
+                            if (obj.type === 'Composition') {
+                                var compositionModel = new CompositionModel({id: objId,
+                                        withChildren: true});
+
+                                compositionModel.destroy({
+                                    success: function (model, response) {
+                                        $liParent.remove();
+                                        updateCompositionChildrenAndAssets($noChildrenObject);
+                                        $(_this).dialog("close");
+                                        Utils.doneProcessing();
+                                    },
+                                    error: function (model, response) {
+                                        ProducerManager.vent.trigger('msg:error', response);
+                                    }
+                                });
+                            } else {
+                                // if is an Asset or Item, just remove it
+                                // from the UI and call updateCompositionChildrenAndAssets
+                                $liParent.remove();
+                                updateCompositionChildrenAndAssets($noChildrenObject);
+                                $(_this).dialog("close");
+                                Utils.doneProcessing();
+                            }
                         }
                     }
                 ]
