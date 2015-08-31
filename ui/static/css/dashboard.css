@@ -325,7 +325,8 @@ ul.repository-navbar button.repository-btn {
 }
 
 .resource .vertical-box {
-    flex: 0 1 100%;
+    /*flex: 0 1 100%;*/
+    flex: 2;
 }
 
 li.resource.resortable div.resource-row .vertical-box {
@@ -334,7 +335,7 @@ li.resource.resortable div.resource-row .vertical-box {
 }
 
 .resource-preview {
-    flex: 0 1 300px;
+    /*flex: 0 1 300px;*/
     display: flex;
     display: -webkit-flex;
     flex-direction: column;

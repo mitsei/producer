@@ -94,28 +94,75 @@ define(["app",
         passToPaginator: function (objects) {
             ProducerManager.regions.facetedSearchPagination.show(new View.PaginationView(objects));
         },
+        updateBadgeNumbers: function (facetValues, items) {
+            var counters = {};
+
+            // set it up so that each valid facetValue has
+            // its own counter
+            _.each(facetValues, function (facet) {
+                counters[facet] = 0;
+                // now check each item and add to the counters
+                _.each(items, function (item) {
+                    if (item.runNames.indexOf(facet) >= 0 ||
+                        Utils.parseGenusType(item) == facet) {
+                        counters[facet]++;
+                    }
+                });
+
+                $('input.facet-checkbox[value="' + facet + '"]').siblings('.badge')
+                    .text(counters[facet]);
+            });
+        },
         updateFacetResults: function (e) {
             // check all facets for the checked ones
             // If none checked, unhide all objects
             // If some are checked, hide objects that do not meet filter requirements
+
+            // make this an AND for all checked boxes...and update the
+            // badge numbers in the OTHER facet categories accordingly...
             if ($('input.facet-checkbox:checked').length === 0) {
+                var facetValues = [];
+
+                _.each($('input.facet-checkbox'), function (box) {
+                    facetValues.push($(box).val());
+                });
                 this.passToPaginator(this.options);
+                this.updateBadgeNumbers(facetValues, this.options.objects);
             } else {
                 var filteredObjects = [],
-                    _this = this;
-                _.each($('input.facet-checkbox:checked'), function (box) {
-                    var facetValue = $(box).val();
-                    _.each(_this.options.objects, function (obj) {
-                        if (obj.id.indexOf('assessment.Item') >= 0) {
-                            var genusTypeStr = obj.genusTypeId;
-                        } else {
-                            var genusTypeStr = obj.assetContents[0].genusTypeId;
-                        }
-                        if (obj.runNames.indexOf(facetValue) >= 0 ||
-                            Utils.parseGenusType(genusTypeStr) == facetValue) {
-                            filteredObjects.push(obj);
-                        }
-                    });
+                    _this = this,
+                    facetValues = [],
+                    $facetPanels = $(e.currentTarget).parents('div.facet-panel')
+                        .parent()
+                        .children('div.facet-panel');
+
+                _.each($facetPanels, function (facetPanel) {
+                    var $thisPanelFacets = $(facetPanel).find('input.facet-checkbox:checked');
+
+                    if ($thisPanelFacets.length === 0) {
+                        // if no boxes checked in this panel, then
+                        // use all values -- because not filtered
+                        // on any of them.
+                        _.each($(facetPanel).find('input.facet-checkbox'), function (box) {
+                            facetValues.push($(box).val());
+                        });
+                    } else {
+                        // add the checked boxes to facetValues
+                        _.each($thisPanelFacets, function (box) {
+                            facetValues.push($(box).val());
+                        });
+                    }
+                });
+
+                // now, iterate through the items and make sure they meet
+                // all the requirements from facetValues
+                _.each(_this.options.objects, function (obj) {
+                    if (_.some(facetValues, function (facetValue) {
+                        return obj.runNames.indexOf(facetValue) >= 0 &&
+                            facetValues.indexOf(Utils.parseGenusType(obj)) >= 0;
+                    })) {
+                        filteredObjects.push(obj);
+                    }
                 });
 
                 filteredObjects.sort(function (a, b) {
@@ -126,6 +173,8 @@ define(["app",
                 this.passToPaginator({
                     objects: filteredObjects
                 });
+
+                this.updateBadgeNumbers(facetValues, filteredObjects);
             }
         }
     });
@@ -191,12 +240,6 @@ define(["app",
                 group: 'producer',
                 drop: false
             });
-//            $('div.resource').draggable({
-//                handle: 'div.drag-handles',
-//                helper: 'clone',
-//                revert: 'invalid',
-//                connectToSortable: '#composition-region'
-//            });
         },
         events: {
             'click .show-preview': 'togglePreview'
