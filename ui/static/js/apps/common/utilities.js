@@ -21,6 +21,7 @@ define(["jquery", "underscore"],
 
         utils.doneProcessing = function () {
             $('.nav > .processing-spinner').addClass('hidden');
+            $('body').removeClass('processing');
         };
 
         utils.genusType = function (identifier) {
@@ -72,6 +73,7 @@ define(["jquery", "underscore"],
 
         utils.processing = function () {
             $('.nav > .processing-spinner').removeClass('hidden');
+            $('body').addClass('processing');
         };
 
         utils.selectedRepoId = function (path) {

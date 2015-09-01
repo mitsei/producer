@@ -429,6 +429,10 @@ body.dragging, body.dragging * {
     cursor: move !important;
 }
 
+body.processing, body.processing * {
+    cursor: wait !important;
+}
+
 .dragged {
     position: absolute;
     top: 0;
@@ -520,7 +524,7 @@ li.composition.no-children {
     display: -webkit-flex;
     flex-direction: column;
     -webkit-flex-direction: column;
-    margin-top: 100px;
+    margin-top: 75px;
     flex: 1 1 100%;
 }
 
@@ -538,9 +542,7 @@ li.composition.no-children {
 }
 
 .vertical-list-wrapper {
-    display: flex;
     padding-left: 0px;
-    max-width: 40%;
 }
 
 .ui-dialog .vertical-list-wrapper {
@@ -551,22 +553,18 @@ li.composition.no-children {
 }
 
 .vertical-list .vertical-btn {
-    flex: 1 1 auto;
+    /*flex: 1 0 auto;*/
     /*white-space: pre-line;*/
     /*height: 100%;*/
-    max-width: 25%;
+    /*max-width: 25%;*/
     cursor: pointer;
-}
-
-.vertical-list button {
-    white-space: pre-line;
 }
 
 .content-list {
     flex: 1 1 100%;
     overflow: scroll;
     height: 100vh;
-    max-width: 75%;
+    /*max-width: 75%;*/
 }
 
 .ui-dialog .content-list {

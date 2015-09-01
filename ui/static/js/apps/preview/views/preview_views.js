@@ -250,7 +250,7 @@ define(["app",
                 _this.hideAssetsByClass('chapter', 'vertical');
 
                 $verticalList.find('.vertical-btn')
-                    .css('max-width', Math.floor(100 / $children.length) + '%');
+                    .css('width', Math.floor(100 / $children.length) + '%');
 
                 Utils.processing();
 

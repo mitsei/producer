@@ -174,7 +174,7 @@ define(["app",
             $('ul.run-list').sortable({
                 group: 'producer',
                 handle: 'div.drag-handles',
-                itemSelector: 'li.resortable:not(.no-children), li.resource',
+                itemSelector: 'li.resortable:not(.no-children), li.resource, li.composition',
                 pullPlaceholder: false,
                 placeholderClass: 'sortable-placeholder',
                 placeholder: '<li class="sortable-placeholder"></li>',
