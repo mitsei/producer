@@ -558,6 +558,7 @@ li.composition.no-children {
     /*height: 100%;*/
     /*max-width: 25%;*/
     cursor: pointer;
+    overflow: hidden;
 }
 
 .content-list {
