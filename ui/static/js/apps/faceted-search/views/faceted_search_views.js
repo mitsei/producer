@@ -2,6 +2,7 @@
 
 define(["app",
         "apps/common/utilities",
+        "apps/preview/views/preview_views",
         "text!apps/faceted-search/templates/facets.html",
         "text!apps/faceted-search/templates/facet_results.html",
         "text!apps/faceted-search/templates/facet_pagination.html",
@@ -9,7 +10,7 @@ define(["app",
         "bootstrap-drawer",
         "jquery-bootpag",
         "jquery-sortable"],
-       function(ProducerManager, Utils, FacetsTemplate, FacetResultsTemplate,
+       function(ProducerManager, Utils, PreviewViews, FacetsTemplate, FacetResultsTemplate,
                 FacetPaginationTemplate){
   ProducerManager.module("FacetedSearchApp.View", function(View, ProducerManager, Backbone, Marionette, $, _){
 
@@ -245,63 +246,81 @@ define(["app",
             'click .show-preview': 'togglePreview'
         },
         togglePreview: function (e) {
+            // TODO: If is a composition, open preview in a dialog window
             var $e = $(e.currentTarget),
                 $target = $e.siblings('iframe.preview-frame'),
                 $spinner = $e.siblings('.preview-processing'),
-                $resource = $e.closest('li.resource'),
-                objId = $resource.data('obj').id,
+                $resource = $e.closest('li.resource, li.composition'),
+                obj = $resource.data('obj'),
+                objId = obj.id,
                 url;
 
-            if ($e.hasClass('collapsed') && !$e.hasClass('cached')) {
-                if (objId.indexOf('assessment.Item') >= 0) {
-                    url = '/api/v1/assessment/items/' + objId + '/?renderable_edxml';
-                } else {
-                    url = '/api/v1/repository/assets/' + objId + '/?renderable_edxml';
-                }
-
-                // show spinner while searching
-                $spinner.removeClass('hidden');
-                $.ajax({
-                    url: url
-                }).fail(function (xhr, status, msg) {
-                    ProducerManager.vent.trigger('msg:error', xhr.responseText);
-                }).done(function (data) {
-                    var assetText, youtubeIds, youtubeId;
-
-                    $target.toggleClass('hidden');
-                    $e.toggleClass('collapsed');
-                    $resource.data('obj', data);
-
-                    if (objId.indexOf('assessment.Item') >= 0) {
-//                        $target.attr('srcdoc', data['texts']['edxml']);
-                        $target.attr('srcdoc', Utils.wrapText(data['texts']['edxml']));
-                    } else {
-                        assetText = data['assetContents'][0]['text']['text'];
-                        if (assetText.indexOf('youtube=') >= 0) {
-                            youtubeIds = $(assetText).attr('youtube')
-                                .split(',');
-                            youtubeId = _.filter(youtubeIds, function (speedIdPair) {
-                                return speedIdPair.indexOf('1.0:') >= 0;
-                            })[0].split(':')[1];
-                            $target[0].removeAttribute('srcdoc');
-                            $target.attr('src', '//www.youtube.com/embed/' + youtubeId);
-                        } else {
-//                            $target.attr('srcdoc', assetText);
-                            $target.attr('srcdoc', Utils.wrapText(assetText));
+            if (obj.type === 'Composition') {
+                ProducerManager.regions.dialog.show(new PreviewViews.CompositionView({
+                    objId: objId
+                }));
+                ProducerManager.regions.dialog.$el.dialog({
+                    modal: true,
+                    width: 800,
+                    height: 600,
+                    title: 'Preview of ' + obj.displayName.text,
+                    buttons: [
+                        {
+                            text: "Close",
+                            class: 'btn btn-danger',
+                            click: function () {
+                                $(this).dialog("close");
+                            }
                         }
+                    ]
+                });
+                Utils.bindDialogCloseEvents();
+            } else {
+                if ($e.hasClass('collapsed') && !$e.hasClass('cached')) {
+                    if (objId.indexOf('assessment.Item') >= 0) {
+                        url = '/api/v1/assessment/items/' + objId + '/?renderable_edxml';
+                    } else {
+                        url = '/api/v1/repository/assets/' + objId + '/?renderable_edxml';
                     }
 
-//                    var mathjaxScript = $('<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/2.4-latest/MathJax.js?config=TeX-MML-AM_HTMLorMML-full">' +
-//                        '</script>');
-//                    $target.contents()[0].head.appendChild(mathjaxScript[0]);
-                }).always(function () {
-                    // remove spinner
-                    $spinner.addClass('hidden');
-                });
-            } else {
-                $target.toggleClass('hidden');
-                $e.toggleClass('collapsed');
-                $e.addClass('cached');
+                    // show spinner while searching
+                    $spinner.removeClass('hidden');
+                    $.ajax({
+                        url: url
+                    }).fail(function (xhr, status, msg) {
+                        ProducerManager.vent.trigger('msg:error', xhr.responseText);
+                    }).done(function (data) {
+                        var assetText, youtubeIds, youtubeId;
+
+                        $target.toggleClass('hidden');
+                        $e.toggleClass('collapsed');
+                        $resource.data('obj', data);
+
+                        if (objId.indexOf('assessment.Item') >= 0) {
+                            $target.attr('srcdoc', Utils.wrapText(data['texts']['edxml']));
+                        } else {
+                            assetText = data['assetContents'][0]['text']['text'];
+                            if (assetText.indexOf('youtube=') >= 0) {
+                                youtubeIds = $(assetText).attr('youtube')
+                                    .split(',');
+                                youtubeId = _.filter(youtubeIds, function (speedIdPair) {
+                                    return speedIdPair.indexOf('1.0:') >= 0;
+                                })[0].split(':')[1];
+                                $target[0].removeAttribute('srcdoc');
+                                $target.attr('src', '//www.youtube.com/embed/' + youtubeId);
+                            } else {
+                                $target.attr('srcdoc', Utils.wrapText(assetText));
+                            }
+                        }
+                    }).always(function () {
+                        // remove spinner
+                        $spinner.addClass('hidden');
+                    });
+                } else {
+                    $target.toggleClass('hidden');
+                    $e.toggleClass('collapsed');
+                    $e.addClass('cached');
+                }
             }
         }
     });

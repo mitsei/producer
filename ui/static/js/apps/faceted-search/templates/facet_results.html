@@ -8,38 +8,49 @@
             <% var genusTypeStr = object.genusTypeId; %>
             <% var sourceDoc = object.texts.edxml %>
         <% } %>
+
+        <% if (object.type === 'Composition') { %>
+            <% var className = 'composition'; %>
+        <% } else { %>
+            <% var className = 'resource'; %>
+        <% } %>
+
         <% var objectType = genusTypeStr.slice(genusTypeStr.indexOf('%3A') + 3, genusTypeStr.indexOf('%40')); %>
         <% var objMap = JSON.stringify(object); %>
-        <li class="<%- objectType %> resource list-group-item search-result" data-run="<%- object.runNames %>" data-obj="<%- objMap %>">
-            <div class="object-wrapper">
-                <div class="drag-handles" aria-label="Drag handles for moving the resource">
+        <li class="<%- objectType %> <%- className %> list-group-item search-result" data-run="<%- object.runNames %>" data-obj="<%- objMap %>">
+            <div class="object-wrapper <%- className %>-object-wrapper">
+                <div class="<%- className %>-row">
+                    <div class="drag-handles" aria-label="Drag handles for moving the <%- className %>">
 
-                </div>
-                <div class="resource-icon resource-<%- objectType %>">
-                    <div class="ic-custom"></div>
-                </div>
-                <div class="vertical-box">
-                    <div class="vertical-content">
-                        <span class="display-name">
-                            <%- object.displayName.text %>
-                        </span>
-                        <span class="description">
-                            <%- object.description.text %>
-                        </span>
                     </div>
-                    <div class="vertical-footer">
-                        <span class="resource-run">
-                            <%- object.runNames %>
-                        </span>
+                    <div class="<%- className %>-icon <%- className %>-<%- objectType %>">
+                        <div class="ic-custom"></div>
                     </div>
-                </div>
-                <div class="pull-right resource-preview">
-                    <span class="show-preview collapsed">Preview Me</span>
-                    <div class="hidden preview-processing">
-                        <span class="fa fa-spin fa-refresh" aria-hidden="true"></span>
-                        <span class="sr-only">Processing the preview</span>
+                    <div class="vertical-box">
+                        <div class="vertical-content">
+                            <span class="display-name">
+                                <%- object.displayName.text %>
+                            </span>
+                            <span class="description">
+                                <%- object.description.text %>
+                            </span>
+                        </div>
+                        <div class="vertical-footer">
+                            <span class="<%- className %>-run">
+                                <%- object.runNames %>
+                            </span>
+                        </div>
                     </div>
-                    <iframe class="preview-frame hidden" srcdoc="<%- sourceDoc %>"></iframe>
+                    <div class="pull-right <%- className %>-preview">
+                        <span class="show-preview collapsed">Preview Me</span>
+                        <div class="hidden preview-processing">
+                            <span class="fa fa-spin fa-refresh" aria-hidden="true"></span>
+                            <span class="sr-only">Processing the preview</span>
+                        </div>
+                        <% if (object.type !== 'Composition') { %>
+                            <iframe class="preview-frame hidden" srcdoc="<%- sourceDoc %>"></iframe>
+                        <% } %>
+                    </div>
                 </div>
             </div>
         </li>

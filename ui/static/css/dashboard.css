@@ -327,6 +327,8 @@ ul.repository-navbar button.repository-btn {
 .resource .vertical-box {
     /*flex: 0 1 100%;*/
     flex: 2;
+    display: flex;
+    flex-direction: column;
 }
 
 li.resource.resortable div.resource-row .vertical-box {
@@ -340,6 +342,10 @@ li.resource.resortable div.resource-row .vertical-box {
     display: -webkit-flex;
     flex-direction: column;
     -webkit-flex-direction: column;
+}
+
+.composition-preview {
+    min-width: 100px;
 }
 
 .show-preview {
@@ -393,9 +399,11 @@ li.resource.resortable div.resource-row .vertical-box {
     margin-left: 30%;
 }
 
-.resource-run {
+.resource-run,
+.composition-run {
     font-size: 0.7em;
     color: gray;
+    margin-left: 10px;
 }
 
 #notifications-region {
@@ -535,6 +543,13 @@ li.composition.no-children {
     max-width: 40%;
 }
 
+.ui-dialog .vertical-list-wrapper {
+    display: flex;
+    padding-left: 0px;
+    width: 100%;
+    max-width: inherit;
+}
+
 .vertical-list .vertical-btn {
     flex: 1 1 auto;
     /*white-space: pre-line;*/
@@ -552,6 +567,18 @@ li.composition.no-children {
     overflow: scroll;
     height: 100vh;
     max-width: 75%;
+}
+
+.ui-dialog .content-list {
+    flex: 1 1 100%;
+    overflow: scroll;
+    height: 100vh;
+    width: 100%;
+    max-width: inherit;
+}
+
+.ui-dialog .vertical-asset iframe {
+    width: 100%;
 }
 
 .no-preview-content {
@@ -586,4 +613,8 @@ li.composition.no-children {
 .list-group-horizontal .list-group-item:last-child {
 	border-top-right-radius:4px;
 	border-bottom-left-radius:0;
+}
+
+.ui-dialog {
+    z-index: 3000;
 }

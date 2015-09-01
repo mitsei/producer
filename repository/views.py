@@ -745,14 +745,17 @@ class RepositorySearch(ProducerAPIViews):
 
     def _get_run_names(self, run_map, asset_map):
         names = []
-        if 'repository.Asset' in asset_map['id']:
+        if ('repository.Asset' in asset_map['id'] or
+            'repository.Composition' in asset_map['id']):
             key = 'repositoryId'
             assigned_key = 'assignedRepositoryIds'
         else:
             key = 'bankId'
             assigned_key = 'assignedBankIds'
 
-        test_ids = [asset_map[key]] + asset_map[assigned_key]
+        test_ids = [asset_map[key]]
+        if assigned_key in asset_map:
+            test_ids += asset_map[assigned_key]
         test_ids = [gutils.clean_id(i).identifier for i in test_ids]
         for identifier in test_ids:
             if identifier in run_map:
@@ -781,6 +784,9 @@ class RepositorySearch(ProducerAPIViews):
             domain_repo = self.rm.get_repository(gutils.clean_id(repository_id))
             domain_repo.use_federated_repository_view()
 
+            domain_bank = self.am.get_bank(domain_repo.ident)
+            domain_bank.use_federated_bank_view()
+
             run_map = self._get_run_map(repository_id)
 
             # First, get IDs of all assets that match text of the query param
@@ -789,69 +795,52 @@ class RepositorySearch(ProducerAPIViews):
             # Then iterate through runs, and only accept items / assets
             # whose IDs are in the list. If no query params, then
             # just iterate through.
-            logging.info('before getting all assets: ' + str(time.time()))
+            logging.info('before getting all objects: ' + str(time.time()))
             if self.query_params is None or self.query_params == ['']:
                 all_domain_assets = domain_repo.get_assets()
+                all_domain_compositions = domain_repo.get_compositions()
+                all_domain_items = domain_bank.get_items()
             else:
                 asset_querier = domain_repo.get_asset_query()
+                composition_querier = domain_repo.get_composition_query()
+                item_querier = domain_bank.get_item_query()
+
                 for term in self.query_params:
                     asset_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
-                all_domain_assets = domain_repo.get_assets_by_query(asset_querier)
+                    composition_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
+                    item_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
 
-            logging.info('after getting all assets: ' + str(time.time()))
+                all_domain_assets = domain_repo.get_assets_by_query(asset_querier)
+                all_domain_compositions = domain_repo.get_compositions_by_query(composition_querier)
+                all_domain_items = domain_bank.get_items_by_query(item_querier)
+
+            logging.info('after getting all objects: ' + str(time.time()))
             non_enclosed_assets = [a for a in all_domain_assets
                                    if a.enclosed_object is None and
                                    a.get_asset_contents().available() > 0]
-            for asset in non_enclosed_assets:
-                asset_tag = asset.get_asset_contents().next().genus_type.identifier
 
-                increment(asset_counts, asset_tag)
+            cases = [non_enclosed_assets, all_domain_items, all_domain_compositions]
+            for case in cases:
+                for obj in case:
+                    try:
+                        tag = obj.get_asset_contents().next().genus_type.identifier
+                    except AttributeError:
+                        tag = obj.genus_type.identifier
 
-                asset_map = asset.object_map
-                run_names = self._get_run_names(run_map, asset_map)
+                    increment(asset_counts, tag)
 
-                asset_map.update({
-                    'runNames': '; '.join(run_names)
-                })
-                object_list.append(asset_map)
+                    obj_map = obj.object_map
+                    run_names = self._get_run_names(run_map, obj_map)
 
-                # do the counts for included assets, including enclosed ones
-                for run_name in run_names:
-                    increment(course_run_counts, run_name)
+                    obj_map.update({
+                        'runNames': '; '.join(run_names)
+                    })
+                    object_list.append(obj_map)
 
-            logging.info('after serializing assets: ' + str(time.time()))
-            # now check for enclosed assets
-            # ASSUME that all items in the related bank are from
-            # enclosed assets
-            domain_bank = self.am.get_bank(domain_repo.ident)
-            domain_bank.use_federated_bank_view()
-
-            logging.info('before getting all items: ' + str(time.time()))
-
-            if self.query_params is None or self.query_params == ['']:
-                all_domain_items = domain_bank.get_items()
-            else:
-                item_querier = domain_bank.get_item_query()
-                for term in self.query_params:
-                    item_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
-                all_domain_items = domain_bank.get_items_by_query(item_querier)
-
-            logging.info('after getting all items: ' + str(time.time()))
-            for item in all_domain_items:
-                item_map = item.object_map
-                run_names = self._get_run_names(run_map, item_map)
-                item_tag = item.genus_type.identifier
-                increment(asset_counts, item_tag)
-
-                item_map.update({
-                    'runNames': '; '.join(run_names)
-                })
-                object_list.append(item_map)
-                for run_name in run_names:
-                    increment(course_run_counts, run_name)
-
-            logging.info('after serializing items: ' + str(time.time()))
-            # TODO Also get the compositions so we can drag those over...
+                    # do the counts for included assets, including enclosed ones
+                    for run_name in run_names:
+                        increment(course_run_counts, run_name)
+            logging.info('after serializing everything: ' + str(time.time()))
 
             for k, v in asset_counts.iteritems():
                 facets['resource_type'].append((k, v))
