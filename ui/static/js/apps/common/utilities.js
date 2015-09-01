@@ -76,6 +76,10 @@ define(["jquery", "underscore"],
             $('body').addClass('processing');
         };
 
+        utils.runId = function () {
+            return $('select.run-selector').val();
+        };
+
         utils.selectedRepoId = function (path) {
             if (typeof path !== 'undefined') {
                 var domainMatch = utils.getMatchingDomainOption('#repos/' + path);

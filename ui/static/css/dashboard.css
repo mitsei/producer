@@ -412,7 +412,9 @@ li.resource.resortable div.resource-row .vertical-box {
 
 #notifications-region .alert {
     z-index: 1500;
-    position: relative;
+    position: fixed;
+    top: 50px;
+    right: 10px;
 }
 
 .drag-handles {

@@ -328,7 +328,7 @@ define(["app",
                     $wrapper.data('obj', obj);
                 },
                 error: function (model, response) {
-                    ProducerManager.vent.trigger('msg:error', response);
+                    ProducerManager.vent.trigger('msg:error', response.responseText);
                 }
             });
         },
@@ -406,6 +406,9 @@ define(["app",
                                         withChildren: true});
 
                                 compositionModel.destroy({
+                                    data: JSON.stringify({
+                                        repoId: Utils.runId()
+                                    }),
                                     success: function (model, response) {
                                         $liParent.remove();
                                         updateCompositionChildrenAndAssets($noChildrenObject);
@@ -413,7 +416,9 @@ define(["app",
                                         Utils.doneProcessing();
                                     },
                                     error: function (model, response) {
-                                        ProducerManager.vent.trigger('msg:error', response);
+                                        ProducerManager.vent.trigger('msg:error', response.responseText);
+                                        $(_this).dialog("close");
+                                        Utils.doneProcessing();
                                     }
                                 });
                             } else {

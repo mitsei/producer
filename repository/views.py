@@ -335,8 +335,13 @@ class CompositionDetails(ProducerAPIViews, CompositionMapMixin):
             if self.rm.get_repositories_by_composition(
                     gutils.clean_id(composition_id)).available() > 1:
                 gutils.verify_keys_present(self.data, ['repoId'])
-                self.rm.unassign_composition_from_repository(gutils.clean_id(composition_id),
-                                                             gutils.clean_id(self.data['repoId']))
+                composition = repository.get_composition(gutils.clean_id(composition_id))
+                if self.data['repoId'] == composition.object_map['repositoryId']:
+                    # by default move the composition to the ownership of the next one
+                    raise IllegalState('For now, cannot delete from the owner repository.')
+                else:
+                    self.rm.unassign_composition_from_repository(composition.ident,
+                                                                 gutils.clean_id(self.data['repoId']))
             else:
                 if 'withChildren' in self.data:
                     # remove children compositions too
