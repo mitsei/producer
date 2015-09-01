@@ -1,16 +1,21 @@
 import time
 
-from dlkit.mongo.records.types import EDX_COMPOSITION_GENUS_TYPES, COMPOSITION_RECORD_TYPES
+from dlkit.mongo.records.types import EDX_COMPOSITION_GENUS_TYPES,\
+    COMPOSITION_RECORD_TYPES, REPOSITORY_GENUS_TYPES, REPOSITORY_RECORD_TYPES
 
 from dlkit_django import RUNTIME, PROXY_SESSION
 from dlkit_django.primordium import DataInputStream, DateTime
 from dlkit_django.errors import IllegalState, AlreadyExists
 
-from dysonx.dysonx import get_or_create_user_repo, get_enclosed_object_asset
+from dysonx.dysonx import get_or_create_user_repo, get_enclosed_object_asset,\
+    _get_or_create_root_repo
 
 from .general import *
 
 EDX_COMPOSITION_RECORD_TYPE = Type(**COMPOSITION_RECORD_TYPES['edx-composition'])
+LORE_REPOSITORY = Type(**REPOSITORY_RECORD_TYPES['lore-repo'])
+DOMAIN_REPO_GENUS = Type(**REPOSITORY_GENUS_TYPES['domain-repo'])
+
 
 def _get_genus_type(type_label):
     return Type(**EDX_COMPOSITION_GENUS_TYPES[type_label])
@@ -86,6 +91,29 @@ def create_asset(repository, asset):
     })
 
     return asset[0], str(new_asset.ident)
+
+def create_domain_repo(rm, name, description):
+    """
+    Create a new domain repository.
+
+    Args:
+        name (unicode): Repository (Domain) name
+        description (unicode): Repository description
+        user_id (int): User ID of repository creator
+    Returns:
+        repo (learningresources.Repository): Newly-created repository
+    """
+    # check to see if there is a parent "course" repository repo, for managing
+    # repo hierarchies. If not, create it.
+    course_repo = _get_or_create_root_repo(rm, 'courses')
+    form = rm.get_repository_form_for_create([LORE_REPOSITORY])
+    form.display_name = str(name)
+    form.description = '{}'.format(str(description))
+    form.set_provider(rm.effective_agent_id)
+    form.set_genus_type(DOMAIN_REPO_GENUS)
+    repo = rm.create_repository(form)
+    rm.add_child_repository(course_repo.ident, repo.ident)
+    return repo
 
 def create_resource_wrapper(repository, resource):
     form = repository.get_composition_form_for_create([EDX_COMPOSITION_RECORD_TYPE])
@@ -271,7 +299,10 @@ def update_composition_children(repository, composition_id, children_ids,
             # TODO:
             # Should be assigning the composition to THIS repository as well as
             # appending it as a childId.
-            rm.assign_composition_to_repository(id_obj, repository.ident)
+            try:
+                rm.assign_composition_to_repository(id_obj, repository.ident)
+            except AlreadyExists:
+                pass
             unified_list.append(id_obj)
         elif 'repository.Asset' in child_id:
             try:

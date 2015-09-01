@@ -19,6 +19,10 @@ define(["jquery", "underscore"],
             return text;
         };
 
+        utils.domainGenus = function () {
+            return 'repository-genus-type%3Adomain-repo%40ODL.MIT.EDU';
+        };
+
         utils.doneProcessing = function () {
             $('.nav > .processing-spinner').addClass('hidden');
             $('body').removeClass('processing');

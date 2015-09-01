@@ -677,18 +677,25 @@ class RepositoriesList(ProducerAPIViews):
 
         """
         try:
-            if 'bankId' not in self.data:
-                form = self.rm.get_repository_form_for_create([])
-                gutils.verify_keys_present(self.data, ['displayName', 'description'])
-                finalize_method = self.rm.create_repository
+            if ('genusTypeId' in self.data and
+                    self.data['genusTypeId'] == str(rutils.DOMAIN_REPO_GENUS)):
+                repo = rutils.create_domain_repo(self.rm,
+                                                 self.data['displayName'],
+                                                 self.data['description'])
             else:
-                repository = self.rm.get_repository(gutils.clean_id(self.data['bankId']))
-                form = self.rm.get_repository_form_for_update(repository.ident)
-                finalize_method = self.rm.update_repository
+                if 'bankId' not in self.data:
+                    form = self.rm.get_repository_form_for_create([])
+                    gutils.verify_keys_present(self.data, ['displayName', 'description'])
+                    finalize_method = self.rm.create_repository
+                else:
+                    repository = self.rm.get_repository(gutils.clean_id(self.data['bankId']))
+                    form = self.rm.get_repository_form_for_update(repository.ident)
+                    finalize_method = self.rm.update_repository
 
-            form = gutils.set_form_basics(form, self.data)
+                form = gutils.set_form_basics(form, self.data)
+                repo = finalize_method(form)
 
-            new_repo = gutils.convert_dl_object(finalize_method(form))
+            new_repo = gutils.convert_dl_object(repo)
 
             return gutils.CreatedResponse(new_repo)
         except (PermissionDenied, InvalidArgument, NotFound, KeyError) as ex:
@@ -860,11 +867,13 @@ class RepositorySearch(ProducerAPIViews):
                         increment(course_run_counts, run_name)
             logging.info('after serializing everything: ' + str(time.time()))
 
-            for k, v in asset_counts.iteritems():
-                facets['resource_type'].append((k, v))
-
-            for k, v in course_run_counts.iteritems():
-                facets['course'].append((k, v))
+            count_cases = [(asset_counts, 'resource_type'),
+                           (course_run_counts, 'course')]
+            for case in count_cases:
+                _counts = []
+                for k, v in case[0].iteritems():
+                    _counts.append((k, v))
+                facets[case[1]] = sorted(_counts, key=lambda tup: tup[0])
 
             logging.info('after re-mapping counts: ' + str(time.time()))
 

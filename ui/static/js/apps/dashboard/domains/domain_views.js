@@ -341,7 +341,8 @@ define(["app",
         previewObject: function (e) {
             var $wrapper = $(e.currentTarget).closest('div.object-wrapper'),
                 rawObj = $wrapper.data('obj'),
-                objId = rawObj.id;
+                objId = rawObj.id,
+                $drawer = $('#search-components-menu');
 
             this.clearActiveElement();
             $wrapper.addClass('alert alert-info');
@@ -356,7 +357,9 @@ define(["app",
                 }));
             }
 
-            $('#search-components-menu').drawer('hide');
+            if ($drawer.hasClass('open')) {
+                $drawer.drawer('hide');
+            }
             $('#add-new-components-btn').removeClass('active');
         },
         refreshNoChildrenWarning: function () {

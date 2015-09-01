@@ -70,6 +70,7 @@ define(["app",
             }).done(function (data) {
                 // pass the data on to the facet renderer region and the
                 // facet results region
+                // first, order the facets alphabetically
                 ProducerManager.regions.facetedSearchFacets.show(new View.FacetsView(data));
             }).always(function () {
                 // remove spinner
