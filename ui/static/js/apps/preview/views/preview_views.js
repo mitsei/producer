@@ -314,7 +314,8 @@ define(["app",
                             var youtubeIds = $(assetText).attr('youtube')
                                     .split(','),
                                 youtubeId = _.filter(youtubeIds, function (speedIdPair) {
-                                    return speedIdPair.indexOf('1.0:') >= 0;
+                                    return speedIdPair.indexOf('1.0:') >= 0 ||
+                                        speedIdPair.indexOf('1.00:') >= 0;
                                 })[0].split(':')[1];
 
                             video = true;

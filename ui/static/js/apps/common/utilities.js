@@ -149,7 +149,16 @@ define(["jquery", "underscore"],
                 } else if (textBlob.indexOf('<video') >= 0) {
                     wrapper = $(textBlob);
                 } else {
-                    wrapper = $(textBlob);
+                    var wrapper = $('<html></html>'),
+                        head = $('<head></head>'),
+                        body = $('<body></body>');
+                    body.append(textBlob);
+                    if (textBlob.indexOf('[mathjax') >= 0) {
+                        head.append(configMathjax);
+                    }
+                    head.append(mathjaxScript);
+                    wrapper.append(head);
+                    wrapper.append(body);
                 }
 
                 if ($.isXMLDoc(wrapper[0])) {

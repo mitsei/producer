@@ -19,6 +19,37 @@ define(["app",
                 ResourceTemplate, DeleteConfirmationTemplate){
   ProducerManager.module("ProducerApp.Domain.View", function(View, ProducerManager, Backbone, Marionette, $, _){
 
+    function renderChildren (data, $el) {
+        // recursively render children from data onto the <ul.children-compositions> of $el
+        // basically replicate functionality of Marionette's CompositeView, except
+        // need to use this when injecting individual compositions from the
+        // facet results pane.
+        var $target = $el.children('ul.children-compositions');
+
+        _.each(data.children, function (child) {
+            var $wrapper = $('<li></li>').addClass('resortable list-group-item');
+            if (child.type === 'Composition') {
+                $wrapper.append(_.template(CompositionsTemplate)({
+                    composition: child,
+                    compositionType: Utils.parseGenusType(child),
+                    rawObject: JSON.stringify(child)
+                }));
+                $wrapper.addClass('composition');
+            } else {
+                $wrapper.append(_.template(ResourceTemplate)({
+                    resource: child,
+                    resourceType: Utils.parseGenusType(child),
+                    rawObject: JSON.stringify(child)
+                }));
+                $wrapper.addClass('resource');
+            }
+            $target.append($wrapper);
+            if (child.type === 'Composition' && child.children.length > 0) {
+                renderChildren(child, $wrapper);
+            }
+        });
+    }
+
     function updateCompositionChildrenAndAssets ($obj) {
         // $obj is assumed to be an <li .resortable></li> tag
         var childIds = [],
@@ -209,6 +240,20 @@ define(["app",
                                 }));
 
                                 // TODO: here still need to figure out how to get the children...
+                                if (rawObj.childIds.length > 0) {
+                                    var composition = new CompositionModel({
+                                            id: rawObj.id,
+                                            renderable: true
+                                        }),
+                                        promise = composition.fetch();
+
+                                    Utils.processing();
+                                    promise.done(function (data) {
+                                        renderChildren(data, $newObj);
+                                        Utils.doneProcessing();
+                                        _this.refreshNoChildrenWarning();
+                                    });
+                                }
                             } else {
                                 $newObj.addClass('resource');
                                 $newObj.append(_.template(ResourceTemplate)({
@@ -298,6 +343,9 @@ define(["app",
                     objId: objId
                 }));
             }
+
+            $('#search-components-menu').drawer('hide');
+            $('#add-new-components-btn').removeClass('active');
         },
         refreshNoChildrenWarning: function () {
             _.each(this.$el.find('ul.children-compositions'), function (childList) {

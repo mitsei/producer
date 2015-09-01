@@ -38,9 +38,13 @@ define(["app",
             });
         },
         keywordFilter: function (e) {
-            var keywords = $('.input-search').val();
+            var keywords = $('.input-search').val(),
+                _this = this;
 
-            this.triggerQuery(keywords);
+            $('#search-components-menu').unbind('shown.bs.drawer')
+                .on('shown.bs.drawer', function () {
+                _this.triggerQuery(keywords);
+            });
         },
         toggleDrawer: function () {
             $('#search-components-menu').drawer('toggle');
@@ -49,6 +53,7 @@ define(["app",
         triggerQuery: function (keywords) {
             // show spinner while searching
             $('.processing-spinner').removeClass('hidden');
+            Utils.processing();
             $.ajax({
                 url: '/api/v1/repository/repositories/' + Utils.selectedRepoId() + '/search/',
                 data: {
@@ -63,6 +68,7 @@ define(["app",
             }).always(function () {
                 // remove spinner
                 $('.processing-spinner').addClass('hidden');
+                Utils.doneProcessing();
             });
         }
     });
