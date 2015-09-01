@@ -344,7 +344,7 @@ def update_edx_composition_date(form, date_type, date_dict):
     return form
 
 
-def update_repository_compositions(repository, children_ids):
+def update_repository_compositions(rm, repository, children_ids):
     # update the "root" course composition's children, here
     course_node = get_course_node(repository)
-    update_composition_children(repository, course_node.ident, children_ids)
+    update_composition_children(repository, course_node.ident, children_ids, rm=rm)

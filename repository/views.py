@@ -9,7 +9,7 @@ from django.conf import settings
 from django.core.files.storage import default_storage
 
 from dlkit_django.errors import PermissionDenied, InvalidArgument, IllegalState,\
-    NotFound, NoAccess
+    NotFound, NoAccess, AlreadyExists
 from dlkit_django.primordium import Type
 from dlkit.mongo.records.types import EDX_COMPOSITION_GENUS_TYPES,\
     COMPOSITION_RECORD_TYPES, REPOSITORY_GENUS_TYPES, OSID_OBJECT_RECORD_TYPES
@@ -332,19 +332,25 @@ class CompositionDetails(ProducerAPIViews, CompositionMapMixin):
                                                       composition_id,
                                                       'composition')
 
-            if 'withChildren' in self.data:
-                # remove children compositions too
-                composition = repository.get_composition(gutils.clean_id(composition_id))
-                repository.use_unsequestered_composition_view()
+            if self.rm.get_repositories_by_composition(
+                    gutils.clean_id(composition_id)).available() > 1:
+                gutils.verify_keys_present(self.data, ['parentId'])
+                self.rm.unassign_composition_from_repository(gutils.clean_id(composition_id),
+                                                             gutils.clean_id(self.data['parentId']))
+            else:
+                if 'withChildren' in self.data:
+                    # remove children compositions too
+                    composition = repository.get_composition(gutils.clean_id(composition_id))
+                    repository.use_unsequestered_composition_view()
 
-                for child_ids in composition.get_child_ids():
-                    # use this instead of get_children() because sequestered
-                    # compositions don't show up with get_children()
-                    repository.delete_composition(child_ids)
+                    for child_ids in composition.get_child_ids():
+                        # use this instead of get_children() because sequestered
+                        # compositions don't show up with get_children()
+                        repository.delete_composition(child_ids)
 
-            repository.delete_composition(gutils.clean_id(composition_id))
+                repository.delete_composition(gutils.clean_id(composition_id))
             return gutils.DeletedResponse()
-        except (PermissionDenied, IllegalState, InvalidId) as ex:
+        except (PermissionDenied, IllegalState, InvalidId, KeyError) as ex:
             gutils.handle_exceptions(ex)
 
     def get(self, request, composition_id, format=None):
@@ -551,6 +557,14 @@ class CompositionsList(ProducerAPIViews, CompositionMapMixin):
                 parent_composition = repository.get_composition(gutils.clean_id(self.data['parentId']))
                 rutils.append_child_composition(repository, parent_composition, composition)
 
+            # Should be assigning the composition to THIS repository as well as
+            # appending it as a childId.
+            try:
+                self.rm.assign_composition_to_repository(composition.ident, repository.ident)
+                composition = repository.get_composition(composition.ident)
+            except AlreadyExists:
+                pass
+
             return gutils.CreatedResponse(composition.object_map)
         except (PermissionDenied, InvalidArgument, IllegalState, KeyError) as ex:
             gutils.handle_exceptions(ex)
@@ -601,7 +615,8 @@ class RepositoryDetails(ProducerAPIViews):
             updated_repository = self.rm.update_repository(form)
 
             if 'childIds' in self.data:
-                rutils.update_repository_compositions(updated_repository,
+                rutils.update_repository_compositions(self.rm,
+                                                      updated_repository,
                                                       self.data['childIds'])
                 updated_repository = self.rm.get_repository(updated_repository.ident)
 

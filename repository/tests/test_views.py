@@ -54,8 +54,9 @@ class RepositoryTestCase(DjangoTestCase):
             val
         )
 
-    def num_compositions(self, val, unsequestered=False):
-        repo = self.get_repo(self.repo.ident)
+    def num_compositions(self, val, repo=None, unsequestered=False):
+        if repo is None:
+            repo = self.get_repo(self.repo.ident)
         if unsequestered:
             repo.use_unsequestered_composition_view()
         else:
@@ -120,8 +121,10 @@ class RepositoryTestCase(DjangoTestCase):
         return new_asset
 
     def setup_composition(self, repository_id):
+        if isinstance(repository_id, basestring):
+            repository_id = Id(repository_id)
         rm = gutils.get_session_data(self.req, 'rm')
-        repo = rm.get_repository(Id(repository_id))
+        repo = rm.get_repository(repository_id)
 
         # new_asset = self.setup_asset(repository_id)
 
@@ -1220,9 +1223,9 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
         self.is_cloudfront_url(data['assetContents'][0]['url'])
 
     def test_adding_asset_id_to_children_creates_sequestered_wrapper(self):
-        self.num_compositions(0, True)
+        self.num_compositions(0, unsequestered=True)
         composition = self.setup_composition(self.repo_id)
-        self.num_compositions(1, True)
+        self.num_compositions(1, unsequestered=True)
         url = self.url + unquote(str(composition.ident))
 
         asset = self.setup_asset(self.repo_id)
@@ -1242,7 +1245,7 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
             len(data['childIds']),
             1
         )
-        self.num_compositions(2, True)
+        self.num_compositions(2, unsequestered=True)
         self.num_compositions(1)
 
         wrapper_id = data['childIds'][0]
@@ -1263,9 +1266,9 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
         )
 
     def test_removing_asset_children_removes_sequestered_wrappers(self):
-        self.num_compositions(0, True)
+        self.num_compositions(0, unsequestered=True)
         composition = self.setup_composition(self.repo_id)
-        self.num_compositions(1, True)
+        self.num_compositions(1, unsequestered=True)
         url = self.url + unquote(str(composition.ident))
 
         asset = self.setup_asset(self.repo_id)
@@ -1285,7 +1288,7 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
             len(data['childIds']),
             1
         )
-        self.num_compositions(2, True)
+        self.num_compositions(2, unsequestered=True)
         self.num_compositions(1)
 
         payload = {
@@ -1298,13 +1301,13 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
             data['childIds'],
             []
         )
-        self.num_compositions(1, True)
+        self.num_compositions(1, unsequestered=True)
         self.num_compositions(1)
 
     def test_can_reorder_asset_children_and_wrappers_are_garbage_collected(self):
-        self.num_compositions(0, True)
+        self.num_compositions(0, unsequestered=True)
         composition = self.setup_composition(self.repo_id)
-        self.num_compositions(1, True)
+        self.num_compositions(1, unsequestered=True)
         url = self.url + unquote(str(composition.ident))
 
         asset_1 = self.setup_asset(self.repo_id)
@@ -1332,7 +1335,7 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
                 len(data['childIds']),
                 2
             )
-            self.num_compositions(3, True)
+            self.num_compositions(3, unsequestered=True)
             self.num_compositions(1)
 
             wrapper_1_id = data['childIds'][0]
@@ -1365,16 +1368,16 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
                 str(wrapped_asset_2.next().ident)
             )
 
-        self.num_compositions(3, True)
+        self.num_compositions(3, unsequestered=True)
         self.num_compositions(1)
 
     def test_assigning_items_to_composition_also_assign_to_orchestrated_run_bank(self):
         from dysonx.dysonx import get_or_create_user_repo
 
-        self.num_compositions(0, True)
+        self.num_compositions(0, unsequestered=True)
         composition = self.setup_composition(self.repo_id)
 
-        self.num_compositions(1, True)
+        self.num_compositions(1, unsequestered=True)
 
         orchestrated_bank = self.get_bank(self.repo_id)
 
@@ -1403,7 +1406,7 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
             len(data['childIds']),
             1
         )
-        self.num_compositions(2, True)
+        self.num_compositions(2, unsequestered=True)
         self.num_compositions(1)
 
         self.num_items(orchestrated_bank, 1)
@@ -1412,10 +1415,10 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
     def test_assigning_assets_to_composition_also_assign_to_run_repo(self):
         from dysonx.dysonx import get_or_create_user_repo
 
-        self.num_compositions(0, True)
+        self.num_compositions(0, unsequestered=True)
         composition = self.setup_composition(self.repo_id)
 
-        self.num_compositions(1, True)
+        self.num_compositions(1, unsequestered=True)
 
         user_repo = get_or_create_user_repo(self.username)
         asset = self.setup_asset(user_repo.ident)
@@ -1440,16 +1443,16 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
             len(data['childIds']),
             1
         )
-        self.num_compositions(2, True)
+        self.num_compositions(2, unsequestered=True)
         self.num_compositions(1)
 
         self.num_assets(1, user_repo)
         self.num_assets(1)
 
     def test_can_delete_children_of_composition_with_flag(self):
-        self.num_compositions(0, True)
+        self.num_compositions(0, unsequestered=True)
         composition = self.setup_composition(self.repo_id)
-        self.num_compositions(1, True)
+        self.num_compositions(1, unsequestered=True)
         url = self.url + unquote(str(composition.ident))
 
         asset = self.setup_asset(self.repo_id)
@@ -1459,12 +1462,85 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
         }
         req = self.client.put(url, payload, format='json')
         self.updated(req)
-        self.num_compositions(2, True)
+        self.num_compositions(2, unsequestered=True)
         url += '?withChildren'
         req = self.client.delete(url)
         self.deleted(req)
-        self.num_compositions(0, True)
+        self.num_compositions(0, unsequestered=True)
 
+    def test_adding_composition_to_new_repo_also_assigns_it(self):
+        repo1 = self.repo
+        repo2 = self.create_new_repo()
+        composition = self.setup_composition(repo2.ident)
+
+        self.num_compositions(0)
+        self.num_compositions(1, repo=repo2)
+
+        payload = {
+            'childIds': [str(composition.ident)]
+        }
+
+        url = self.base_url + 'repository/repositories/' + unquote(str(repo1.ident))
+
+        req = self.client.put(url, payload, format='json')
+        self.updated(req)
+
+        self.num_compositions(1)
+        self.num_compositions(1, repo=repo2)
+
+    def test_deleting_composition_with_multiple_catalogs_requires_parent_id(self):
+        repo1 = self.repo
+        repo2 = self.create_new_repo()
+        composition = self.setup_composition(repo2.ident)
+
+        self.num_compositions(0)
+        self.num_compositions(1, repo=repo2)
+
+        payload = {
+            'childIds': [str(composition.ident)]
+        }
+
+        url = self.base_url + 'repository/repositories/' + unquote(str(repo1.ident))
+
+        req = self.client.put(url, payload, format='json')
+        self.updated(req)
+
+        url = self.url + str(composition.ident)
+        req = self.client.delete(url)
+        self.code(req, 500)
+        self.num_compositions(1)
+        self.num_compositions(1, repo=repo2)
+
+    def test_removing_composition_from_one_repo_does_not_delete_it_from_db(self):
+        repo1 = self.repo
+        repo2 = self.create_new_repo()
+        composition = self.setup_composition(repo2.ident)
+
+        self.num_compositions(0)
+        self.num_compositions(1, repo=repo2)
+
+        payload = {
+            'childIds': [str(composition.ident)]
+        }
+
+        url = self.base_url + 'repository/repositories/' + unquote(str(repo1.ident))
+
+        req = self.client.put(url, payload, format='json')
+        self.updated(req)
+
+        self.num_compositions(1)
+        self.num_compositions(1, repo=repo2)
+
+
+        url = self.url + str(composition.ident)
+
+        payload = {
+            'parentId': str(repo1.ident)
+        }
+        req = self.client.delete(url, payload, format='json')
+        self.deleted(req)
+        self.num_compositions(0)
+        self.num_compositions(1, repo=repo2)
 
 
 class EdXCompositionCrUDTests(RepositoryTestCase):
