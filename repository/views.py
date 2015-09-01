@@ -334,9 +334,9 @@ class CompositionDetails(ProducerAPIViews, CompositionMapMixin):
 
             if self.rm.get_repositories_by_composition(
                     gutils.clean_id(composition_id)).available() > 1:
-                gutils.verify_keys_present(self.data, ['parentId'])
+                gutils.verify_keys_present(self.data, ['repoId'])
                 self.rm.unassign_composition_from_repository(gutils.clean_id(composition_id),
-                                                             gutils.clean_id(self.data['parentId']))
+                                                             gutils.clean_id(self.data['repoId']))
             else:
                 if 'withChildren' in self.data:
                     # remove children compositions too

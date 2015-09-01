@@ -1535,7 +1535,7 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
         url = self.url + str(composition.ident)
 
         payload = {
-            'parentId': str(repo1.ident)
+            'repoId': str(repo1.ident)
         }
         req = self.client.delete(url, payload, format='json')
         self.deleted(req)
