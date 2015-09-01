@@ -31,20 +31,26 @@ define(["app",
             }
         },
         getKeywordSearchResults: function (keywords) {
-            var _this = this;
-            $('#search-components-menu').unbind('shown.bs.drawer')
+            var _this = this,
+                $drawer = $('#search-components-menu');
+            $drawer.unbind('shown.bs.drawer')
                 .on('shown.bs.drawer', function () {
                 _this.triggerQuery(keywords);
             });
         },
         keywordFilter: function (e) {
             var keywords = $('.input-search').val(),
-                _this = this;
+                _this = this,
+                $drawer = $('#search-components-menu');
 
             $('#search-components-menu').unbind('shown.bs.drawer')
                 .on('shown.bs.drawer', function () {
                 _this.triggerQuery(keywords);
             });
+
+            if ($drawer.hasClass('open')) {
+                _this.triggerQuery(keywords);
+            }
         },
         toggleDrawer: function () {
             $('#search-components-menu').drawer('toggle');

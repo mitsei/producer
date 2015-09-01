@@ -73,9 +73,11 @@ define(["app",
         },
         loadRepoCourses: function () {
             console.log('here in view event manager');
+            Utils.processing();
             require(["apps/common/utilities"], function (Utils) {
               $(".repositories-menu li a").on('click', function () {
                   Utils.fixDomainSelector($(this).attr('href'));
+                  Utils.doneProcessing();
               });
             });
         }

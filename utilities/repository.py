@@ -93,9 +93,9 @@ def create_resource_wrapper(repository, resource):
     form.description = 'A sequestered wrapper'
     form.set_genus_type(_get_genus_type('resource-node'))
     form.set_sequestered(True)
-    composition = repository.create_composition(form)
-    repository.add_asset(resource.ident, composition.ident)
-    return repository.get_composition(composition.ident)
+    return repository.create_composition(form)
+    # repository.add_asset(resource.ident, composition.ident)
+    # return repository.get_composition(composition.ident)
 
 def get_asset_content_type_from_runtime(repository):
     type_list = []
@@ -244,7 +244,9 @@ def update_composition_assets(am, rm, username, repository, composition_id, asse
 def update_composition_children(repository, composition_id, children_ids,
                                 am=None, rm=None, username=None):
     # in addition to clearing children, if a composition is of the sequestered resource-node
-    # type, we need to delete it to prevent clutter...
+    # type that is NOT assigned to another repo, we need to delete it to prevent clutter...
+    # Also, don't DELETE a composition unless it has no parents.
+    # TODO
     composition = repository.get_composition(clean_id(composition_id))
     original_children_ids = composition.get_child_ids()
     repository.use_unsequestered_composition_view()
@@ -264,21 +266,29 @@ def update_composition_children(repository, composition_id, children_ids,
     # add them to this composition as children of a sequestered composition..
     unified_list = []
     for child_id in children_ids:
+        id_obj = clean_id(child_id)
         if 'repository.Composition' in child_id:
-            unified_list.append(clean_id(child_id))
+            # TODO:
+            # Should be assigning the composition to THIS repository as well as
+            # appending it as a childId.
+            rm.assign_composition_to_repository(id_obj, repository.ident)
+            unified_list.append(id_obj)
         elif 'repository.Asset' in child_id:
             try:
-                rm.assign_asset_to_repository(clean_id(child_id), repository.ident)
+                rm.assign_asset_to_repository(id_obj, repository.ident)
             except AlreadyExists:
                 pass
-            asset = repository.get_asset(clean_id(child_id))
+            asset = repository.get_asset(id_obj)
             # Create a new sequestered, resource-node composition...
             wrapper_composition = create_resource_wrapper(repository, asset)
+            user_repo = get_or_create_user_repo(username)
+
+            user_repo.add_asset(asset.ident, wrapper_composition.ident)
             unified_list.append(wrapper_composition.ident)
         elif 'assessment.Item' in child_id:
             # repository == for the run
             # make sure the item is assigned to repository's orchestrated bank'
-            item_id = clean_id(child_id)
+            item_id = id_obj
             run_bank = am.get_bank(repository.ident)
             try:
                 run_bank.get_item(item_id)
@@ -304,6 +314,7 @@ def update_composition_children(repository, composition_id, children_ids,
 
             # Create a new sequestered, resource-node composition...
             wrapper_composition = create_resource_wrapper(repository, assessment)
+            user_repo.add_asset(assessment.ident, wrapper_composition.ident)
 
             enclosed_asset = get_enclosed_object_asset(user_repo, assessment)
             try:

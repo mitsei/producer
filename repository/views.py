@@ -757,9 +757,7 @@ class RepositorySearch(ProducerAPIViews):
         if assigned_key in asset_map:
             test_ids += asset_map[assigned_key]
         test_ids = [gutils.clean_id(i).identifier for i in test_ids]
-        for identifier in test_ids:
-            if identifier in run_map:
-                names.append(run_map[identifier])
+        names = [run_map[i] for i in test_ids if i in run_map]
 
         return names
 

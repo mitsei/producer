@@ -104,7 +104,13 @@ define(["app",
             var courseId = $(e.currentTarget).val(),
                 runs = new CourseCollection([], {id: courseId}),
                 runsView = new View.RunsView({collection: runs}),
-                runsPromise = runsView.collection.fetch(),
+                runsPromise = runsView.collection.fetch({
+                    reset: true,
+                    error: function (model, xhr, options) {
+                        ProducerManager.vent.trigger('msg:error', xhr.responseText);
+                        Utils.doneProcessing();
+                    }
+                }),
                 _this = this;
 
             ProducerManager.regions.composition.empty();
@@ -136,7 +142,13 @@ define(["app",
             var courseId = $(e.currentTarget).val(),
                 run = new RunCollection([], {id: courseId}),
                 runView = new View.SingleRunView({collection: run}),
-                runPromise = runView.collection.fetch();
+                runPromise = runView.collection.fetch({
+                    reset: true,
+                    error: function (model, xhr, options) {
+                        ProducerManager.vent.trigger('msg:error', xhr.responseText);
+                        Utils.doneProcessing();
+                    }
+                });
 
             Utils.processing();
             runPromise.done(function (data) {

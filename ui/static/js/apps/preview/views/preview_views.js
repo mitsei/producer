@@ -117,7 +117,13 @@ define(["app",
                     id: serializedData.objId,
                     renderable: true
                 }),
-                promise = composition.fetch(),
+                promise = composition.fetch({
+                    reset: true,
+                    error: function (model, xhr, options) {
+                        ProducerManager.vent.trigger('msg:error', xhr.responseText);
+                        Utils.doneProcessing();
+                    }
+                }),
                 _this = this,
                 $sidebarHeader = $('.sidebar-header'),
                 $sidebarList = $('.sidebar-list'),
