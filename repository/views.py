@@ -1,3 +1,4 @@
+import os
 import requests
 
 from bson.errors import InvalidId
@@ -7,7 +8,9 @@ from rest_framework import exceptions
 
 from django.conf import settings
 from django.core.files.storage import default_storage
+from django.http import HttpResponse
 
+from dlkit.abstract_osid.assessment.objects import Item
 from dlkit_django.errors import PermissionDenied, InvalidArgument, IllegalState,\
     NotFound, NoAccess, AlreadyExists
 from dlkit_django.primordium import Type
@@ -65,18 +68,15 @@ class CompositionMapMixin(object):
             if child.is_sequestered():
                 try:
                     asset_repo = self.rm.get_repository(gutils.clean_id(obj_map['repositoryId']))
-                    for asset in asset_repo.get_composition_assets(child.ident):
-                        asset_map = asset.object_map
-                        if 'enclosedObjectId' in asset_map:
-                            assessment = asset.get_enclosed_object()
-                            for item in self.am.get_bank(
-                                    gutils.clean_id(assessment.object_map['bankId'])).get_assessment_items(assessment.ident):
-                                if renderable:
-                                    item_map = item.object_map
-                                    item_map['texts']['edxml'] = item.get_edxml_with_aws_urls()
-                                    obj_map['children'].append(item_map)
-                                else:
-                                    obj_map['children'].append(item.object_map)
+                    for asset in child.assets:
+                        if isinstance(asset, Item):
+                            item = asset
+                            if renderable:
+                                item_map = item.object_map
+                                item_map['texts']['edxml'] = item.get_edxml_with_aws_urls()
+                                obj_map['children'].append(item_map)
+                            else:
+                                obj_map['children'].append(item.object_map)
                         else:
                             if renderable:
                                 obj_map['children'].append(
@@ -84,7 +84,7 @@ class CompositionMapMixin(object):
                                                              asset,
                                                              {'renderable_edxml': True}))
                             else:
-                                obj_map['children'].append(asset_map)
+                                obj_map['children'].append(asset.object_map)
                 except NotFound:
                     # no assets
                     pass
@@ -741,6 +741,34 @@ class RepositoryChildrenList(ProducerAPIViews):
                 self.rm.add_child_repository(repository_id, gutils.clean_id(child_id))
             return gutils.UpdatedResponse()
         except (PermissionDenied, InvalidArgument, NotFound, KeyError) as ex:
+            gutils.handle_exceptions(ex)
+
+
+class RepositoryDownload(ProducerAPIViews):
+    """
+    Download a RUN.
+    api/v1/repository/repositories/<repository_id>/download/
+
+    GET
+    """
+    def get(self, request, repository_id, format=None):
+        try:
+            run_repo = self.rm.get_repository(gutils.clean_id(repository_id))
+            if str(run_repo.genus_type) != str(Type(**REPOSITORY_GENUS_TYPES['course-run-repo'])):
+                raise InvalidArgument('You can only download run repositories.')
+
+            import pdb
+            pdb.set_trace()
+            filename, olx = run_repo.export_olx()
+
+            response = HttpResponse(content_type="application/tar")
+            response['Content-Disposition'] = 'attachment; filename=%s' % filename
+            olx.seek(0, os.SEEK_END)
+            response.write(olx.getvalue())
+            olx.close()
+
+            return response
+        except (PermissionDenied, InvalidArgument, NotFound) as ex:
             gutils.handle_exceptions(ex)
 
 

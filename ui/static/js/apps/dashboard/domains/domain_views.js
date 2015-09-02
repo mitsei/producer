@@ -213,6 +213,12 @@ define(["app",
         },
         onShow: function () {
             var _this = this;
+            // prepend a hidden li.resortable.no-children chapter object
+            // so can sort the chapters
+            var hiddenChapter = $('<li></li>').addClass('resortable hidden');
+            this.$el.prepend(hiddenChapter.clone());
+            this.$el.append(hiddenChapter.clone());
+
             // make the sections sortable
             $('ul.run-list').sortable({
                 group: 'producer',

@@ -5,11 +5,12 @@ define(["app",
         "apps/dashboard/domains/models/repository",
         "text!apps/navbar/templates/import_course.html",
         "text!apps/navbar/templates/new_domain.html",
+        "text!apps/navbar/templates/domain_selector.html",
         "csrf",
         "jquery-ui"],
        function(ProducerManager, Utils, RepositoryModel,
                 ImportCourseTemplate, NewDomainTemplate,
-                csrftoken){
+                DomainSelectorTemplate, csrftoken){
   ProducerManager.module("NavbarApp.View", function(View, ProducerManager, Backbone, Marionette, $, _){
     View.NavbarView = Marionette.ItemView.extend({
         template: false,
@@ -57,18 +58,21 @@ define(["app",
                             repo.set('displayName', name);
                             repo.set('description', desc);
                             repo.set('genusTypeId', Utils.domainGenus());
-                            repo.save({
-                                success: function (model, response, options) {
+                            repo.save()
+                                .success(function (model, response, options) {
                                     ProducerManager.vent.trigger("msg:status",
                                         "Domain created");
-                                    $(_this).dialog("close");
-                                },
-                                error: function (model, xhr, options) {
+                                    $('ul.repositories-menu').prepend(_.template(DomainSelectorTemplate)({
+                                        repoDisplayName: model.displayName.text,
+                                        repoId: model.id,
+                                        repoSlug: Utils.slugify(model.displayName.text)
+                                    }));
+                                }).error(function (model, xhr, options) {
                                     ProducerManager.vent.trigger("msg:error",
                                         xhr.responseText);
+                                }).always(function () {
                                     $(_this).dialog("close");
-                                }
-                            });
+                                });
                         }
                     }
                 ]

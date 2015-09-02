@@ -137,11 +137,9 @@ def get_asset_content_type_from_runtime(repository):
     return type_list
 
 def get_course_node(repository):
-    repository.use_unsequestered_composition_view()
     try:
-        course_node = repository.get_compositions_by_genus_type(
-            str(Type(**EDX_COMPOSITION_GENUS_TYPES['course']))).next()  # assume only one; abstract it out as if sequestered
-    except StopIteration:
+        course_node = repository.course_node
+    except AttributeError:
         form = repository.get_composition_form_for_create([EDX_COMPOSITION_RECORD_TYPE])
         form.display_name = 'Phantom course composition node'
         form.description = ''
