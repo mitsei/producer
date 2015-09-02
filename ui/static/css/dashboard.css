@@ -478,7 +478,8 @@ li.composition.no-children {
     top: 115px;
 }
 
-#preview-region iframe {
+#preview-region iframe,
+.ui-dialog .content-list iframe {
     width: 100%;
     max-height: 40em;
     resize: vertical;
@@ -546,10 +547,11 @@ li.composition.no-children {
 }
 
 .ui-dialog .vertical-list-wrapper {
-    display: flex;
     padding-left: 0px;
-    width: 100%;
-    max-width: inherit;
+}
+
+.ui-dialog .list-group-horizontal .list-group-item {
+    margin-left: -6px;
 }
 
 .vertical-list .vertical-btn {

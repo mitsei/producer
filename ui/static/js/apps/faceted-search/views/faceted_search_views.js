@@ -83,7 +83,34 @@ define(["app",
     View.FacetsView = Marionette.ItemView.extend({
         // on render this should also render the results region
         initialize: function (options) {
+            var _this = this;
             this.options = options;
+
+            // computer runNames here and add them to each object in this.options.objects
+            _.each(_this.options.objects, function (obj) {
+                if (obj.type === 'Composition' || obj.type === 'Asset') {
+                    var runIds = [obj.repositoryId];
+                    if (obj.hasOwnProperty('assignedRepositoryIds')) {
+                        runIds = runIds.concat(obj.assignedRepositoryIds);
+                    }
+                } else {
+                    var runIds = [obj.bankId].concat(obj.assignedBankIds);
+                }
+                var runNames = [];
+                _.each(runIds, function (runId) {
+                    var runIdentifier = Utils.parseGenusType(runId);
+                    _.each(_this.options.runMap, function (runName, runRepoId) {
+                        if (runRepoId.indexOf(runIdentifier) >= 0) {
+                            runNames.push(runName);
+                            return;
+                        }
+                    });
+                });
+
+                runNames = runNames.join('; ');
+                obj.runNames = runNames;
+            });
+
             return this;
         },
         serializeData: function () {
@@ -126,6 +153,7 @@ define(["app",
                 $('input.facet-checkbox[value="' + facet + '"]').siblings('.badge')
                     .text(counters[facet]);
             });
+            console.log(counters);
         },
         updateFacetResults: function (e) {
             // check all facets for the checked ones
@@ -185,7 +213,8 @@ define(["app",
 
                 filteredObjects = _.uniq(filteredObjects, true);
                 this.passToPaginator({
-                    objects: filteredObjects
+                    objects: filteredObjects,
+                    runMap: this.options.runMap
                 });
 
                 this.updateBadgeNumbers(facetValues, filteredObjects);
@@ -196,6 +225,7 @@ define(["app",
     View.PaginationView = Marionette.ItemView.extend({
         initialize: function (options) {
             this.options = options;
+
             return this;
         },
         serializeData: function () {
@@ -228,7 +258,8 @@ define(["app",
         },
         passToResults: function (objects) {
             ProducerManager.regions.facetedSearchResults.show(new View.FacetResultsView({
-                objects: objects
+                objects: objects,
+                runMap: this.options.runMap
             }));
         }
     });
@@ -236,6 +267,7 @@ define(["app",
     View.FacetResultsView = Marionette.ItemView.extend({
         initialize: function (options) {
             this.options = options;
+
             return this;
         },
         serializeData: function () {
@@ -245,7 +277,8 @@ define(["app",
         },
         template: function (serializedModel) {
             return _.template(FacetResultsTemplate)({
-                objects: serializedModel.options.objects
+                objects: serializedModel.options.objects,
+                runMap: serializedModel.options.runMap
             });
         },
         onShow: function () {
@@ -274,7 +307,7 @@ define(["app",
                 }));
                 ProducerManager.regions.dialog.$el.dialog({
                     modal: true,
-                    width: 800,
+                    width: 1200,
                     height: 600,
                     title: 'Preview of ' + obj.displayName.text,
                     buttons: [

@@ -177,15 +177,6 @@ define(["jquery", "underscore"],
             } catch (e) {
                 // return the textBlob if all else fails
                 return $('<html></html>').append(textBlob)[0].outerHTML;
-//                if (textBlob.indexOf('<script') >= 0) {
-//                    var scripts = $('<html></html>').append(textBlob)
-//                        .find('script'),
-//                        $head = $('<head></head>').append(scripts),
-//                        $body = $('<body></body>').append(textBlob);
-//                    return $('<html></html>').append(head).append(body);
-//                } else {
-//                    return $('<html></html>').append(textBlob)[0].outerHTML;
-//                }
             }
         };
 

@@ -1,5 +1,9 @@
 <!--iframe inject code from http://stackoverflow.com/questions/13439625/how-to-inject-external-js-files-to-an-iframe-->
 <ul class="list-group facet-results-list">
+    <% function getIdentifier (osidId) { %>
+        <% return osidId.slice(osidId.indexOf('%3A') + 3, osidId.indexOf('%40')); %>
+    <% } %>
+
     <% _.each(objects, function (object) { %>
         <% if (object.hasOwnProperty('assetContents')) { %>
             <% var genusTypeStr = object.assetContents[0].genusTypeId; %>
@@ -15,8 +19,9 @@
             <% var className = 'resource'; %>
         <% } %>
 
-        <% var objectType = genusTypeStr.slice(genusTypeStr.indexOf('%3A') + 3, genusTypeStr.indexOf('%40')); %>
+        <% var objectType = getIdentifier(genusTypeStr); %>
         <% var objMap = JSON.stringify(object); %>
+
         <li class="<%- objectType %> <%- className %> list-group-item search-result" data-run="<%- object.runNames %>" data-obj="<%- objMap %>">
             <div class="object-wrapper <%- className %>-object-wrapper">
                 <div class="<%- className %>-row">

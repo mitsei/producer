@@ -752,6 +752,75 @@ class RepositorySearch(ProducerAPIViews):
     GET
     ?selected_facets=course_exact:<id>&selected_facets=resource_type_exact:problem&....
     """
+    def _count_objects(self, repo, non_enclosed_assets, all_compositions, all_items):
+        counts = {}
+        bank = self.am.get_bank(repo.ident)
+        bank.use_federated_bank_view()
+
+        asset_genus_types = list(set([str(a.get_asset_contents().next().genus_type)
+                                      for a in non_enclosed_assets]))
+        composition_genus_types = list(set([str(c.genus_type) for c in all_compositions]))
+        item_genus_types = list(set([str(i.genus_type) for i in all_items]))
+
+        asset_querier = repo.get_asset_query()
+        composition_querier = repo.get_composition_query()
+        item_querier = bank.get_item_query()
+
+        if self.query_params is not None and self.query_params != ['']:
+            for term in self.query_params:
+                asset_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
+                composition_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
+                item_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
+
+        for asset_genus in asset_genus_types:
+            genus_type = Type(asset_genus)
+            asset_querier.clear_match_asset_content_genus_type()
+            asset_querier.match_asset_content_genus_type(genus_type, True)
+            counts[genus_type.identifier] = repo.get_assets_by_query(asset_querier).available()
+
+        for composition_genus in composition_genus_types:
+            genus_type = Type(composition_genus)
+            composition_querier.clear_genus_type_terms()
+            composition_querier.match_genus_type(genus_type, True)
+            counts[genus_type.identifier] = repo.get_compositions_by_query(
+                composition_querier).available()
+
+        for item_genus in item_genus_types:
+            genus_type = Type(item_genus)
+            item_querier.clear_genus_type_terms()
+            item_querier.match_genus_type(genus_type, True)
+            counts[genus_type.identifier] = bank.get_items_by_query(
+                item_querier).available()
+
+        return counts
+
+    def _get_all_items_by_repo(self, repo):
+        if isinstance(repo, dict):
+            repo = self.rm.get_repository(gutils.clean_id(repo['id']))
+        bank = self.am.get_bank(repo.ident)
+        bank.use_federated_bank_view()
+
+        repo.use_sequestered_composition_view()
+
+        if self.query_params is None or self.query_params == ['']:
+            all_assets = repo.get_assets()
+            all_compositions = repo.get_compositions()
+            all_items = bank.get_items()
+        else:
+            asset_querier = repo.get_asset_query()
+            composition_querier = repo.get_composition_query()
+            item_querier = bank.get_item_query()
+
+            for term in self.query_params:
+                asset_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
+                composition_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
+                item_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
+
+            all_assets = repo.get_assets_by_query(asset_querier)
+            all_compositions = repo.get_compositions_by_query(composition_querier)
+            all_items = bank.get_items_by_query(item_querier)
+        return all_assets, all_compositions, all_items
+
     def _get_run_map(self, repository_id):
         repo_nodes = self.rm.get_repository_nodes(repository_id=gutils.clean_id(repository_id),
                                                   ancestor_levels=0,
@@ -759,8 +828,8 @@ class RepositorySearch(ProducerAPIViews):
                                                   include_siblings=False)
         repo_nodes = repo_nodes.get_object_node_map()
 
-        runs = [(gutils.clean_id(r['id']).identifier, '{0}, {1}'.format(course['displayName']['text'],
-                                                                        r['displayName']['text']))
+        runs = [(r['id'], '{0}, {1}'.format(course['displayName']['text'],
+                                            r['displayName']['text']))
                 for course in repo_nodes['childNodes']
                 for r in course['childNodes']]
 
@@ -770,31 +839,12 @@ class RepositorySearch(ProducerAPIViews):
 
         return run_map
 
-    def _get_run_names(self, run_map, asset_map):
-        names = []
-        if ('repository.Asset' in asset_map['id'] or
-            'repository.Composition' in asset_map['id']):
-            key = 'repositoryId'
-            assigned_key = 'assignedRepositoryIds'
-        else:
-            key = 'bankId'
-            assigned_key = 'assignedBankIds'
-
-        test_ids = [asset_map[key]]
-        if assigned_key in asset_map:
-            test_ids += asset_map[assigned_key]
-        test_ids = [gutils.clean_id(i).identifier for i in test_ids]
-        names = [run_map[i] for i in test_ids if i in run_map]
-
-        return names
-
     def get(self, request, repository_id, format=None):
         try:
             import logging
             import time
-            import timeit
-            logging.info('start search: ' + str(time.time()))
 
+            logging.info('starting search: ' + str(time.time()))
             self.query_params = get_query_values(self.data.get('q', None))
 
             facets = {
@@ -803,70 +853,47 @@ class RepositorySearch(ProducerAPIViews):
             }
             object_list = []
 
-            asset_counts = {}
             course_run_counts = {}
 
             domain_repo = self.rm.get_repository(gutils.clean_id(repository_id))
             domain_repo.use_federated_repository_view()
 
-            domain_bank = self.am.get_bank(domain_repo.ident)
-            domain_bank.use_federated_bank_view()
-
             run_map = self._get_run_map(repository_id)
+            logging.info('getting run counts: ' + str(time.time()))
+            # first for each repository, get count of its total objects
+            for run_identifier, run_name in run_map.iteritems():
+                repo = self.rm.get_repository(gutils.clean_id(run_identifier))
+                repo_name = run_name
 
-            # First, get IDs of all assets that match text of the query param
-            # in the user_repo,
-            # and also the assessment items in the bank.
-            # Then iterate through runs, and only accept items / assets
-            # whose IDs are in the list. If no query params, then
-            # just iterate through.
-            logging.info('before getting all objects: ' + str(time.time()))
-            if self.query_params is None or self.query_params == ['']:
-                all_domain_assets = domain_repo.get_assets()
-                all_domain_compositions = domain_repo.get_compositions()
-                all_domain_items = domain_bank.get_items()
-            else:
-                asset_querier = domain_repo.get_asset_query()
-                composition_querier = domain_repo.get_composition_query()
-                item_querier = domain_bank.get_item_query()
+                assets, compositions, items = self._get_all_items_by_repo(repo)
 
-                for term in self.query_params:
-                    asset_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
-                    composition_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
-                    item_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
+                course_run_counts[repo_name] = 0
+                course_run_counts[repo_name] += assets.available()
+                course_run_counts[repo_name] += compositions.available()
+                course_run_counts[repo_name] += items.available()
 
-                all_domain_assets = domain_repo.get_assets_by_query(asset_querier)
-                all_domain_compositions = domain_repo.get_compositions_by_query(composition_querier)
-                all_domain_items = domain_bank.get_items_by_query(item_querier)
-
-            logging.info('after getting all objects: ' + str(time.time()))
-            non_enclosed_assets = [a for a in all_domain_assets
+            logging.info('getting object counts: ' + str(time.time()))
+            # Now get all the objects, and get count of each genus type
+            all_assets, all_compositions, all_items = self._get_all_items_by_repo(domain_repo)
+            non_enclosed_assets = [a for a in all_assets
                                    if a.enclosed_object is None and
                                    a.get_asset_contents().available() > 0]
 
-            cases = [non_enclosed_assets, all_domain_items, all_domain_compositions]
-            for case in cases:
-                for obj in case:
-                    try:
-                        tag = obj.get_asset_contents().next().genus_type.identifier
-                    except AttributeError:
-                        tag = obj.genus_type.identifier
+            asset_counts = self._count_objects(domain_repo,
+                                               non_enclosed_assets,
+                                               all_compositions,
+                                               all_items)
 
-                    increment(asset_counts, tag)
+            # need to re-get these because the generator is empty
+            all_assets, all_compositions, all_items = self._get_all_items_by_repo(domain_repo)
 
-                    obj_map = obj.object_map
-                    run_names = self._get_run_names(run_map, obj_map)
-
-                    obj_map.update({
-                        'runNames': '; '.join(run_names)
-                    })
-                    object_list.append(obj_map)
-
-                    # do the counts for included assets, including enclosed ones
-                    for run_name in run_names:
-                        increment(course_run_counts, run_name)
-            logging.info('after serializing everything: ' + str(time.time()))
-
+            logging.info('serializing assets: ' + str(time.time()))
+            object_list += [a.object_map for a in non_enclosed_assets]
+            logging.info("serializing compositions: " + str(time.time()))
+            object_list += [c.object_map for c in all_compositions]
+            logging.info('serializing items: ' + str(time.time()))
+            object_list += [i.object_map for i in all_items]
+            logging.info('sorting counts: ' + str(time.time()))
             count_cases = [(asset_counts, 'resource_type'),
                            (course_run_counts, 'course')]
             for case in count_cases:
@@ -875,14 +902,12 @@ class RepositorySearch(ProducerAPIViews):
                     _counts.append((k, v))
                 facets[case[1]] = sorted(_counts, key=lambda tup: tup[0])
 
-            logging.info('after re-mapping counts: ' + str(time.time()))
-
-            logging.info('number of objects: ' + str(len(object_list)))
-
             return_data = {
                 'facets': facets,
-                'objects': object_list
+                'objects': object_list,
+                'runMap': run_map
             }
+            logging.info("returning: " + str(time.time()))
             return Response(return_data)
         except (PermissionDenied, InvalidId, NotFound) as ex:
             gutils.handle_exceptions(ex)

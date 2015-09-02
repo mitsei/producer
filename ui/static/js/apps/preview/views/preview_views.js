@@ -316,7 +316,7 @@ define(["app",
                     if (content.type === 'Asset') {
                         var assetText = content.assetContents[0].text.text;
 
-                        if (assetText.indexOf('youtube') >= 0) {
+                        if (assetText.indexOf('youtube=') >= 0) {
                             var youtubeIds = $(assetText).attr('youtube')
                                     .split(','),
                                 youtubeId = _.filter(youtubeIds, function (speedIdPair) {
