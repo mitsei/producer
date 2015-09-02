@@ -273,9 +273,11 @@ def update_composition_children(repository, composition_id, children_ids,
     # type that is NOT assigned to another repo, we need to delete it to prevent clutter...
     # Also, don't DELETE a composition unless it has no parents.
     # TODO
-    composition = repository.get_composition(clean_id(composition_id))
-    original_children_ids = composition.get_child_ids()
+    if isinstance(composition_id, basestring):
+        composition_id = clean_id(composition_id)
     repository.use_unsequestered_composition_view()
+    composition = repository.get_composition(composition_id)
+    original_children_ids = composition.get_child_ids()
     for original_child_id in original_children_ids:
         try:
             child = repository.get_composition(original_child_id)

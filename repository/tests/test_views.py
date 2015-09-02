@@ -8,7 +8,7 @@ from boto.s3.key import Key
 from copy import deepcopy
 
 from dlkit.mongo.records.types import COMPOSITION_RECORD_TYPES, EDX_COMPOSITION_GENUS_TYPES,\
-    REPOSITORY_GENUS_TYPES
+    REPOSITORY_GENUS_TYPES, REPOSITORY_RECORD_TYPES
 
 from dlkit_django.errors import NotFound
 from dlkit_django.primordium import Id, DataInputStream, Type
@@ -20,6 +20,9 @@ from django.utils.http import unquote
 from utilities import general as gutils
 from utilities.testing import DjangoTestCase, ABS_PATH
 
+
+LORE_REPOSITORY = Type(**REPOSITORY_RECORD_TYPES['lore-repo'])
+RUN_REPOSITORY = Type(**REPOSITORY_RECORD_TYPES['run-repo'])
 
 class RepositoryTestCase(DjangoTestCase):
     """
@@ -35,6 +38,14 @@ class RepositoryTestCase(DjangoTestCase):
         form.display_name = 'new repository'
         form.description = 'for testing'
         form.set_genus_type(Type(**REPOSITORY_GENUS_TYPES['domain-repo']))
+        return rm.create_repository(form)
+
+    def create_new_run_repo(self):
+        rm = gutils.get_session_data(self.req, 'rm')
+        form = rm.get_repository_form_for_create([LORE_REPOSITORY, RUN_REPOSITORY])
+        form.display_name = 'new run repository'
+        form.description = 'for testing'
+        form.set_genus_type(Type(**REPOSITORY_GENUS_TYPES['course-run-repo']))
         return rm.create_repository(form)
 
     def get_asset(self, asset_id):
@@ -1882,12 +1893,13 @@ class EdXCompositionCrUDTests(RepositoryTestCase):
                      'are allowed.')
 
     def test_can_query_for_nested_compositions(self):
+        run_repo = self.create_new_run_repo()
         url = self.url
 
         payload = {
             'displayName': 'test composition',
             'description': 'for testing',
-            'repositoryId': str(self.repo.ident),
+            'repositoryId': str(run_repo.ident),
             'genusTypeId': 'edx-composition%3Achapter%40EDX.ORG',
         }
 
@@ -1898,7 +1910,7 @@ class EdXCompositionCrUDTests(RepositoryTestCase):
         payload = {
             'displayName': 'test composition',
             'description': 'for testing',
-            'repositoryId': str(self.repo.ident),
+            'repositoryId': str(run_repo.ident),
             'genusTypeId': 'edx-composition%3Asequential%40EDX.ORG',
             'parentId': composition2['id']
         }
@@ -1907,7 +1919,7 @@ class EdXCompositionCrUDTests(RepositoryTestCase):
         self.created(req)
         composition = self.json(req)
 
-        url = self.base_url + 'repository/repositories/' + str(self.repo.ident) + '/compositions/?nested'
+        url = self.base_url + 'repository/repositories/' + str(run_repo.ident) + '/compositions/?nested'
         req = self.client.get(url)
         self.ok(req)
         data = self.json(req)

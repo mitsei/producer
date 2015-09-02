@@ -568,7 +568,7 @@ class CompositionsList(ProducerAPIViews, CompositionMapMixin):
                 self.rm.assign_composition_to_repository(composition.ident, repository.ident)
                 composition = repository.get_composition(composition.ident)
             except AlreadyExists:
-                pass
+                composition = repository.get_composition(composition.ident)
 
             return gutils.CreatedResponse(composition.object_map)
         except (PermissionDenied, InvalidArgument, IllegalState, KeyError) as ex:
