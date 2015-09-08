@@ -148,9 +148,14 @@ define(["app",
                         ProducerManager.vent.trigger('msg:error', xhr.responseText);
                         Utils.doneProcessing();
                     }
-                });
+                }),
+                downloadUrl = window.location.protocol + '//' + window.location.hostname +
+                    ':' + window.location.port + '/api/v1/repository/repositories/' + courseId +
+                    '/download/';
 
             Utils.processing();
+
+            $('#download-run-btn').attr('href', downloadUrl);
             runPromise.done(function (data) {
                 ProducerManager.regions.composition.show(runView);
                 ProducerManager.regions.preview.$el.html('');

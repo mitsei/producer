@@ -619,3 +619,11 @@ li.composition.no-children {
 .ui-dialog {
     z-index: 3000;
 }
+
+#download-run-btn a {
+    color: white;
+}
+
+#download-run-btn a:focus {
+    text-decoration: none;
+}
