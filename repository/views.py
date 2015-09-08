@@ -757,8 +757,6 @@ class RepositoryDownload(ProducerAPIViews):
             if str(run_repo.genus_type) != str(Type(**REPOSITORY_GENUS_TYPES['course-run-repo'])):
                 raise InvalidArgument('You can only download run repositories.')
 
-            import pdb
-            pdb.set_trace()
             filename, olx = run_repo.export_olx()
 
             response = HttpResponse(content_type="application/tar")
