@@ -15,18 +15,31 @@ from dlkit_django.errors import PermissionDenied, InvalidArgument, IllegalState,
     NotFound, NoAccess, AlreadyExists
 from dlkit_django.primordium import Type
 from dlkit.mongo.records.types import EDX_COMPOSITION_GENUS_TYPES,\
-    COMPOSITION_RECORD_TYPES, REPOSITORY_GENUS_TYPES, OSID_OBJECT_RECORD_TYPES
+    COMPOSITION_RECORD_TYPES, REPOSITORY_GENUS_TYPES, OSID_OBJECT_RECORD_TYPES,\
+    EDX_ASSET_CONTENTS_GENUS_TYPES, EDX_ASSESSMENT_ITEM_GENUS_TYPES
 
-from dysonx.dysonx import get_or_create_user_repo
+from dysonx.dysonx import get_or_create_user_repo, _get_genus_type,\
+    _get_asset_content_genus_type
 
 from utilities import general as gutils
 from utilities import repository as rutils
 from producer.tasks import import_file
 from producer.views import ProducerAPIViews
 
+
+DOMAIN_REPO_GENUS = Type(**REPOSITORY_GENUS_TYPES['domain-repo'])
 EDX_COMPOSITION_RECORD_TYPE = Type(**COMPOSITION_RECORD_TYPES['edx-composition'])
 EDX_COMPOSITION_GENUS_TYPES_STR = [str(Type(**genus_type))
                                    for k, genus_type in EDX_COMPOSITION_GENUS_TYPES.iteritems()]
+EDX_COMPOSITION_TYPES = EDX_COMPOSITION_GENUS_TYPES.keys()
+EDX_COMPOSITION_GENUS_TYPES_FOR_FACETS = [str(Type(**genus_type))
+    for k, genus_type in EDX_COMPOSITION_GENUS_TYPES.iteritems()
+    if k in ['chapter', 'sequential', 'vertical']]
+EDX_ASSET_CONTENT_GENUS_TYPES_FOR_FACETS = [str(Type(**genus_type))
+    for k, genus_type in EDX_ASSET_CONTENTS_GENUS_TYPES.iteritems()]
+EDX_ASSESSMENT_GENUS_TYPES_FOR_FACETS = [str(Type(**genus_type))
+    for k, genus_type in EDX_ASSESSMENT_ITEM_GENUS_TYPES.iteritems()]
+
 ENCLOSURE_TYPE = Type(**OSID_OBJECT_RECORD_TYPES['enclosure'])
 
 
@@ -41,6 +54,18 @@ def get_facets_values(params, facet_prefix):
             return facet_params
     else:
         return None
+
+def get_page_and_limits(params):
+    """default of 10 items per page"""
+    page = 1
+    limit = 10
+    if 'page' in params:
+        page = params['page']
+    if 'limit' in params:
+        limit = params['limit']
+    start_index = (page - 1) * limit
+    end_index = (page * limit) - 1
+    return start_index, end_index
 
 def get_query_values(params):
     if params is not None:
@@ -770,23 +795,47 @@ class RepositoryDownload(ProducerAPIViews):
             gutils.handle_exceptions(ex)
 
 
-class RepositorySearch(ProducerAPIViews):
+class RepositoryQueryPlansAvailable(ProducerAPIViews):
     """
-    Search interface for a specific (domain) repository.
-    api/v1/repository/repositories/<repository_id>/search/
+    Get set of queryable options plus their object counts
+    api/v1/repository/repositories/<repository_id>/queryplans/
 
     GET
-    ?selected_facets=course_exact:<id>&selected_facets=resource_type_exact:problem&....
     """
-    def _count_objects(self, repo, non_enclosed_assets, all_compositions, all_items):
-        counts = {}
+    def _count_type(self, counts, iterator, querier, catalog, clear_method, match_method, get_method):
+        for genus in iterator:
+            genus_type = Type(genus)
+            if self.facet_resource_types is not None:
+                if genus in self.facet_resource_types:
+                    getattr(querier, clear_method)()
+                    getattr(querier, match_method)(genus_type, True)
+                    if genus_type.identifier not in counts:
+                        counts.update({
+                            genus_type.identifier: getattr(catalog, get_method)(querier).available()
+                        })
+                    else:
+                        counts[genus_type.identifier] += getattr(catalog, get_method)(querier).available()
+                else:
+                    if genus_type.identifier not in counts:
+                        counts[genus_type.identifier] = 0
+            else:
+                getattr(querier, clear_method)()
+                getattr(querier, match_method)(genus_type, True)
+                if genus_type.identifier not in counts:
+                    counts.update({
+                        genus_type.identifier: getattr(catalog, get_method)(querier).available()
+                    })
+                else:
+                    counts[genus_type.identifier] += getattr(catalog, get_method)(querier).available()
+
+
+    def _count_objects(self, repo, asset_counts):
         bank = self.am.get_bank(repo.ident)
         bank.use_federated_bank_view()
 
-        asset_genus_types = list(set([str(a.get_asset_contents().next().genus_type)
-                                      for a in non_enclosed_assets]))
-        composition_genus_types = list(set([str(c.genus_type) for c in all_compositions]))
-        item_genus_types = list(set([str(i.genus_type) for i in all_items]))
+        asset_genus_types = EDX_ASSET_CONTENT_GENUS_TYPES_FOR_FACETS
+        composition_genus_types = EDX_COMPOSITION_GENUS_TYPES_FOR_FACETS
+        item_genus_types = EDX_ASSESSMENT_GENUS_TYPES_FOR_FACETS
 
         asset_querier = repo.get_asset_query()
         composition_querier = repo.get_composition_query()
@@ -798,27 +847,29 @@ class RepositorySearch(ProducerAPIViews):
                 composition_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
                 item_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
 
-        for asset_genus in asset_genus_types:
-            genus_type = Type(asset_genus)
-            asset_querier.clear_match_asset_content_genus_type()
-            asset_querier.match_asset_content_genus_type(genus_type, True)
-            counts[genus_type.identifier] = repo.get_assets_by_query(asset_querier).available()
+        self._count_type(asset_counts,
+                         asset_genus_types,
+                         asset_querier,
+                         repo,
+                         'clear_match_asset_content_genus_type',
+                         'match_asset_content_genus_type',
+                         'get_assets_by_query')
 
-        for composition_genus in composition_genus_types:
-            genus_type = Type(composition_genus)
-            composition_querier.clear_genus_type_terms()
-            composition_querier.match_genus_type(genus_type, True)
-            counts[genus_type.identifier] = repo.get_compositions_by_query(
-                composition_querier).available()
+        self._count_type(asset_counts,
+                         composition_genus_types,
+                         composition_querier,
+                         repo,
+                         'clear_genus_type_terms',
+                         'match_genus_type',
+                         'get_compositions_by_query')
 
-        for item_genus in item_genus_types:
-            genus_type = Type(item_genus)
-            item_querier.clear_genus_type_terms()
-            item_querier.match_genus_type(genus_type, True)
-            counts[genus_type.identifier] = bank.get_items_by_query(
-                item_querier).available()
-
-        return counts
+        self._count_type(asset_counts,
+                         item_genus_types,
+                         item_querier,
+                         bank,
+                         'clear_genus_type_terms',
+                         'match_genus_type',
+                         'get_items_by_query')
 
     def _get_all_items_by_repo(self, repo):
         if isinstance(repo, dict):
@@ -828,23 +879,51 @@ class RepositorySearch(ProducerAPIViews):
 
         repo.use_sequestered_composition_view()
 
-        if self.query_params is None or self.query_params == ['']:
-            all_assets = repo.get_assets()
-            all_compositions = repo.get_compositions()
-            all_items = bank.get_items()
+
+        asset_querier = None
+        composition_querier = None
+        item_querier = None
+
+        # match facet selected types
+        if self.facet_resource_types is not None:
+            for resource_type in self.facet_resource_types:
+                if resource_type in EDX_COMPOSITION_TYPES:
+                    if composition_querier is None:
+                        composition_querier = repo.get_composition_query()
+                    genus_type = _get_genus_type(resource_type)
+                    composition_querier.match_genus_type(genus_type)
+                elif resource_type == 'problem':
+                    if item_querier is None:
+                        item_querier = bank.get_item_query()
+                else:
+                    if asset_querier is None:
+                        asset_querier = repo.get_asset_query()
+                    genus_type = _get_asset_content_genus_type(resource_type)
+                    asset_querier.match_asset_content_genus_type(genus_type)
         else:
+            # match all objects
             asset_querier = repo.get_asset_query()
+            asset_querier.match_any(True)
             composition_querier = repo.get_composition_query()
+            composition_querier.match_any(True)
             item_querier = bank.get_item_query()
+            item_querier.match_any(True)
 
+        # match query terms
+        if self.query_params is not None and self.query_params != ['']:
             for term in self.query_params:
-                asset_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
-                composition_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
-                item_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
+                if asset_querier is not None:
+                    asset_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
+                if composition_querier is not None:
+                    composition_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
+                if item_querier is not None:
+                    item_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
 
-            all_assets = repo.get_assets_by_query(asset_querier)
-            all_compositions = repo.get_compositions_by_query(composition_querier)
-            all_items = bank.get_items_by_query(item_querier)
+        # run query
+        all_assets = repo.get_assets_by_query(asset_querier)
+        all_compositions = repo.get_compositions_by_query(composition_querier)
+        all_items = bank.get_items_by_query(item_querier)
+
         return all_assets, all_compositions, all_items
 
     def _get_run_map(self, repository_id):
@@ -867,73 +946,201 @@ class RepositorySearch(ProducerAPIViews):
 
     def get(self, request, repository_id, format=None):
         try:
-            import logging
-            import time
-
-            logging.info('starting search: ' + str(time.time()))
+            self.facet_resource_types = get_facets_values(self.data, 'resource_type_exact')
+            self.facet_course_runs = get_facets_values(self.data, 'course_exact')
             self.query_params = get_query_values(self.data.get('q', None))
 
             facets = {
                 'course': [],
                 'resource_type': []
             }
-            object_list = []
 
             course_run_counts = {}
+            asset_counts = {}
 
             domain_repo = self.rm.get_repository(gutils.clean_id(repository_id))
+
+            if domain_repo.genus_type != DOMAIN_REPO_GENUS:
+                raise InvalidArgument('You can only get query plans for domains.')
+
             domain_repo.use_federated_repository_view()
 
             run_map = self._get_run_map(repository_id)
-            logging.info('getting run counts: ' + str(time.time()))
-            # first for each repository, get count of its total objects
+            # first for each repository, get count of its total objects that
+            # meet the keyword filter requirement and other facet requirements
             for run_identifier, run_name in run_map.iteritems():
-                repo = self.rm.get_repository(gutils.clean_id(run_identifier))
-                repo_name = run_name
+                course_run_counts[run_name] = [0, run_identifier]
+                if self.facet_course_runs is None:
+                    # do all courses
+                    repo = self.rm.get_repository(gutils.clean_id(run_identifier))
 
-                assets, compositions, items = self._get_all_items_by_repo(repo)
+                    assets, compositions, items = self._get_all_items_by_repo(repo)
 
-                course_run_counts[repo_name] = 0
-                course_run_counts[repo_name] += assets.available()
-                course_run_counts[repo_name] += compositions.available()
-                course_run_counts[repo_name] += items.available()
+                    course_run_counts[run_name][0] += assets.available()
+                    course_run_counts[run_name][0] += compositions.available()
+                    course_run_counts[run_name][0] += items.available()
 
-            logging.info('getting object counts: ' + str(time.time()))
-            # Now get all the objects, and get count of each genus type
-            all_assets, all_compositions, all_items = self._get_all_items_by_repo(domain_repo)
-            non_enclosed_assets = [a for a in all_assets
-                                   if a.enclosed_object is None and
-                                   a.get_asset_contents().available() > 0]
+                    self._count_objects(repo,
+                                        asset_counts)
+                else:
+                    # only do courses that have been selected
+                    if any(run_identifier in course for course in self.facet_course_runs):
+                        repo = self.rm.get_repository(gutils.clean_id(run_identifier))
 
-            asset_counts = self._count_objects(domain_repo,
-                                               non_enclosed_assets,
-                                               all_compositions,
-                                               all_items)
+                        assets, compositions, items = self._get_all_items_by_repo(repo)
 
-            # need to re-get these because the generator is empty
-            all_assets, all_compositions, all_items = self._get_all_items_by_repo(domain_repo)
+                        course_run_counts[run_name][0] += assets.available()
+                        course_run_counts[run_name][0] += compositions.available()
+                        course_run_counts[run_name][0] += items.available()
 
-            logging.info('serializing assets: ' + str(time.time()))
-            object_list += [a.object_map for a in non_enclosed_assets]
-            logging.info("serializing compositions: " + str(time.time()))
-            object_list += [c.object_map for c in all_compositions]
-            logging.info('serializing items: ' + str(time.time()))
-            object_list += [i.object_map for i in all_items]
-            logging.info('sorting counts: ' + str(time.time()))
+                        self._count_objects(repo,
+                                            asset_counts)
+
             count_cases = [(asset_counts, 'resource_type'),
                            (course_run_counts, 'course')]
             for case in count_cases:
                 _counts = []
                 for k, v in case[0].iteritems():
-                    _counts.append((k, v))
+                    if isinstance(v, tuple):
+                        _counts.append((k, v[0], v[1]))
+                    else:
+                        _counts.append((k, v))
                 facets[case[1]] = sorted(_counts, key=lambda tup: tup[0])
 
             return_data = {
-                'facets': facets,
+                'facets': facets
+            }
+            return Response(return_data)
+        except (PermissionDenied, InvalidId, InvalidArgument, NotFound) as ex:
+            gutils.handle_exceptions(ex)
+
+
+class RepositorySearch(ProducerAPIViews):
+    """
+    Search interface for a specific (domain) repository.
+    api/v1/repository/repositories/<repository_id>/search/
+
+    GET
+    ?selected_facets=course_exact:<id>&selected_facets=resource_type_exact:problem&....
+    """
+    def _get_all_items_by_repo(self, repo):
+        if isinstance(repo, dict):
+            repo = self.rm.get_repository(gutils.clean_id(repo['id']))
+        bank = self.am.get_bank(repo.ident)
+        bank.use_federated_bank_view()
+
+        repo.use_sequestered_composition_view()
+
+        if self.facet_resource_types is None:
+            if self.query_params is None or self.query_params == ['']:
+                all_assets = repo.get_assets()
+                all_compositions = repo.get_compositions()
+                all_items = bank.get_items()
+            else:
+                asset_querier = repo.get_asset_query()
+                composition_querier = repo.get_composition_query()
+                item_querier = bank.get_item_query()
+
+                for term in self.query_params:
+                    asset_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
+                    composition_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
+                    item_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
+
+                all_assets = repo.get_assets_by_query(asset_querier)
+                all_compositions = repo.get_compositions_by_query(composition_querier)
+                all_items = bank.get_items_by_query(item_querier)
+        else:
+            all_assets = []
+            all_compositions = []
+            all_items = []
+            for resource_type in self.facet_resource_types:
+                if resource_type in EDX_COMPOSITION_TYPES:
+                    genus_type = _get_genus_type(resource_type)
+                    composition_querier = repo.get_composition_query()
+                    composition_querier.match_genus_type(genus_type)
+                    for term in self.query_params:
+                        composition_querier.match_keyword(term,
+                                                          gutils.WORDIGNORECASE_STRING_MATCH_TYPE,
+                                                          True)
+
+                    all_compositions += [c for c in repo.get_compositions_by_query(composition_querier)]
+                elif resource_type == 'problem':
+                    item_querier = bank.get_item_query()
+                    for term in self.query_params:
+                        item_querier.match_keyword(term,
+                                                   gutils.WORDIGNORECASE_STRING_MATCH_TYPE,
+                                                   True)
+
+                    all_items += [c for c in bank.get_items_by_query(item_querier)]
+                else:
+                    genus_type = _get_asset_content_genus_type(resource_type)
+                    asset_querier = repo.get_asset_query()
+                    asset_querier.match_asset_content_genus_type(genus_type)
+                    for term in self.query_params:
+                        asset_querier.match_keyword(term,
+                                                    gutils.WORDIGNORECASE_STRING_MATCH_TYPE,
+                                                    True)
+
+                    all_assets += [a for a in repo.get_assets_by_query(asset_querier)]
+
+        return all_assets, all_compositions, all_items
+
+    def _get_run_map(self, repository_id):
+        repo_nodes = self.rm.get_repository_nodes(repository_id=gutils.clean_id(repository_id),
+                                                  ancestor_levels=0,
+                                                  descendant_levels=2,
+                                                  include_siblings=False)
+        repo_nodes = repo_nodes.get_object_node_map()
+
+        runs = [(r['id'], '{0}, {1}'.format(course['displayName']['text'],
+                                            r['displayName']['text']))
+                for course in repo_nodes['childNodes']
+                for r in course['childNodes']]
+
+        run_map = {}
+        for run in runs:
+            run_map[run[0]] = run[1]
+
+        return run_map
+
+    def get(self, request, repository_id, format=None):
+        try:
+            self.facet_resource_types = get_facets_values(self.data, 'resource_type_exact')
+            self.facet_course_runs = get_facets_values(self.data, 'course_exact')
+            self.query_params = get_query_values(self.data.get('q', None))
+            self.cursor_limits = get_page_and_limits(self.data)
+            object_list = []
+
+            run_map = self._get_run_map(repository_id)
+
+            if self.facet_course_runs is None:
+                domain_repo = self.rm.get_repository(gutils.clean_id(repository_id))
+                domain_repo.use_federated_repository_view()
+
+                all_assets, all_compositions, all_items = self._get_all_items_by_repo(domain_repo)
+                non_enclosed_assets = [a for a in all_assets
+                                       if a.enclosed_object is None and
+                                       a.get_asset_contents().available() > 0]
+
+                object_list += [a.object_map for a in non_enclosed_assets]
+                object_list += [c.object_map for c in all_compositions]
+                object_list += [i.object_map for i in all_items]
+            else:
+                for repo_id in self.facet_course_runs:
+                    run_repo = self.rm.get_repository(gutils.clean_id(repo_id))
+                    run_assets, run_compositions, run_items = self._get_all_items_by_repo(run_repo)
+                    non_enclosed_assets = [a for a in run_assets
+                                           if a.enclosed_object is None and
+                                           a.get_asset_contents().available() > 0]
+                    object_list += [a.object_map for a in non_enclosed_assets]
+                    object_list += [c.object_map for c in run_compositions]
+                    object_list += [i.object_map for i in run_items]
+
+            object_list = sorted(object_list, key=lambda k: k['id'])
+            return_data = {
                 'objects': object_list,
                 'runMap': run_map
             }
-            logging.info("returning: " + str(time.time()))
             return Response(return_data)
         except (PermissionDenied, InvalidId, NotFound) as ex:
             gutils.handle_exceptions(ex)
