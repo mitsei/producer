@@ -71,8 +71,8 @@ div.action-menu {
 .resource-icon {
     border-radius:50%;
     border:1px solid #eee;
-    flex: 0 0 53px;
-    height:53px;
+    flex: 0 0 25px;
+    height: 25px;
     margin:0 8px 0 0;
     display: inline-block;
     vertical-align: top;
@@ -88,6 +88,7 @@ div.action-menu {
 div.ic-custom {
     height: 100%;
     width: 100%;
+    background-size: 75%;
 }
 
 .composition-object-wrapper,
@@ -133,7 +134,7 @@ div.ic-custom {
 .composition-chapter div {
     background-image: url("/static/images/ic-book.png");
     background-repeat: no-repeat;
-    margin-left: 25%;
+    margin-left: 15%;
     margin-top: 25%;
 }
 
@@ -144,8 +145,8 @@ div.ic-custom {
 .composition-sequential div {
     background-image: url("/static/images/ic-sequential.png");
     background-repeat: no-repeat;
-    margin-left: 25%;
-    margin-top: 25%;
+    margin-left: 15%;
+    margin-top: 16%;
 }
 
 .composition-vertical {
@@ -155,8 +156,9 @@ div.ic-custom {
 .composition-vertical div {
     background-image: url("/static/images/ic-vertical.png");
     background-repeat: no-repeat;
-    margin-left: 35%;
-    margin-top: 25%;
+    margin-left: 28%;
+    margin-top: 13%;
+    background-size: 50%;
 }
 
 .composition span.display-name,
@@ -292,8 +294,8 @@ ul.repository-navbar button.repository-btn {
 .resource-problem div.ic-custom {
     background-image: url("/static/images/ic-pieces.png");
     background-repeat: no-repeat;
-    margin-left: 25%;
-    margin-top: 25%;
+    margin-left: 13%;
+    margin-top: 14%;
 }
 
 .resource-html {
@@ -303,8 +305,8 @@ ul.repository-navbar button.repository-btn {
 .resource-html div.ic-custom {
     background-image: url("/static/images/ic-code.png");
     background-repeat: no-repeat;
-    margin-left: 25%;
-    margin-top: 25%;
+    margin-left: 13%;
+    margin-top: 20%;
 }
 
 .resource-video,
@@ -316,12 +318,12 @@ ul.repository-navbar button.repository-btn {
 .resource-videoalpha div.ic-custom {
     background-image: url("/static/images/ic-video.png");
     background-repeat: no-repeat;
-    margin-left: 25%;
-    margin-top: 25%;
+    margin-left: 15%;
+    margin-top: 15%;
 }
 
 .resource-icon {
-    flex: 0 0 50px;
+    flex: 0 0 25px;
 }
 
 .resource .vertical-box {

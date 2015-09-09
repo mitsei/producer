@@ -8,19 +8,19 @@
             </a>
           </h4>
         </div>
-        <div id="collapse-<%- ind %>" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="heading-<%- ind %>">
+        <div id="collapse-<%- ind %>" data-facet-prefix="<%- ind %>" class="panel-collapse collapse in facet-items" role="tabpanel" aria-labelledby="heading-<%- ind %>">
           <div class="panel-body">
               <% _.each(cluster, function (item) { %>
                 <div class="checkbox">
                   <label>
-                    <% if (item.length === 3) { %>
-                        <input type="checkbox" class="facet-checkbox" data-id="<%- item[2] %>" value="<%- item[0] %>">
+                    <% if (selectedFacets.indexOf(item[1][1]) >= 0) { %>
+                        <input type="checkbox" class="facet-checkbox" checked value="<%- item[1][1] %>">
                     <% } else { %>
-                        <input type="checkbox" class="facet-checkbox" value="<%- item[0] %>">
+                        <input type="checkbox" class="facet-checkbox" value="<%- item[1][1] %>">
                     <% } %>
                       <%- item[0] %>
                       <span class="badge pull-right">
-                          <%- item[1] %>
+                          <%- item[1][0] %>
                       </span>
                   </label>
                 </div>

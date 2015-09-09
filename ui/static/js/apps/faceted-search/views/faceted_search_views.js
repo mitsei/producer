@@ -13,8 +13,96 @@ define(["app",
        function(ProducerManager, Utils, PreviewViews, FacetsTemplate, FacetResultsTemplate,
                 FacetPaginationTemplate){
   ProducerManager.module("FacetedSearchApp.View", function(View, ProducerManager, Backbone, Marionette, $, _){
+    var selectedFacets = [],
+        currentFacetsPromise,
+        currentResultsPromise;
+
+    function cancel (promise) {
+        try {
+            promise.abort();
+        } catch (e) {
+            // pass
+        }
+    }
+
+    function getFacetTerms () {
+        var $facetClusters = $('div.facet-items'),
+            facetTerms = [];
+
+        _.each($facetClusters, function (cluster) {
+            var prefix = $(cluster).data('facet-prefix') + '_exact',
+                $checkedFacets = $(cluster).find('input.facet-checkbox:checked');
+            if ($checkedFacets.length > 0) {
+                _.each($checkedFacets, function (checkedFacet) {
+                    facetTerms.push(prefix + ':' + $(checkedFacet).val());
+                });
+            }
+        });
+
+        return facetTerms;
+    }
+
+    function updateFacets (keywords) {
+        return $.ajax({
+            url: '/api/v1/repository/repositories/' + Utils.selectedRepoId() + '/queryplans/',
+            data: {
+                q: keywords,
+                selected_facets: getFacetTerms()
+            }
+        }).fail(function (xhr, status, msg) {
+            ProducerManager.vent.trigger('msg:error', xhr.responseText);
+        }).done(function (data) {
+            // pass the data on to the facet renderer region and the
+            // facet results region
+            // first, order the facets alphabetically
+            ProducerManager.regions.facetedSearchFacets.show(new View.FacetsView(data));
+        }).always(function () {
+        });
+    }
+
+    function updateFacetsAndResults () {
+        var keywords = $('.input-search').val();
+
+        // cancel current promises, if they exist
+        cancel(currentFacetsPromise);
+        cancel(currentResultsPromise);
+
+        // save the selected facets
+        _.each(getFacetTerms(), function (facetText) {
+            selectedFacets.push(facetText.split(':')[1]);
+        });
+
+        // show spinner while searching
+        $('.processing-spinner').removeClass('hidden');
+        Utils.processing();
+        currentFacetsPromise = updateFacets(keywords);
+        currentResultsPromise = updateResults(keywords);
+        $.when(currentFacetsPromise, currentResultsPromise).done(function (facets, objects) {
+            Utils.doneProcessing();
+            $('.processing-spinner').addClass('hidden');
+            selectedFacets = [];
+        });
+    }
+
+    function updateResults (keywords) {
+        return $.ajax({
+            url: '/api/v1/repository/repositories/' + Utils.selectedRepoId() + '/search/',
+            data: {
+                q: keywords,
+                selected_facets: getFacetTerms()
+            }
+        }).fail(function (xhr, status, msg) {
+            ProducerManager.vent.trigger('msg:error', xhr.responseText);
+        }).done(function (data) {
+            // pass the data on to the facet results region
+            ProducerManager.regions.facetedSearchPagination.show(new View.PaginationView(data));
+        });
+    }
 
     View.HeaderView = Marionette.ItemView.extend({
+        initialize: function () {
+            selectedFacets = [];
+        },
         template: false,
         el: '.faceted-search-header',
         events: {
@@ -23,70 +111,67 @@ define(["app",
             'keyup input.input-search': 'checkForEnterKey'
         },
         checkForEnterKey: function (e) {
-            var $e = $(e.currentTarget),
-                keywords = $e.val();
-
+            var $e = $(e.currentTarget);
             if (e.keyCode === 13) {
-                this.triggerQuery(keywords);
+                updateFacetsAndResults();
             }
         },
-        getKeywordSearchResults: function (keywords) {
-            var _this = this,
-                $drawer = $('#search-components-menu');
-            $drawer.unbind('shown.bs.drawer')
-                .on('shown.bs.drawer', function () {
-                _this.triggerQuery(keywords);
-            });
-        },
         keywordFilter: function (e) {
-            var keywords = $('.input-search').val(),
-                _this = this,
-                $drawer = $('#search-components-menu');
+            var $drawer = $('#search-components-menu');
 
             $('#search-components-menu').unbind('shown.bs.drawer')
                 .on('shown.bs.drawer', function () {
-                _this.triggerQuery(keywords);
+                updateFacetsAndResults();
             });
 
             if ($drawer.hasClass('open')) {
-                _this.triggerQuery(keywords);
+                updateFacetsAndResults();
             }
         },
         toggleDrawer: function () {
             $('#search-components-menu').drawer('toggle');
             $('#add-new-components-btn').button('toggle');
-        },
-        triggerQuery: function (keywords) {
-            // show spinner while searching
-            $('.processing-spinner').removeClass('hidden');
-            Utils.processing();
-            $.ajax({
-                url: '/api/v1/repository/repositories/' + Utils.selectedRepoId() + '/search/',
-                data: {
-                    q: keywords
-                }
-            }).fail(function (xhr, status, msg) {
-                ProducerManager.vent.trigger('msg:error', xhr.responseText);
-            }).done(function (data) {
-                // pass the data on to the facet renderer region and the
-                // facet results region
-                // first, order the facets alphabetically
-                ProducerManager.regions.facetedSearchFacets.show(new View.FacetsView(data));
-            }).always(function () {
-                // remove spinner
-                $('.processing-spinner').addClass('hidden');
-                Utils.doneProcessing();
-            });
         }
     });
 
     View.FacetsView = Marionette.ItemView.extend({
         // on render this should also render the results region
         initialize: function (options) {
+            this.options = options;
+
+            return this;
+        },
+        serializeData: function () {
+            return {
+                options: this.options
+            };
+        },
+        template: function (serializedModel) {
+            return _.template(FacetsTemplate)({
+                facets: serializedModel.options.facets,
+                selectedFacets: selectedFacets
+            });
+        },
+        onRender: function () {
+//            this.passToPaginator(this.options);
+        },
+        events: {
+            'change #items-per-page': 'updateFacetResults',
+            // on click of a facet, update the results region
+            // by passing it a filtered "objects" list
+            'click .facet-checkbox': 'updateFacetResults'
+        },
+        updateFacetResults: function (e) {
+            updateFacetsAndResults();
+        }
+    });
+
+    View.PaginationView = Marionette.ItemView.extend({
+        initialize: function (options) {
             var _this = this;
             this.options = options;
 
-            // computer runNames here and add them to each object in this.options.objects
+            // compute runNames here and add them to each object in this.options.objects
             _.each(_this.options.objects, function (obj) {
                 if (obj.type === 'Composition' || obj.type === 'Asset') {
                     var runIds = [obj.repositoryId];
@@ -110,121 +195,6 @@ define(["app",
                 runNames = runNames.join('; ');
                 obj.runNames = runNames;
             });
-
-            return this;
-        },
-        serializeData: function () {
-            return {
-                options: this.options
-            };
-        },
-        template: function (serializedModel) {
-            return _.template(FacetsTemplate)({
-                facets: serializedModel.options.facets
-            });
-        },
-        onRender: function () {
-            this.passToPaginator(this.options);
-        },
-        events: {
-            'change #items-per-page': 'updateFacetResults',
-            // on click of a facet, update the results region
-            // by passing it a filtered "objects" list
-            'click .facet-checkbox': 'updateFacetResults'
-        },
-        passToPaginator: function (objects) {
-            ProducerManager.regions.facetedSearchPagination.show(new View.PaginationView(objects));
-        },
-        updateBadgeNumbers: function (facetValues, items) {
-            var counters = {};
-
-            // set it up so that each valid facetValue has
-            // its own counter
-            _.each(facetValues, function (facet) {
-                counters[facet] = 0;
-                // now check each item and add to the counters
-                _.each(items, function (item) {
-                    if (item.runNames.indexOf(facet) >= 0 ||
-                        Utils.parseGenusType(item) == facet) {
-                        counters[facet]++;
-                    }
-                });
-
-                $('input.facet-checkbox[value="' + facet + '"]').siblings('.badge')
-                    .text(counters[facet]);
-            });
-            console.log(counters);
-        },
-        updateFacetResults: function (e) {
-            // check all facets for the checked ones
-            // If none checked, unhide all objects
-            // If some are checked, hide objects that do not meet filter requirements
-
-            // make this an AND for all checked boxes...and update the
-            // badge numbers in the OTHER facet categories accordingly...
-            if ($('input.facet-checkbox:checked').length === 0) {
-                var facetValues = [];
-
-                _.each($('input.facet-checkbox'), function (box) {
-                    facetValues.push($(box).val());
-                });
-                this.passToPaginator(this.options);
-                this.updateBadgeNumbers(facetValues, this.options.objects);
-            } else {
-                var filteredObjects = [],
-                    _this = this,
-                    facetValues = [],
-                    $facetPanels = $(e.currentTarget).parents('div.facet-panel')
-                        .parent()
-                        .children('div.facet-panel');
-
-                _.each($facetPanels, function (facetPanel) {
-                    var $thisPanelFacets = $(facetPanel).find('input.facet-checkbox:checked');
-
-                    if ($thisPanelFacets.length === 0) {
-                        // if no boxes checked in this panel, then
-                        // use all values -- because not filtered
-                        // on any of them.
-                        _.each($(facetPanel).find('input.facet-checkbox'), function (box) {
-                            facetValues.push($(box).val());
-                        });
-                    } else {
-                        // add the checked boxes to facetValues
-                        _.each($thisPanelFacets, function (box) {
-                            facetValues.push($(box).val());
-                        });
-                    }
-                });
-
-                // now, iterate through the items and make sure they meet
-                // all the requirements from facetValues
-                _.each(_this.options.objects, function (obj) {
-                    if (_.some(facetValues, function (facetValue) {
-                        return obj.runNames.indexOf(facetValue) >= 0 &&
-                            facetValues.indexOf(Utils.parseGenusType(obj)) >= 0;
-                    })) {
-                        filteredObjects.push(obj);
-                    }
-                });
-
-                filteredObjects.sort(function (a, b) {
-                    return a.id > b.id ? 1 : ((b.id > a.id) ? -1 : 0);
-                });
-
-                filteredObjects = _.uniq(filteredObjects, true);
-                this.passToPaginator({
-                    objects: filteredObjects,
-                    runMap: this.options.runMap
-                });
-
-                this.updateBadgeNumbers(facetValues, filteredObjects);
-            }
-        }
-    });
-
-    View.PaginationView = Marionette.ItemView.extend({
-        initialize: function (options) {
-            this.options = options;
 
             return this;
         },

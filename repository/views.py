@@ -1,5 +1,4 @@
 import os
-import requests
 
 from bson.errors import InvalidId
 
@@ -44,9 +43,13 @@ ENCLOSURE_TYPE = Type(**OSID_OBJECT_RECORD_TYPES['enclosure'])
 
 
 def get_facets_values(params, facet_prefix):
-    if 'selected_facets' in params:
+    if 'selected_facets' in params or 'selected_facets[]' in params:
+        param_list = params.getlist('selected_facets')
+        if len(param_list) == 0:
+            param_list = params.getlist('selected_facets[]')
+
         facet_params = [f.split(':')[-1]
-                        for f in params['selected_facets']
+                        for f in param_list
                         if '{}:'.format(facet_prefix) in f]
         if len(facet_params) == 0:
             return None
@@ -811,22 +814,22 @@ class RepositoryQueryPlansAvailable(ProducerAPIViews):
                     getattr(querier, match_method)(genus_type, True)
                     if genus_type.identifier not in counts:
                         counts.update({
-                            genus_type.identifier: getattr(catalog, get_method)(querier).available()
+                            genus_type.identifier: [getattr(catalog, get_method)(querier).available(), str(genus_type)]
                         })
                     else:
-                        counts[genus_type.identifier] += getattr(catalog, get_method)(querier).available()
+                        counts[genus_type.identifier][0] += getattr(catalog, get_method)(querier).available()
                 else:
                     if genus_type.identifier not in counts:
-                        counts[genus_type.identifier] = 0
+                        counts[genus_type.identifier] = [0, str(genus_type)]
             else:
                 getattr(querier, clear_method)()
                 getattr(querier, match_method)(genus_type, True)
                 if genus_type.identifier not in counts:
                     counts.update({
-                        genus_type.identifier: getattr(catalog, get_method)(querier).available()
+                        genus_type.identifier: [getattr(catalog, get_method)(querier).available(), str(genus_type)]
                     })
                 else:
-                    counts[genus_type.identifier] += getattr(catalog, get_method)(querier).available()
+                    counts[genus_type.identifier][0] += getattr(catalog, get_method)(querier).available()
 
 
     def _count_objects(self, repo, asset_counts):
@@ -887,19 +890,19 @@ class RepositoryQueryPlansAvailable(ProducerAPIViews):
         # match facet selected types
         if self.facet_resource_types is not None:
             for resource_type in self.facet_resource_types:
-                if resource_type in EDX_COMPOSITION_TYPES:
+                if resource_type in EDX_COMPOSITION_GENUS_TYPES_STR:
                     if composition_querier is None:
                         composition_querier = repo.get_composition_query()
-                    genus_type = _get_genus_type(resource_type)
-                    composition_querier.match_genus_type(genus_type)
-                elif resource_type == 'problem':
+                    genus_type = Type(resource_type)
+                    composition_querier.match_genus_type(genus_type, True)
+                elif resource_type == 'edx-assessment-item%3Aproblem%40EDX.ORG':
                     if item_querier is None:
                         item_querier = bank.get_item_query()
                 else:
                     if asset_querier is None:
                         asset_querier = repo.get_asset_query()
-                    genus_type = _get_asset_content_genus_type(resource_type)
-                    asset_querier.match_asset_content_genus_type(genus_type)
+                    genus_type = Type(resource_type)
+                    asset_querier.match_asset_content_genus_type(genus_type, True)
         else:
             # match all objects
             asset_querier = repo.get_asset_query()
@@ -920,9 +923,18 @@ class RepositoryQueryPlansAvailable(ProducerAPIViews):
                     item_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
 
         # run query
-        all_assets = repo.get_assets_by_query(asset_querier)
-        all_compositions = repo.get_compositions_by_query(composition_querier)
-        all_items = bank.get_items_by_query(item_querier)
+        if asset_querier is not None:
+            all_assets = repo.get_assets_by_query(asset_querier)
+        else:
+            all_assets = None
+        if composition_querier is not None:
+            all_compositions = repo.get_compositions_by_query(composition_querier)
+        else:
+            all_compositions = None
+        if item_querier is not None:
+            all_items = bank.get_items_by_query(item_querier)
+        else:
+            all_items = None
 
         return all_assets, all_compositions, all_items
 
@@ -976,9 +988,9 @@ class RepositoryQueryPlansAvailable(ProducerAPIViews):
 
                     assets, compositions, items = self._get_all_items_by_repo(repo)
 
-                    course_run_counts[run_name][0] += assets.available()
-                    course_run_counts[run_name][0] += compositions.available()
-                    course_run_counts[run_name][0] += items.available()
+                    for obj in [assets, compositions, items]:
+                        if obj is not None:
+                            course_run_counts[run_name][0] += obj.available()
 
                     self._count_objects(repo,
                                         asset_counts)
@@ -989,9 +1001,9 @@ class RepositoryQueryPlansAvailable(ProducerAPIViews):
 
                         assets, compositions, items = self._get_all_items_by_repo(repo)
 
-                        course_run_counts[run_name][0] += assets.available()
-                        course_run_counts[run_name][0] += compositions.available()
-                        course_run_counts[run_name][0] += items.available()
+                        for obj in [assets, compositions, items]:
+                            if obj is not None:
+                                course_run_counts[run_name][0] += obj.available()
 
                         self._count_objects(repo,
                                             asset_counts)
@@ -1054,17 +1066,17 @@ class RepositorySearch(ProducerAPIViews):
             all_compositions = []
             all_items = []
             for resource_type in self.facet_resource_types:
-                if resource_type in EDX_COMPOSITION_TYPES:
-                    genus_type = _get_genus_type(resource_type)
+                if resource_type in EDX_COMPOSITION_GENUS_TYPES_STR:
+                    genus_type = Type(resource_type)
                     composition_querier = repo.get_composition_query()
-                    composition_querier.match_genus_type(genus_type)
+                    composition_querier.match_genus_type(genus_type, True)
                     for term in self.query_params:
                         composition_querier.match_keyword(term,
                                                           gutils.WORDIGNORECASE_STRING_MATCH_TYPE,
                                                           True)
 
                     all_compositions += [c for c in repo.get_compositions_by_query(composition_querier)]
-                elif resource_type == 'problem':
+                elif resource_type == 'edx-assessment-item%3Aproblem%40EDX.ORG':
                     item_querier = bank.get_item_query()
                     for term in self.query_params:
                         item_querier.match_keyword(term,
@@ -1073,9 +1085,9 @@ class RepositorySearch(ProducerAPIViews):
 
                     all_items += [c for c in bank.get_items_by_query(item_querier)]
                 else:
-                    genus_type = _get_asset_content_genus_type(resource_type)
+                    genus_type = Type(resource_type)
                     asset_querier = repo.get_asset_query()
-                    asset_querier.match_asset_content_genus_type(genus_type)
+                    asset_querier.match_asset_content_genus_type(genus_type, True)
                     for term in self.query_params:
                         asset_querier.match_keyword(term,
                                                     gutils.WORDIGNORECASE_STRING_MATCH_TYPE,
