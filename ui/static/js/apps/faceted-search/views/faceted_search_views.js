@@ -67,9 +67,15 @@ define(["app",
         cancel(currentFacetsPromise);
         cancel(currentResultsPromise);
 
+        console.log('first spot: ' + selectedFacets);
+
         // save the selected facets
+        selectedFacets = [];
         _.each(getFacetTerms(), function (facetText) {
-            selectedFacets.push(facetText.split(':')[1]);
+            var facetId = facetText.split(':')[1];
+            if (selectedFacets.indexOf(facetId) < 0) {
+                selectedFacets.push(facetId);
+            }
         });
 
         // show spinner while searching
@@ -147,6 +153,7 @@ define(["app",
             };
         },
         template: function (serializedModel) {
+            console.log('second spot: ' + selectedFacets);
             return _.template(FacetsTemplate)({
                 facets: serializedModel.options.facets,
                 selectedFacets: selectedFacets
