@@ -67,7 +67,7 @@ def get_page_and_limits(params):
     if 'limit' in params:
         limit = params['limit']
     start_index = (page - 1) * limit
-    end_index = (page * limit) - 1
+    end_index = (page * limit)  # because python list slice ends at this [0:10] gets indices 0...9
     return start_index, end_index
 
 def get_query_values(params):
@@ -798,13 +798,24 @@ class RepositoryDownload(ProducerAPIViews):
             gutils.handle_exceptions(ex)
 
 
-class RepositoryQueryPlansAvailable(ProducerAPIViews):
-    """
-    Get set of queryable options plus their object counts
-    api/v1/repository/repositories/<repository_id>/queryplans/
+class QueryHelpersMixin(object):
+    def _construct_count_queries(self, repo):
+        bank = self.am.get_bank(repo.ident)
+        bank.use_federated_bank_view()
 
-    GET
-    """
+        asset_querier = repo.get_asset_query()
+        composition_querier = repo.get_composition_query()
+        item_querier = bank.get_item_query()
+
+        if self.query_params is not None and self.query_params != ['']:
+            for term in self.query_params:
+                asset_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
+                composition_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
+                item_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
+
+        return asset_querier, composition_querier, item_querier
+
+
     def _count_type(self, counts, iterator, querier, catalog, clear_method, match_method, get_method):
         for genus in iterator:
             genus_type = Type(genus)
@@ -831,7 +842,6 @@ class RepositoryQueryPlansAvailable(ProducerAPIViews):
                 else:
                     counts[genus_type.identifier][0] += getattr(catalog, get_method)(querier).available()
 
-
     def _count_objects(self, repo, asset_counts):
         bank = self.am.get_bank(repo.ident)
         bank.use_federated_bank_view()
@@ -840,15 +850,7 @@ class RepositoryQueryPlansAvailable(ProducerAPIViews):
         composition_genus_types = EDX_COMPOSITION_GENUS_TYPES_FOR_FACETS
         item_genus_types = EDX_ASSESSMENT_GENUS_TYPES_FOR_FACETS
 
-        asset_querier = repo.get_asset_query()
-        composition_querier = repo.get_composition_query()
-        item_querier = bank.get_item_query()
-
-        if self.query_params is not None and self.query_params != ['']:
-            for term in self.query_params:
-                asset_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
-                composition_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
-                item_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
+        asset_querier, composition_querier, item_querier = self._construct_count_queries(repo)
 
         self._count_type(asset_counts,
                          asset_genus_types,
@@ -938,6 +940,7 @@ class RepositoryQueryPlansAvailable(ProducerAPIViews):
 
         return all_assets, all_compositions, all_items
 
+
     def _get_run_map(self, repository_id):
         repo_nodes = self.rm.get_repository_nodes(repository_id=gutils.clean_id(repository_id),
                                                   ancestor_levels=0,
@@ -956,6 +959,14 @@ class RepositoryQueryPlansAvailable(ProducerAPIViews):
 
         return run_map
 
+
+class RepositoryQueryPlansAvailable(ProducerAPIViews, QueryHelpersMixin):
+    """
+    Get set of queryable options plus their object counts
+    api/v1/repository/repositories/<repository_id>/queryplans/
+
+    GET
+    """
     def get(self, request, repository_id, format=None):
         try:
             self.facet_resource_types = get_facets_values(self.data, 'resource_type_exact')
@@ -974,8 +985,6 @@ class RepositoryQueryPlansAvailable(ProducerAPIViews):
 
             if domain_repo.genus_type != DOMAIN_REPO_GENUS:
                 raise InvalidArgument('You can only get query plans for domains.')
-
-            domain_repo.use_federated_repository_view()
 
             run_map = self._get_run_map(repository_id)
             # first for each repository, get count of its total objects that
@@ -1013,7 +1022,7 @@ class RepositoryQueryPlansAvailable(ProducerAPIViews):
             for case in count_cases:
                 _counts = []
                 for k, v in case[0].iteritems():
-                    if isinstance(v, tuple):
+                    if isinstance(v, tuple) or isinstance(v, list):
                         _counts.append((k, v[0], v[1]))
                     else:
                         _counts.append((k, v))
@@ -1027,7 +1036,7 @@ class RepositoryQueryPlansAvailable(ProducerAPIViews):
             gutils.handle_exceptions(ex)
 
 
-class RepositorySearch(ProducerAPIViews):
+class RepositorySearch(ProducerAPIViews, QueryHelpersMixin):
     """
     Search interface for a specific (domain) repository.
     api/v1/repository/repositories/<repository_id>/search/
@@ -1035,86 +1044,6 @@ class RepositorySearch(ProducerAPIViews):
     GET
     ?selected_facets=course_exact:<id>&selected_facets=resource_type_exact:problem&....
     """
-    def _get_all_items_by_repo(self, repo):
-        if isinstance(repo, dict):
-            repo = self.rm.get_repository(gutils.clean_id(repo['id']))
-        bank = self.am.get_bank(repo.ident)
-        bank.use_federated_bank_view()
-
-        repo.use_sequestered_composition_view()
-
-        if self.facet_resource_types is None:
-            if self.query_params is None or self.query_params == ['']:
-                all_assets = repo.get_assets()
-                all_compositions = repo.get_compositions()
-                all_items = bank.get_items()
-            else:
-                asset_querier = repo.get_asset_query()
-                composition_querier = repo.get_composition_query()
-                item_querier = bank.get_item_query()
-
-                for term in self.query_params:
-                    asset_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
-                    composition_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
-                    item_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
-
-                all_assets = repo.get_assets_by_query(asset_querier)
-                all_compositions = repo.get_compositions_by_query(composition_querier)
-                all_items = bank.get_items_by_query(item_querier)
-        else:
-            all_assets = []
-            all_compositions = []
-            all_items = []
-            for resource_type in self.facet_resource_types:
-                if resource_type in EDX_COMPOSITION_GENUS_TYPES_STR:
-                    genus_type = Type(resource_type)
-                    composition_querier = repo.get_composition_query()
-                    composition_querier.match_genus_type(genus_type, True)
-                    for term in self.query_params:
-                        composition_querier.match_keyword(term,
-                                                          gutils.WORDIGNORECASE_STRING_MATCH_TYPE,
-                                                          True)
-
-                    all_compositions += [c for c in repo.get_compositions_by_query(composition_querier)]
-                elif resource_type == 'edx-assessment-item%3Aproblem%40EDX.ORG':
-                    item_querier = bank.get_item_query()
-                    for term in self.query_params:
-                        item_querier.match_keyword(term,
-                                                   gutils.WORDIGNORECASE_STRING_MATCH_TYPE,
-                                                   True)
-
-                    all_items += [c for c in bank.get_items_by_query(item_querier)]
-                else:
-                    genus_type = Type(resource_type)
-                    asset_querier = repo.get_asset_query()
-                    asset_querier.match_asset_content_genus_type(genus_type, True)
-                    for term in self.query_params:
-                        asset_querier.match_keyword(term,
-                                                    gutils.WORDIGNORECASE_STRING_MATCH_TYPE,
-                                                    True)
-
-                    all_assets += [a for a in repo.get_assets_by_query(asset_querier)]
-
-        return all_assets, all_compositions, all_items
-
-    def _get_run_map(self, repository_id):
-        repo_nodes = self.rm.get_repository_nodes(repository_id=gutils.clean_id(repository_id),
-                                                  ancestor_levels=0,
-                                                  descendant_levels=2,
-                                                  include_siblings=False)
-        repo_nodes = repo_nodes.get_object_node_map()
-
-        runs = [(r['id'], '{0}, {1}'.format(course['displayName']['text'],
-                                            r['displayName']['text']))
-                for course in repo_nodes['childNodes']
-                for r in course['childNodes']]
-
-        run_map = {}
-        for run in runs:
-            run_map[run[0]] = run[1]
-
-        return run_map
-
     def get(self, request, repository_id, format=None):
         try:
             self.facet_resource_types = get_facets_values(self.data, 'resource_type_exact')
@@ -1123,32 +1052,140 @@ class RepositorySearch(ProducerAPIViews):
             self.cursor_limits = get_page_and_limits(self.data)
             object_list = []
 
+            domain_repo = self.rm.get_repository(gutils.clean_id(repository_id))
+
+            if domain_repo.genus_type != DOMAIN_REPO_GENUS:
+                raise InvalidArgument('You can only get query results for domains.')
+
+            asset_lists = []
+            composition_lists = []
+            item_lists = []
+
             run_map = self._get_run_map(repository_id)
+            # first for each repository, get OsidLists of total objects that
+            # meet the keyword filter requirement and other facet requirements
+            for run_identifier, run_name in run_map.iteritems():
+                if self.facet_course_runs is None:
+                    # do all courses
+                    repo = self.rm.get_repository(gutils.clean_id(run_identifier))
 
-            if self.facet_course_runs is None:
-                domain_repo = self.rm.get_repository(gutils.clean_id(repository_id))
-                domain_repo.use_federated_repository_view()
+                    assets, compositions, items = self._get_all_items_by_repo(repo)
 
-                all_assets, all_compositions, all_items = self._get_all_items_by_repo(domain_repo)
-                non_enclosed_assets = [a for a in all_assets
-                                       if a.enclosed_object is None and
-                                       a.get_asset_contents().available() > 0]
+                    for obj in [(assets, asset_lists),
+                                (compositions, composition_lists),
+                                (items, item_lists)]:
+                        if obj[0] is not None:
+                            if obj[0] == assets:
+                                non_enclosed_assets = [a for a in assets if
+                                                       a.get_asset_contents().available() > 0]
+                                list_to_add = non_enclosed_assets
+                                number = len(list_to_add)
+                            else:
+                                list_to_add = obj[0]
+                                number = list_to_add.available()
+                            obj[1].append((list_to_add, number))
+                else:
+                    # only do courses that have been selected
+                    if any(run_identifier in course for course in self.facet_course_runs):
+                        repo = self.rm.get_repository(gutils.clean_id(run_identifier))
 
-                object_list += [a.object_map for a in non_enclosed_assets]
-                object_list += [c.object_map for c in all_compositions]
-                object_list += [i.object_map for i in all_items]
-            else:
-                for repo_id in self.facet_course_runs:
-                    run_repo = self.rm.get_repository(gutils.clean_id(repo_id))
-                    run_assets, run_compositions, run_items = self._get_all_items_by_repo(run_repo)
-                    non_enclosed_assets = [a for a in run_assets
-                                           if a.enclosed_object is None and
-                                           a.get_asset_contents().available() > 0]
-                    object_list += [a.object_map for a in non_enclosed_assets]
-                    object_list += [c.object_map for c in run_compositions]
-                    object_list += [i.object_map for i in run_items]
+                        assets, compositions, items = self._get_all_items_by_repo(repo)
 
-            object_list = sorted(object_list, key=lambda k: k['id'])
+                        for obj in [(assets, asset_lists),
+                                    (compositions, composition_lists),
+                                    (items, item_lists)]:
+                            if obj[0] is not None:
+                                if obj[0] == assets:
+                                    non_enclosed_assets = [a for a in assets if
+                                                           a.get_asset_contents().available() > 0]
+                                    list_to_add = non_enclosed_assets
+                                    number = len(list_to_add)
+                                else:
+                                    list_to_add = obj[0]
+                                    number = list_to_add.available()
+                                obj[1].append((list_to_add, number))
+
+            # slice / paginate from assets first...
+            lower_index = self.cursor_limits[0]
+            upper_index = self.cursor_limits[1]
+
+            counter = 0
+            list_index = 0
+            compiled_lists = asset_lists + composition_lists + item_lists
+            while counter < upper_index:
+                active_list = compiled_lists[list_index][0]
+                active_list_len = compiled_lists[list_index][1]
+
+                if (counter + active_list_len) <= lower_index:
+                    # the page we need is not part of this list.
+                    # skip it and move on
+                    counter += active_list_len
+                elif (counter <= lower_index and
+                        (counter + active_list_len) >= upper_index):
+                    # we only need this list -- yay
+                    start_index = lower_index - counter
+                    num_skip = start_index
+                    end_index = upper_index - counter
+                    if num_skip > 0:
+                        try:
+                            active_list.skip(num_skip)
+                        except AttributeError:
+                            del active_list[0:num_skip]
+                        counter += num_skip
+                    num_added = 0
+                    for obj in active_list:
+                        object_list.append(obj.object_map)
+                        start_index += 1
+                        num_added += 1
+                        if start_index == end_index:
+                            break
+                    counter += num_added
+                elif (counter <= lower_index and
+                          (counter + active_list_len) < upper_index):
+                    # need this list + at least one more
+                    # so append the items from this list, and keep
+                    # going through the loop
+                    start_index = lower_index - counter
+                    num_skip = start_index
+                    if num_skip > 0:
+                        try:
+                            active_list.skip(num_skip)
+                        except AttributeError:
+                            del active_list[0:num_skip]
+                        counter += num_skip
+                    num_added = 0
+                    for obj in active_list:
+                        object_list.append(obj.object_map)
+                        num_added += 1
+                    counter += num_added
+                else:
+                    # counter > lower_index...so we just need to check
+                    # the upper_index to see what we need from this list
+                    if (counter + active_list_len) < upper_index:
+                        # take this entire list and go to the next one
+                        num_added = 0
+                        for obj in active_list:
+                            object_list.append(obj.object_map)
+                            num_added += 1
+                        counter += num_added
+                    else:
+                        # take only a portion of this list
+                        end_index = upper_index - counter
+                        num_added = 0
+                        for obj in active_list:
+                            object_list.append(obj.object_map)
+                            num_added += 1
+                            if num_added == end_index:
+                                break
+                        counter += num_added
+
+                list_index += 1
+                if list_index == len(compiled_lists):
+                    # no results...break
+                    break
+
+            # if len(object_list) > 0:
+            #     object_list = sorted(object_list, key=lambda k: k['id'])
             return_data = {
                 'objects': object_list,
                 'runMap': run_map

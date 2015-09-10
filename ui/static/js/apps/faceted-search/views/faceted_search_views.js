@@ -14,6 +14,7 @@ define(["app",
                 FacetPaginationTemplate){
   ProducerManager.module("FacetedSearchApp.View", function(View, ProducerManager, Backbone, Marionette, $, _){
     var selectedFacets = [],
+        selectedItemsPerPage = 10,
         currentFacetsPromise,
         currentResultsPromise;
 
@@ -42,7 +43,24 @@ define(["app",
         return facetTerms;
     }
 
+    function saveItemsPerPage () {
+        selectedItemsPerPage = parseInt($('#items-per-page').val());
+    }
+
+    function saveSelectedFacets () {
+        selectedFacets = [];
+
+        _.each(getFacetTerms(), function (facetText) {
+            var facetId = facetText.split(':')[1];
+            if (selectedFacets.indexOf(facetId) < 0) {
+                selectedFacets.push(facetId);
+            }
+        });
+    }
+
     function updateFacets (keywords) {
+        saveItemsPerPage();
+
         return $.ajax({
             url: '/api/v1/repository/repositories/' + Utils.selectedRepoId() + '/queryplans/',
             data: {
@@ -55,6 +73,10 @@ define(["app",
             // pass the data on to the facet renderer region and the
             // facet results region
             // first, order the facets alphabetically
+            var totalObjects = _.sum(data.facets.course, function (obj) { return obj[1];});
+            ProducerManager.regions.facetedSearchPagination.show(new View.PaginationView({
+                total: totalObjects
+            }));
             ProducerManager.regions.facetedSearchFacets.show(new View.FacetsView(data));
         }).always(function () {
         });
@@ -65,18 +87,9 @@ define(["app",
 
         // cancel current promises, if they exist
         cancel(currentFacetsPromise);
-        cancel(currentResultsPromise);
-
-        console.log('first spot: ' + selectedFacets);
 
         // save the selected facets
-        selectedFacets = [];
-        _.each(getFacetTerms(), function (facetText) {
-            var facetId = facetText.split(':')[1];
-            if (selectedFacets.indexOf(facetId) < 0) {
-                selectedFacets.push(facetId);
-            }
-        });
+        saveSelectedFacets();
 
         // show spinner while searching
         $('.processing-spinner').removeClass('hidden');
@@ -90,18 +103,31 @@ define(["app",
         });
     }
 
-    function updateResults (keywords) {
+    function updateResults (keywords, page) {
+        var itemsPerPage = $('#items-per-page').val();
+
+        keywords = typeof keywords === 'undefined' ? $('.input-search').val() : keywords;
+        page = typeof page === 'undefined' ? 1 : page;
+
+        // cancel current promises, if they exist
+        cancel(currentResultsPromise);
+
+        // save the selected facets
+        saveSelectedFacets();
+
         return $.ajax({
             url: '/api/v1/repository/repositories/' + Utils.selectedRepoId() + '/search/',
             data: {
                 q: keywords,
-                selected_facets: getFacetTerms()
+                selected_facets: getFacetTerms(),
+                limit: itemsPerPage,
+                page: page
             }
         }).fail(function (xhr, status, msg) {
             ProducerManager.vent.trigger('msg:error', xhr.responseText);
         }).done(function (data) {
             // pass the data on to the facet results region
-            ProducerManager.regions.facetedSearchPagination.show(new View.PaginationView(data));
+            ProducerManager.regions.facetedSearchResults.show(new View.FacetResultsView(data));
         });
     }
 
@@ -153,10 +179,10 @@ define(["app",
             };
         },
         template: function (serializedModel) {
-            console.log('second spot: ' + selectedFacets);
             return _.template(FacetsTemplate)({
                 facets: serializedModel.options.facets,
-                selectedFacets: selectedFacets
+                selectedFacets: selectedFacets,
+                selectedItemsPerPage: selectedItemsPerPage
             });
         },
         onRender: function () {
@@ -166,14 +192,56 @@ define(["app",
             'change #items-per-page': 'updateFacetResults',
             // on click of a facet, update the results region
             // by passing it a filtered "objects" list
-            'click .facet-checkbox': 'updateFacetResults'
+            'click .facet-checkbox': 'updateFacetsAndResults'
+        },
+        updateFacetsAndResults: function (e) {
+            updateFacetsAndResults();
         },
         updateFacetResults: function (e) {
-            updateFacetsAndResults();
+            var totalObjects = _.sum($('#collapse-course span.badge'), function (obj) {
+                return parseInt($(obj).text());
+            });
+            ProducerManager.regions.facetedSearchPagination.show(new View.PaginationView({
+                total: totalObjects
+            }));
+            updateResults();
         }
     });
 
     View.PaginationView = Marionette.ItemView.extend({
+        initialize: function (options) {
+            this.options = options;
+
+            return this;
+        },
+        serializeData: function () {
+            return {
+                options: this.options
+            };
+        },
+        template: function (serializedModel) {
+            return _.template(FacetPaginationTemplate)();
+        },
+        onShow: function () {
+            var numPerPage = parseInt($('#items-per-page').val()) || 10,
+                totalItems = this.options.total,
+                totalPages = Math.ceil(totalItems / numPerPage),
+                pagesToShow = Math.min(5, totalPages),
+                _this = this;
+
+            $('.paginator').bootpag({
+                total: totalPages,
+                maxVisible: pagesToShow
+            }).on('page', function (e, num) {
+                _this.updateResults(num);
+            });
+        },
+        updateResults: function (pageNum) {
+            updateResults(null, pageNum);
+        }
+    });
+
+    View.FacetResultsView = Marionette.ItemView.extend({
         initialize: function (options) {
             var _this = this;
             this.options = options;
@@ -211,48 +279,6 @@ define(["app",
             };
         },
         template: function (serializedModel) {
-            return _.template(FacetPaginationTemplate)();
-        },
-        onShow: function () {
-            var numPerPage = parseInt($('#items-per-page').val()) || 10,
-                totalItems = this.options.objects.length,
-                totalPages = Math.ceil(totalItems / numPerPage),
-                pagesToShow = Math.min(5, totalPages),
-                _this = this,
-                paginatedObjects = this.options.objects.slice(0,
-                    numPerPage);
-
-            this.passToResults(paginatedObjects);
-
-            $('.paginator').bootpag({
-                total: totalPages,
-                maxVisible: pagesToShow
-            }).on('page', function (e, num) {
-                paginatedObjects = _this.options.objects.slice((num - 1) * numPerPage,
-                        num * numPerPage);
-                _this.passToResults(paginatedObjects);
-            });
-        },
-        passToResults: function (objects) {
-            ProducerManager.regions.facetedSearchResults.show(new View.FacetResultsView({
-                objects: objects,
-                runMap: this.options.runMap
-            }));
-        }
-    });
-
-    View.FacetResultsView = Marionette.ItemView.extend({
-        initialize: function (options) {
-            this.options = options;
-
-            return this;
-        },
-        serializeData: function () {
-            return {
-                options: this.options
-            };
-        },
-        template: function (serializedModel) {
             return _.template(FacetResultsTemplate)({
                 objects: serializedModel.options.objects,
                 runMap: serializedModel.options.runMap
@@ -269,7 +295,7 @@ define(["app",
             'click .show-preview': 'togglePreview'
         },
         togglePreview: function (e) {
-            // TODO: If is a composition, open preview in a dialog window
+            // If is a composition, open preview in a dialog window
             var $e = $(e.currentTarget),
                 $target = $e.siblings('iframe.preview-frame'),
                 $spinner = $e.siblings('.preview-processing'),

@@ -22,6 +22,7 @@ from utilities.testing import DjangoTestCase, ABS_PATH
 
 
 LORE_REPOSITORY = Type(**REPOSITORY_RECORD_TYPES['lore-repo'])
+COURSE_REPOSITORY = Type(**REPOSITORY_RECORD_TYPES['course-repo'])
 RUN_REPOSITORY = Type(**REPOSITORY_RECORD_TYPES['run-repo'])
 
 class RepositoryTestCase(DjangoTestCase):
@@ -38,6 +39,14 @@ class RepositoryTestCase(DjangoTestCase):
         form.display_name = 'new repository'
         form.description = 'for testing'
         form.set_genus_type(Type(**REPOSITORY_GENUS_TYPES['domain-repo']))
+        return rm.create_repository(form)
+
+    def create_new_course_repo(self):
+        rm = gutils.get_session_data(self.req, 'rm')
+        form = rm.get_repository_form_for_create([LORE_REPOSITORY, COURSE_REPOSITORY])
+        form.display_name = 'new course repository'
+        form.description = 'for testing'
+        form.set_genus_type(Type(**REPOSITORY_GENUS_TYPES['course-repo']))
         return rm.create_repository(form)
 
     def create_new_run_repo(self):
@@ -1997,6 +2006,237 @@ class RepositoryChildrenTests(RepositoryTestCase):
             data['data']['results'][0]['id'],
             str(self.repo3.ident)
         )
+
+
+class RepositorySearchTests(AssessmentTestCase, RepositoryTestCase):
+    """Test the views for repository search and pagination
+
+    """
+    def setUp(self):
+        super(RepositorySearchTests, self).setUp()
+        self.login()
+        self.repo = self.create_new_repo()
+        course_repo = self.create_new_course_repo()
+        run_repo = self.create_new_run_repo()
+
+        rm = gutils.get_session_data(self.req, 'rm')
+        rm.add_child_repository(self.repo.ident, course_repo.ident)
+        rm.add_child_repository(course_repo.ident, run_repo.ident)
+
+        self.url = self.base_url + 'repository/repositories/' + str(self.repo.ident) + '/search/?'
+
+        for i in range(0, 10):
+            self.setup_asset(run_repo.ident)
+
+        for i in range(0, 10):
+            self.setup_composition(run_repo.ident)
+
+        run_bank = self.get_bank(run_repo.ident)
+
+        for i in range(0, 10):
+            self.create_item(run_bank)
+
+    def tearDown(self):
+        super(RepositorySearchTests, self).tearDown()
+
+    def test_page_limits_are_in_assets_only(self):
+        url = self.url + 'page=1&limit=5'
+        req = self.client.get(url)
+        self.ok(req)
+        data = self.json(req)
+        self.assertEqual(
+            len(data['objects']),
+            5
+        )
+        first_page_ids = []
+        for obj in data['objects']:
+            self.assertEqual(
+                obj['type'],
+                'Asset'
+            )
+            first_page_ids.append(obj['id'])
+
+        url = self.url + 'page=2&limit=5'
+        req = self.client.get(url)
+        self.ok(req)
+        data = self.json(req)
+        self.assertEqual(
+            len(data['objects']),
+            5
+        )
+        for obj in data['objects']:
+            self.assertEqual(
+                obj['type'],
+                'Asset'
+            )
+            self.assertNotIn(
+                obj['id'],
+                first_page_ids
+            )
+
+    def test_page_limits_are_in_compositions_only(self):
+        url = self.url + 'page=3&limit=5'
+        req = self.client.get(url)
+        self.ok(req)
+        data = self.json(req)
+        self.assertEqual(
+            len(data['objects']),
+            5
+        )
+        first_page_ids = []
+        for obj in data['objects']:
+            self.assertEqual(
+                obj['type'],
+                'Composition'
+            )
+            first_page_ids.append(obj['id'])
+
+        url = self.url + 'page=4&limit=5'
+        req = self.client.get(url)
+        self.ok(req)
+        data = self.json(req)
+        self.assertEqual(
+            len(data['objects']),
+            5
+        )
+        for obj in data['objects']:
+            self.assertEqual(
+                obj['type'],
+                'Composition'
+            )
+            self.assertNotIn(
+                obj['id'],
+                first_page_ids
+            )
+
+    def test_page_limits_are_in_items_only(self):
+        url = self.url + 'page=5&limit=5'
+        req = self.client.get(url)
+        self.ok(req)
+        data = self.json(req)
+        self.assertEqual(
+            len(data['objects']),
+            5
+        )
+        first_page_ids = []
+        for obj in data['objects']:
+            self.assertEqual(
+                obj['type'],
+                'Item'
+            )
+            first_page_ids.append(obj['id'])
+
+        url = self.url + 'page=6&limit=5'
+        req = self.client.get(url)
+        self.ok(req)
+        data = self.json(req)
+        self.assertEqual(
+            len(data['objects']),
+            5
+        )
+        for obj in data['objects']:
+            self.assertEqual(
+                obj['type'],
+                'Item'
+            )
+            self.assertNotIn(
+                obj['id'],
+                first_page_ids
+            )
+
+    def test_page_limits_cross_assets_and_compositions(self):
+        url = self.url + 'page=2&limit=7'
+        req = self.client.get(url)
+        self.ok(req)
+        data = self.json(req)
+        self.assertEqual(
+            len(data['objects']),
+            7
+        )
+        for index, obj in enumerate(data['objects']):
+            if index in [0, 1, 2]:
+                self.assertEqual(
+                    obj['type'],
+                    'Asset'
+                )
+            else:
+                self.assertEqual(
+                    obj['type'],
+                    'Composition'
+                )
+
+    def test_page_limits_cross_assets_compositions_and_items(self):
+        url = self.url + 'page=1&limit=30'
+        req = self.client.get(url)
+        self.ok(req)
+        data = self.json(req)
+        self.assertEqual(
+            len(data['objects']),
+            30
+        )
+        for index, obj in enumerate(data['objects']):
+            if index in range(0, 10):
+                self.assertEqual(
+                    obj['type'],
+                    'Asset'
+                )
+            elif index in range(10, 20):
+                self.assertEqual(
+                    obj['type'],
+                    'Composition'
+                )
+            else:
+                self.assertEqual(
+                    obj['type'],
+                    'Item'
+                )
+
+    def test_page_limits_cross_compositions_and_items(self):
+        url = self.url + 'page=2&limit=15'
+        req = self.client.get(url)
+        self.ok(req)
+        data = self.json(req)
+        self.assertEqual(
+            len(data['objects']),
+            15
+        )
+        for index, obj in enumerate(data['objects']):
+            if index in range(0, 5):
+                self.assertEqual(
+                    obj['type'],
+                    'Composition'
+                )
+            else:
+                self.assertEqual(
+                    obj['type'],
+                    'Item'
+                )
+
+    def test_page_limits_exceed_number_of_total_objects(self):
+        url = self.url + 'page=1&limit=50'
+        req = self.client.get(url)
+        self.ok(req)
+        data = self.json(req)
+        self.assertEqual(
+            len(data['objects']),
+            30
+        )
+        for index, obj in enumerate(data['objects']):
+            if index in range(0, 10):
+                self.assertEqual(
+                    obj['type'],
+                    'Asset'
+                )
+            elif index in range(10, 20):
+                self.assertEqual(
+                    obj['type'],
+                    'Composition'
+                )
+            else:
+                self.assertEqual(
+                    obj['type'],
+                    'Item'
+                )
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True,
