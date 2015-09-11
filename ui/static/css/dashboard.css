@@ -228,6 +228,22 @@ ul.repository-navbar button.repository-btn {
     padding-bottom: 15px;
     margin-left: 10px;
     margin-right: -15px;
+    display: flex;
+    display: -webkit-flex;
+}
+
+.domain-selector-wrapper {
+    margin-top: 7px;
+    margin-right: 10px;
+    flex: 1 0 100px;
+}
+
+.input-search {
+    flex: 1 1 60%;
+}
+
+.facet-header-small-obj {
+    flex: 1 0 auto;
 }
 
 #faceted-search-results {
@@ -254,10 +270,7 @@ ul.repository-navbar button.repository-btn {
 }
 
 .faceted-search-header > .processing-spinner {
-    margin-right: 15px;
     margin-top: 8px;
-    padding-right: 5%;
-    margin-left: -65px;
 }
 
 .nav > .processing-spinner {

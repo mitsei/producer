@@ -3,15 +3,18 @@
 define(["app",
         "apps/common/utilities",
         "apps/preview/views/preview_views",
+        "apps/dashboard/domains/collections/domains",
         "text!apps/faceted-search/templates/facets.html",
         "text!apps/faceted-search/templates/facet_results.html",
         "text!apps/faceted-search/templates/facet_pagination.html",
+        "text!apps/faceted-search/templates/domain_selector.html",
         "bootstrap",
         "bootstrap-drawer",
         "jquery-bootpag",
         "jquery-sortable"],
-       function(ProducerManager, Utils, PreviewViews, FacetsTemplate, FacetResultsTemplate,
-                FacetPaginationTemplate){
+       function(ProducerManager, Utils, PreviewViews, DomainsCollection,
+                FacetsTemplate, FacetResultsTemplate,
+                FacetPaginationTemplate, DomainSelectorTemplate){
   ProducerManager.module("FacetedSearchApp.View", function(View, ProducerManager, Backbone, Marionette, $, _){
     var selectedFacets = [],
         selectedItemsPerPage = 10,
@@ -137,6 +140,19 @@ define(["app",
         },
         template: false,
         el: '.faceted-search-header',
+        onShow: function () {
+            var $t = $('select.domain-selector'),
+                domains = new DomainsCollection(),
+                promise = domains.fetch(),
+                preselectedDomainId = Utils.cookie('domainId');
+
+            promise.done(function (data) {
+                $t.append(_.template(DomainSelectorTemplate)({
+                    preselectedDomainId: preselectedDomainId,
+                    repos: data.data.results
+                }));
+            });
+        },
         events: {
             'click button.execute-keyword-search': 'keywordFilter',
             'click button.close-drawer': 'toggleDrawer',

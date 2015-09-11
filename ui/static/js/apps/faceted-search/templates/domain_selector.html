@@ -1,0 +1,12 @@
+<% if (preselectedDomainId === '-1') { %>
+    <option value="-1" selected>Import to which domain?</option>
+<% } else { %>
+    <option value="-1">Import to which domain?</option>
+<% } %>
+<% _.each(repos, function (repo) { %>
+    <% if (preselectedDomainId === repo.id) { %>
+        <option value="<%- repo.id %>" selected><%- repo.displayName.text %></option>
+    <% } else { %>
+        <option value="<%- repo.id %>"><%- repo.displayName.text %></option>
+    <% } %>
+<% }); %>

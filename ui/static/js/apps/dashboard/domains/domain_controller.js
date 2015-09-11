@@ -3,10 +3,12 @@
 define(["app",
         "apps/dashboard/domains/collections/user_courses",
         "apps/dashboard/domains/collections/user_course_offerings",
+        "apps/dashboard/compositions/collections/composition_children",
         "apps/dashboard/domains/domain_views",
         "apps/common/utilities",
         "cookies"],
     function(ProducerManager, UserCourseCollection, UserCourseOfferingsCollection,
+             CompositionChildrenCollection,
              DomainViews, Utils, Cookies){
   ProducerManager.module("ProducerApp.Domain", function(Domain, ProducerManager, Backbone, Marionette, $, _){
     Domain.Controller = {
@@ -47,7 +49,7 @@ define(["app",
         console.log('showing runs');
       },
       renderUserCourseRun: function (runId) {
-        var run = new RunCollection([], {id: runId}),
+        var run = new CompositionChildrenCollection([], {id: runId}),
             runView = new DomainViews.SingleRunView({collection: run}),
             runPromise = runView.collection.fetch({
                 reset: true,
@@ -57,7 +59,7 @@ define(["app",
                 }
             }),
             downloadUrl = window.location.protocol + '//' + window.location.hostname +
-                ':' + window.location.port + '/api/v1/repository/repositories/' + runId +
+                ':' + window.location.port + '/api/v1/repository/compositions/' + runId +
                 '/download/';
 
         Utils.processing();

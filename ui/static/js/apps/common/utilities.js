@@ -22,7 +22,11 @@ define(["jquery", "underscore", "cookies"],
         utils.cookie = function (name) {
             var cookieValue = typeof Cookies.get(name) === 'undefined' ? '-1' : Cookies.get(name);
 
-            return encodeURIComponent(cookieValue);
+            if (cookieValue.indexOf('@') >= 0) {
+                return encodeURIComponent(cookieValue);
+            } else {
+                return cookieValue;
+            }
         };
 
         utils.domainGenus = function () {
@@ -91,13 +95,11 @@ define(["jquery", "underscore", "cookies"],
         };
 
         utils.selectedRepoId = function (path) {
-//            if (typeof path !== 'undefined') {
-//                var domainMatch = utils.getMatchingDomainOption('#repos/' + path);
-//                return $(domainMatch).data('id');
-//            } else {
-//                return $('.repositories-menu').data('id');
-//            }
-            return $('select.domain-selector').val();
+            if ($("#search-components-menu").hasClass('open')) {
+                return $('#search-components-menu select.domain-selector').val();
+            } else {
+                return $('.ui-dialog select.domain-selector').val();
+            }
         };
 
         utils.slugify = function (str) {

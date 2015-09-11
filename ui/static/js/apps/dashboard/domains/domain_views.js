@@ -281,6 +281,14 @@ define(["app",
             // prepend a hidden li.resortable.no-children chapter object
             // so can sort the chapters
             var hiddenChapter = $('<li></li>').addClass('resortable hidden');
+
+            if (this.$el.children().length === 0) {
+                // insert a "no children" warning
+                var warning = $('<li></li>').addClass('resortable composition no-children alert alert-danger')
+                    .text('No current children');
+                this.$el.append(warning);
+            }
+
             this.$el.prepend(hiddenChapter.clone());
             this.$el.append(hiddenChapter.clone());
 
