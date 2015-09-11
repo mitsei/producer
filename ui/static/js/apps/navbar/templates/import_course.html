@@ -1,4 +1,18 @@
 <div class="text-center ">
+    <select class="form-control domain-selector">
+        <% if (preselectedDomainId === '-1') { %>
+            <option value="-1" selected>Import to which domain?</option>
+        <% } else { %>
+            <option value="-1">Import to which domain?</option>
+        <% } %>
+        <% _.each(repos, function (repo) { %>
+            <% if (preselectedDomainId === repo.id) { %>
+                <option value="<%- repo.id %>" selected><%- repo.displayName.text %></option>
+            <% } else { %>
+                <option value="<%- repo.id %>"><%- repo.displayName.text %></option>
+            <% } %>
+        <% }); %>
+    </select>
     <form id="uploadItemForm">
         <label for="fileSelector">
             <p class="sr-only">Upload *.tar.gz file:</p>
@@ -12,5 +26,6 @@
     </form>
     <div>
         <div class="selected-file-name hidden alert alert-success" role="alert"></div>
+        <div class="import-warning hidden alert alert-danger" role="alert"></div>
     </div>
 </div>

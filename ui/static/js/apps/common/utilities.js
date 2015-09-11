@@ -85,12 +85,13 @@ define(["jquery", "underscore"],
         };
 
         utils.selectedRepoId = function (path) {
-            if (typeof path !== 'undefined') {
-                var domainMatch = utils.getMatchingDomainOption('#repos/' + path);
-                return $(domainMatch).data('id');
-            } else {
-                return $('.repositories-menu').data('id');
-            }
+//            if (typeof path !== 'undefined') {
+//                var domainMatch = utils.getMatchingDomainOption('#repos/' + path);
+//                return $(domainMatch).data('id');
+//            } else {
+//                return $('.repositories-menu').data('id');
+//            }
+            return $('select.domain-selector').val();
         };
 
         utils.slugify = function (str) {

@@ -211,7 +211,7 @@ ul.repository-navbar button.repository-btn {
 }
 
 #uploadItemForm {
-    margin-top: 20%;
+    margin-top: 10%;
     margin-left: 5%;
     margin-bottom: 15px;
 }
@@ -591,6 +591,7 @@ li.composition.no-children {
 .sidebar-btn {
     overflow: hidden;
     cursor: pointer;
+    max-width: 200px;
 }
 
 .sidebar-btn.active button,

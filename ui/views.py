@@ -45,15 +45,10 @@ def dashboard(request):
     """Dashboard for app
     Send list of domain repositories
     """
-    domain_repo_genus = Type(**REPOSITORY_GENUS_TYPES['domain-repo'])
-    activate_managers(request)
-    rm = get_session_data(request, 'rm')
-    querier = rm.get_repository_query()
-    querier.match_genus_type(domain_repo_genus, True)
-    repos = rm.get_repositories_by_query(querier)
+    privileges = ['admin', 'curate']
     return render_to_response('ui/dashboard.html',
                               {
-                                  'repos': repos
+                                  'privileges': privileges
                               },
                               RequestContext(request))
 

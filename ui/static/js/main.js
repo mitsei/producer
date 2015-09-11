@@ -12,6 +12,7 @@ requirejs.config({
         'bootstrap'             : 'vendor/bootstrap/dist/js/bootstrap.min',
         'bootstrap-dialog'      : 'vendor/bootstrap3-dialog/dist/js/bootstrap-dialog.min',
         'bootstrap-drawer'      : 'vendor/bootstrap-drawer/dist/js/drawer.min',
+        'cookies'               : 'vendor/js-cookie/src/js.cookie',
         'csrf'                  : 'vendor/csrf',
         'jquery'                : 'vendor/jquery/dist/jquery.min',
         'jquery-bootpag'        : 'vendor/jquery-bootpag/lib/jquery.bootpag.min',
@@ -42,6 +43,9 @@ requirejs.config({
         },
         'bootstrap-drawer': {
             deps: ['jquery', 'bootstrap']
+        },
+        'cookies': {
+            exports: 'Cookies'
         },
         'csrf': {
             deps: ['jquery'],

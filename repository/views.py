@@ -692,7 +692,13 @@ class RepositoriesList(ProducerAPIViews):
         List all available repositories
         """
         try:
-            repositories = self.rm.repositories
+            if 'domains' in self.data:
+                domain_repo_genus = Type(**REPOSITORY_GENUS_TYPES['domain-repo'])
+                querier = self.rm.get_repository_query()
+                querier.match_genus_type(domain_repo_genus, True)
+                repositories = self.rm.get_repositories_by_query(querier)
+            else:
+                repositories = self.rm.repositories
             repositories = gutils.extract_items(request, repositories)
             return Response(repositories)
         except PermissionDenied:
