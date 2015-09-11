@@ -474,14 +474,18 @@ def set_form_basics(form, data):
     if 'displayName' in data:
         if isinstance(data['displayName'], basestring):
             form.display_name = data['displayName']
-        else:
+        elif isinstance(data['displayName'], dict):
             form.display_name = data['displayName']['text']
+        else:
+            form.display_name = str(data['displayName'])
 
     if 'description' in data:
         if isinstance(data['description'], basestring):
             form.description = data['description']
-        else:
+        elif isinstance(data['description'], dict):
             form.description = data['description']['text']
+        else:
+            form.description = str(data['description'])
 
     if 'genusTypeId' in data:
         form.set_genus_type(Type(data['genusTypeId']))

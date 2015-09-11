@@ -10,6 +10,7 @@ from django.core.files.storage import default_storage
 from django.http import HttpResponse
 
 from dlkit.abstract_osid.assessment.objects import Item
+from dlkit.abstract_osid.repository.objects import Asset
 from dlkit_django.errors import PermissionDenied, InvalidArgument, IllegalState,\
     NotFound, NoAccess, AlreadyExists
 from dlkit_django.primordium import Type
@@ -27,6 +28,9 @@ from producer.views import ProducerAPIViews
 
 
 DOMAIN_REPO_GENUS = Type(**REPOSITORY_GENUS_TYPES['domain-repo'])
+USER_REPO_GENUS = Type(**REPOSITORY_GENUS_TYPES['user-repo'])
+COURSE_NODE_GENUS_TYPE = Type(**EDX_COMPOSITION_GENUS_TYPES['course'])
+
 EDX_COMPOSITION_RECORD_TYPE = Type(**COMPOSITION_RECORD_TYPES['edx-composition'])
 EDX_COMPOSITION_GENUS_TYPES_STR = [str(Type(**genus_type))
                                    for k, genus_type in EDX_COMPOSITION_GENUS_TYPES.iteritems()]
@@ -87,35 +91,24 @@ class CompositionMapMixin(object):
     def _get_map_with_children(self, obj, renderable=False):
         obj_map = obj.object_map
         obj_map['children'] = []
-        for child_id in obj.get_child_ids():
-            # need to use unsequestered view so get a lookup manager separately
-            composition_lookup_session = rutils.get_session(self.rm, 'composition', 'lookup')
-            composition_lookup_session.use_federated_repository_view()
-            composition_lookup_session.use_unsequestered_composition_view()
-            child = composition_lookup_session.get_composition(child_id)
-            if child.is_sequestered():
-                try:
-                    asset_repo = self.rm.get_repository(gutils.clean_id(obj_map['repositoryId']))
-                    for asset in child.assets:
-                        if isinstance(asset, Item):
-                            item = asset
-                            if renderable:
-                                item_map = item.object_map
-                                item_map['texts']['edxml'] = item.get_edxml_with_aws_urls()
-                                obj_map['children'].append(item_map)
-                            else:
-                                obj_map['children'].append(item.object_map)
-                        else:
-                            if renderable:
-                                obj_map['children'].append(
-                                    rutils.update_asset_urls(asset_repo,
-                                                             asset,
-                                                             {'renderable_edxml': True}))
-                            else:
-                                obj_map['children'].append(asset.object_map)
-                except NotFound:
-                    # no assets
-                    pass
+        for child in obj.all_children:
+            if isinstance(child, Item):
+                item = child
+                if renderable:
+                    item_map = item.object_map
+                    item_map['texts']['edxml'] = item.get_edxml_with_aws_urls()
+                    obj_map['children'].append(item_map)
+                else:
+                    obj_map['children'].append(item.object_map)
+            elif isinstance(child, Asset):
+                if renderable:
+                    asset_repo = self.rm.get_repository(gutils.clean_id(child.object_map['repositoryId']))
+                    obj_map['children'].append(
+                        rutils.update_asset_urls(asset_repo,
+                                                 child,
+                                                 {'renderable_edxml': True}))
+                else:
+                    obj_map['children'].append(child.object_map)
             else:
                 obj_map['children'].append(self._get_map_with_children(child))
         return obj_map
@@ -333,6 +326,28 @@ class CompositionAssetsList(ProducerAPIViews):
             gutils.handle_exceptions(ex)
 
 
+class CompositionChildrenList(ProducerAPIViews):
+    """
+    Get a composition's children...if the child is sequestered, get its assets
+    api/v1/repository/compositions/<composition_id>/children
+
+    GET
+    """
+    def get(self, request, composition_id, format=None):
+        try:
+            repository = rutils.get_object_repository(self.rm,
+                                                      composition_id,
+                                                      'composition')
+            repository.use_unsequestered_composition_view()
+            composition = repository.get_composition(gutils.clean_id(composition_id))
+
+            children = gutils.extract_items(request, composition.all_children)
+
+            return Response(children)
+        except (PermissionDenied, InvalidArgument, NotFound, InvalidId) as ex:
+            gutils.handle_exceptions(ex)
+
+
 class CompositionDetails(ProducerAPIViews, CompositionMapMixin):
     """
     Get asset details
@@ -391,8 +406,9 @@ class CompositionDetails(ProducerAPIViews, CompositionMapMixin):
             repository = rutils.get_object_repository(self.rm,
                                                       composition_id,
                                                       'composition')
-
+            repository.use_unsequestered_composition_view()
             composition = repository.get_composition(gutils.clean_id(composition_id))
+
             if 'fullMap' in self.data:
                 # add in the assets and children compositions, in renderable_edxml format
                 composition_map = self._get_map_with_children(composition, renderable=True)
@@ -470,6 +486,38 @@ class CompositionDetails(ProducerAPIViews, CompositionMapMixin):
             gutils.handle_exceptions(ex)
 
 
+class CompositionOfferingsList(ProducerAPIViews):
+    """
+    Get a course node's offerings
+    api/v1/repository/compositions/<composition_id>/offerings
+
+    GET
+    """
+    def get(self, request, composition_id, format=None):
+        try:
+            repository = rutils.get_object_repository(self.rm,
+                                                      composition_id,
+                                                      'composition')
+            repository.use_unsequestered_composition_view()
+            composition = repository.get_composition(gutils.clean_id(composition_id))
+
+            if composition.genus_type != COURSE_NODE_GENUS_TYPE:
+                raise InvalidArgument('Can only get offerings on course nodes.')
+
+            offerings = []
+            offering_ids = composition.get_child_ids()
+            # because they are sequestered
+            for offering_id in offering_ids:
+                offerings.append(repository.get_composition(gutils.clean_id(offering_id)))
+
+            offerings = gutils.extract_items(request, offerings)
+
+            return Response(offerings)
+        except (PermissionDenied, InvalidArgument, NotFound, InvalidId) as ex:
+            gutils.handle_exceptions(ex)
+
+
+
 class CompositionsList(ProducerAPIViews, CompositionMapMixin):
     """
     Get or add compositions to a repository
@@ -519,6 +567,8 @@ class CompositionsList(ProducerAPIViews, CompositionMapMixin):
                     for genus_val, empty in self.data.iteritems():
                         if genus_val not in ['page', 'displayName', 'description', 'nested']:
                             try:
+                                if genus_val == 'course':
+                                    composition_query_session.use_unsequestered_composition_view()
                                 compositions += list(
                                     composition_query_session.get_compositions_by_genus_type(
                                         str(Type(**EDX_COMPOSITION_GENUS_TYPES[genus_val]))))
@@ -547,9 +597,6 @@ class CompositionsList(ProducerAPIViews, CompositionMapMixin):
                 form = repository.get_composition_form_for_create([EDX_COMPOSITION_RECORD_TYPE])
                 edx_type = self.data['genusTypeId']  # assumes type is full genusType string
                 try:
-                    if 'course' in edx_type:
-                        raise KeyError
-
                     if edx_type not in EDX_COMPOSITION_GENUS_TYPES_STR:
                         raise KeyError
                     form.set_genus_type(Type(edx_type))
@@ -570,6 +617,8 @@ class CompositionsList(ProducerAPIViews, CompositionMapMixin):
                                                                      'draft',
                                                                      bool(self.data['draft']))
 
+                    if 'course' in edx_type or 'offering' in edx_type:
+                        form.set_sequestered(True)
                 except KeyError:
                     raise InvalidArgument('Bad genus type provided.')
             else:
@@ -583,15 +632,21 @@ class CompositionsList(ProducerAPIViews, CompositionMapMixin):
             composition = repository.create_composition(form)
 
             # add the composition to the root course_node if no parentId supplied
-            if 'parentId' not in self.data:
+            if 'parentId' not in self.data and repository.genus_type != USER_REPO_GENUS:
                 course_node = rutils.get_course_node(repository)
                 rutils.append_child_composition(repository, course_node, composition)
-            else:
+            elif 'parentId' in self.data:
+                repository.use_unsequestered_composition_view()
                 parent_composition = repository.get_composition(gutils.clean_id(self.data['parentId']))
                 rutils.append_child_composition(repository, parent_composition, composition)
+            else:
+                # do nothing (is user repo, just let the composition be created)
+                pass
 
             # Should be assigning the composition to THIS repository as well as
             # appending it as a childId.
+            # TODO: we may not want to do this for authz purposes...
+            # the unlocking / editing issue as discussed with Jeff
             try:
                 self.rm.assign_composition_to_repository(composition.ident, repository.ident)
                 composition = repository.get_composition(composition.ident)

@@ -17,9 +17,11 @@ define(["app",
     View.NavbarView = Marionette.ItemView.extend({
         template: false,
         el: 'nav.navbar',
+        onRender: function () {
+            this.loadUserCourses();
+        },
         events: {
             'click .add-new-domain': 'createNewDomain',
-            'click .repositories-menu li a:not(.add-new-domain)' : 'loadRepoCourses',
             'click button.import-course.repository-btn': 'importNewCourse'
         },
         closeDrawer: function () {
@@ -64,11 +66,6 @@ define(["app",
                                 .success(function (model, response, options) {
                                     ProducerManager.vent.trigger("msg:status",
                                         "Domain created");
-                                    $('ul.repositories-menu').prepend(_.template(DomainSelectorTemplate)({
-                                        repoDisplayName: model.displayName.text,
-                                        repoId: model.id,
-                                        repoSlug: Utils.slugify(model.displayName.text)
-                                    }));
                                 }).error(function (model, xhr, options) {
                                     ProducerManager.vent.trigger("msg:error",
                                         xhr.responseText);
@@ -159,14 +156,10 @@ define(["app",
             $('div.selected-file-name').removeClass('hidden')
                 .html('<strong>Selected:</strong> ' + filename);
         },
-        loadRepoCourses: function () {
-            console.log('here in view event manager');
-            Utils.processing();
-            require(["apps/common/utilities"], function (Utils) {
-              Utils.doneProcessing();
-              $(".repositories-menu li a").on('click', function () {
-                  Utils.fixDomainSelector($(this).attr('href'));
-              });
+        loadUserCourses: function () {
+            console.log('loading user courses');
+            require(["apps/dashboard/domains/domain_controller"], function(DomainController){
+              DomainController.listUserCourses(Utils.userRepoId());
             });
         }
     });

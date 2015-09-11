@@ -31,6 +31,10 @@ urlpatterns = patterns('',
         views.CompositionDetails.as_view()),
     url(r'^compositions/(?P<composition_id>[-.:@%\d\w]+)/assets/?$',
         views.CompositionAssetsList.as_view()),
+    url(r'^compositions/(?P<composition_id>[-.:@%\d\w]+)/children/?$',
+        views.CompositionChildrenList.as_view()),
+    url(r'^compositions/(?P<composition_id>[-.:@%\d\w]+)/offerings/?$',
+        views.CompositionOfferingsList.as_view()),
 )
 
 urlpatterns = format_suffix_patterns(urlpatterns)

@@ -1,7 +1,7 @@
 // apps/common/utilities.js
 
-define(["jquery", "underscore"],
-    function ($, _) {
+define(["jquery", "underscore", "cookies"],
+    function ($, _, Cookies) {
 
         var utils = {};
 
@@ -17,6 +17,12 @@ define(["jquery", "underscore"],
 
         utils.cleanUp = function (text) {
             return text;
+        };
+
+        utils.cookie = function (name) {
+            var cookieValue = typeof Cookies.get(name) === 'undefined' ? '-1' : Cookies.get(name);
+
+            return encodeURIComponent(cookieValue);
         };
 
         utils.domainGenus = function () {
@@ -112,6 +118,10 @@ define(["jquery", "underscore"],
                 .replace(/-+/g, '-'); // collapse dashes
 
             return str;
+        };
+
+        utils.userRepoId = function () {
+            return $('span.active-user').data('repo-id');
         };
 
         utils.wrapText = function (textBlob) {

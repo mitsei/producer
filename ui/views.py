@@ -8,6 +8,8 @@ from dlkit.mongo.records.types import REPOSITORY_GENUS_TYPES
 
 from dlkit_django.primitives import Type
 
+from dysonx.dysonx import get_or_create_user_repo
+
 from utilities.general import log_error, activate_managers, get_session_data, extract_items
 
 
@@ -46,9 +48,11 @@ def dashboard(request):
     Send list of domain repositories
     """
     privileges = ['admin', 'curate']
+    user_repo = get_or_create_user_repo(request.user.username)
     return render_to_response('ui/dashboard.html',
                               {
-                                  'privileges': privileges
+                                  'privileges': privileges,
+                                  'user_repo_id': str(user_repo.ident)
                               },
                               RequestContext(request))
 

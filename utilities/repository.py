@@ -167,6 +167,10 @@ def get_object_repository(manager, object_id, object_type='asset', repository_id
     # primarily used for Asset
     if repository_id is None:
         lookup_session = get_session(manager, object_type, 'lookup')
+        try:
+            lookup_session.use_unsequestered_composition_view()
+        except AttributeError:
+            pass
         object_ = getattr(lookup_session, 'get_{0}'.format(object_type))(clean_id(object_id))
         repository_id = object_.object_map['repositoryId']
     return manager.get_repository(clean_id(repository_id))

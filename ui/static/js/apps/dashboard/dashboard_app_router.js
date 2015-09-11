@@ -1,13 +1,16 @@
 // app/dashboard/dashboard_app_router.js
 
 define(["app",
-        "apps/common/utilities"],
-    function(ProducerManager, Utils){
+        "apps/common/utilities",
+        "cookies"],
+    function(ProducerManager, Utils, Cookies){
   ProducerManager.module("Routers.ProducerApp", function(ProducerAppRouter, ProducerManager, Backbone, Marionette, $, _){
     ProducerAppRouter.Router = Marionette.AppRouter.extend({
       appRoutes: {
-        "repos/new": "addDomainRepo",
-        "repos/:id": "showRepoCourses"
+        "": "initialize",
+        "curate": "curateObjects",
+        "edit/:courseId": "showCourseRuns",
+        "edit/:courseId/:runId": "editCourseRun"
       }
     });
 
@@ -17,35 +20,50 @@ define(["app",
     };
 
     var API = {
-      addDomainRepo: function(){
-          Utils.fixDomainSelector('#repos/new');
-      },
+//      addDomainRepo: function(){
+//          Utils.fixDomainSelector('#repos/new');
+//      },
+        curateObjects: function () {
+            // placeholder for a dashboard for curating objects and applying tags
+        },
+        editCourseRun: function (courseId, runId) {
+            // placeholder for showing a course run in the edit canvas (on left)
+            console.log('editing: ' + courseId + ', ' + runId);
 
-      showRepoCourses: function(id){
-        Utils.fixDomainSelector('#repos/' + id);
-        id = Utils.selectedRepoId(id);
-        require(["apps/dashboard/domains/domain_controller"], function(DomainController){
-          executeAction(DomainController.listCourses, id);
-        });
-      }
+            Cookies.set('courseId', courseId);
+            Cookies.set('runId', runId);
 
+            require(["apps/dashboard/domains/domain_controller"], function(DomainController){
+                executeAction(DomainController.renderUserCourseRun, runId);
+            });
+        },
+        initialize: function () {
+            Cookies.remove('courseId');
+            Cookies.remove('runId');
+        },
+        showCourseRuns: function (courseId) {
+            console.log('editing course: ' + courseId);
+            Cookies.set('courseId', courseId);
+            require(["apps/dashboard/domains/domain_controller"], function(DomainController){
+                executeAction(DomainController.listUserCourseRuns, courseId);
+            });
+        }
     };
 
-    ProducerManager.on("repos:show", function(id){
-      ProducerManager.navigate("repos/" + id);
-      API.showRepoCourses(id);
+    ProducerManager.on("userCourseRun:edit", function(courseId, runId){
+        ProducerManager.navigate("edit/" + courseId + '/' + runId);
+        API.editCourseRun(courseId, runId);
+    });
+
+    ProducerManager.on("userCourseRuns:show", function(courseId){
+        ProducerManager.navigate("edit/" + courseId);
+        API.showCourseRuns(courseId);
     });
 
     ProducerManager.Routers.on("start", function(){
       new ProducerAppRouter.Router({
         controller: API
       });
-
-//      $("#add-new-components-btn").sidr({
-//          source: '#search-components-menu',
-//          side: 'right',
-//          name: 'component-search-sidr'
-//      });
     });
   });
 

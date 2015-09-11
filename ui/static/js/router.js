@@ -17,7 +17,6 @@ define(['jquery',
         },
         dashboard: function () {
             var dashboard = new DashboardView();
-
             dashboard.render();
         }
     });

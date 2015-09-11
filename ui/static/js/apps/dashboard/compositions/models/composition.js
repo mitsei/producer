@@ -20,10 +20,14 @@ define(["backbone"],
         url: function () {
             var url = this.id ? '/api/v1/repository/compositions/' + this.id : '/api/v1/repository/compositions/';
 
-            if (this.options.renderable) {
-                return url + '?fullMap';
-            } else if (this.options.withChildren) {
-                return url + '?withChildren';
+            if (this.options) {
+                if (this.options.renderable) {
+                    return url + '?fullMap';
+                } else if (this.options.withChildren) {
+                    return url + '?withChildren';
+                } else {
+                    return url;
+                }
             } else {
                 return url;
             }

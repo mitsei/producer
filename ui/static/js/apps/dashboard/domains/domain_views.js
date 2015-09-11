@@ -1,7 +1,7 @@
 // apps/dashboard/domains/domain_views.js
 
 define(["app",
-        "apps/dashboard/domains/collections/courses",
+        "apps/dashboard/domains/collections/domain_courses",
         "apps/dashboard/domains/collections/single_run",
         "apps/dashboard/compositions/collections/compositions",
         "apps/dashboard/compositions/models/composition",
@@ -12,11 +12,14 @@ define(["app",
         "text!apps/dashboard/compositions/templates/compositions_template.html",
         "text!apps/dashboard/assets/templates/asset_template.html",
         "text!apps/common/templates/delete_dialog.html",
+        "text!apps/dashboard/compositions/templates/create_user_course.html",
+        "cookies",
         "jquery-sortable"],
-       function(ProducerManager, CourseCollection, RunCollection, CompositionsCollection,
+       function(ProducerManager, DomainCourseCollection, RunCollection, CompositionsCollection,
                 CompositionModel, PreviewViews, Utils,
                 RepoSelectorTemplate, CompositionTemplate, CompositionsTemplate,
-                ResourceTemplate, DeleteConfirmationTemplate){
+                ResourceTemplate, DeleteConfirmationTemplate, CreateUserCourseTemplate,
+                Cookies){
   ProducerManager.module("ProducerApp.Domain.View", function(View, ProducerManager, Backbone, Marionette, $, _){
 
     function renderChildren (data, $el) {
@@ -91,78 +94,135 @@ define(["app",
     }
 
     View.CoursesView = Marionette.ItemView.extend({
-      template: function (serializedData) {
-          return _.template(RepoSelectorTemplate)({
-              repoType: 'course',
-              repos: serializedData.items
-          });
-      },
+        template: function (serializedData) {
+            var preselectedId = Utils.cookie('courseId');
+            return _.template(RepoSelectorTemplate)({
+                preselectedId: preselectedId,
+                repoType: 'course',
+                repos: serializedData.items
+            });
+        },
+        onShow: function () {
+            if (typeof Cookies.get('courseId') !== 'undefined') {
+                this.$el.find('select.course-selector')
+                    .trigger('change');
+            }
+        },
         events: {
             'change select.course-selector' : 'showRuns'
         },
         showRuns: function (e) {
-            var courseId = $(e.currentTarget).val(),
-                runs = new CourseCollection([], {id: courseId}),
-                runsView = new View.RunsView({collection: runs}),
-                runsPromise = runsView.collection.fetch({
-                    reset: true,
-                    error: function (model, xhr, options) {
-                        ProducerManager.vent.trigger('msg:error', xhr.responseText);
-                        Utils.doneProcessing();
-                    }
-                }),
-                _this = this;
+            var courseId = $(e.currentTarget).val();
 
-            ProducerManager.regions.composition.empty();
-            ProducerManager.regions.preview.$el.html('');
-            $('div.action-menu').addClass('hidden');
+            if (courseId !== 'create') {
+                ProducerManager.trigger('userCourseRuns:show', courseId);
+            } else {
+                // bring up a modal to create the course
+                ProducerManager.regions.dialog.show(new View.CreateUserCourseView());
+                ProducerManager.regions.dialog.$el.dialog({
+                    modal: true,
+                    width: 500,
+                    height: 450,
+                    title: 'Create a course in your scratch space',
+                    buttons: [
+                        {
+                            text: "Cancel",
+                            class: 'btn btn-danger',
+                            click: function () {
+                                $(this).dialog("close");
+                            }
+                        },
+                        {
+                            text: "Create",
+                            class: 'btn btn-success',
+                            click: function () {
+                                // validate that at least course name and run are populated
+                                var courseName = $('#newCourseName').val(),
+                                    courseDesc = $('#newCourseDescription').val(),
+                                    courseOffering = $('#newCourseOffering').val();
 
-            Utils.processing();
+                                if (courseName === "" || courseOffering === "") {
+                                    $('div.create-course-warning').removeClass('hidden');
+                                } else {
+                                    var newCourseComposition = new CompositionModel(),
+                                        newCourseRun = new CompositionModel(),
+                                        _this = this;
 
-            runsPromise.done(function (data) {
-                ProducerManager.regions.run.show(runsView);
-                ProducerManager.regions.preview.$el.html('');
-                Utils.doneProcessing();
-            });
-            console.log('showing runs');
+                                    newCourseComposition.set('genusTypeId', 'edx-composition%3Acourse%40EDX.ORG');
+                                    newCourseComposition.set('repositoryId', Utils.userRepoId());
+                                    newCourseComposition.set('displayName', courseName);
+                                    newCourseComposition.set('description', courseDesc);
+
+                                    newCourseComposition.save(null, {
+                                        success: function (data) {
+                                            var courseId = data.id;
+
+                                            newCourseRun.set('genusTypeId', 'edx-composition%3Aoffering%40EDX.ORG');
+                                            newCourseRun.set('repositoryId', Utils.userRepoId());
+                                            newCourseRun.set('displayName', courseOffering);
+                                            newCourseRun.set('description', 'A single offering');
+                                            newCourseRun.set('parentId', data.id);
+
+                                            newCourseRun.save(null, {
+                                                success: function (data) {
+                                                    // update screen
+                                                    var runId = data.id;
+                                                    console.log('created course and run.');
+                                                    ProducerManager.trigger("userCourses:show", courseId, runId);
+                                                    $(_this).dialog('close');
+                                                },
+                                                error:function (xhr, status, msg) {
+                                                    ProducerManager.vent.trigger('msg:error', xhr.responseText);
+                                                }
+                                            });
+                                        },
+                                        error: function (xhr, status, msg) {
+                                            ProducerManager.vent.trigger('msg:error', xhr.responseText);
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    ]
+                });
+                Utils.bindDialogCloseEvents();
+            }
+        }
+    });
+
+    View.CreateUserCourseView = Marionette.ItemView.extend({
+        template: function () {
+            return _.template(CreateUserCourseTemplate)();
         }
     });
 
     View.RunsView = Marionette.ItemView.extend({
         template: function (serializedData) {
+            var preselectedId = Utils.cookie('runId');
+
             return _.template(RepoSelectorTemplate)({
+                preselectedId: preselectedId,
                 repoType: 'run',
                 repos: serializedData.items
             });
+        },
+        onShow: function () {
+            if (typeof Cookies.get('runId') !== 'undefined') {
+                this.$el.find('select.run-selector')
+                    .trigger('change');
+            }
         },
         events: {
             'change select.run-selector' : 'renderCourseStructure'
         },
         renderCourseStructure: function (e) {
-            var courseId = $(e.currentTarget).val(),
-                run = new RunCollection([], {id: courseId}),
-                runView = new View.SingleRunView({collection: run}),
-                runPromise = runView.collection.fetch({
-                    reset: true,
-                    error: function (model, xhr, options) {
-                        ProducerManager.vent.trigger('msg:error', xhr.responseText);
-                        Utils.doneProcessing();
-                    }
-                }),
-                downloadUrl = window.location.protocol + '//' + window.location.hostname +
-                    ':' + window.location.port + '/api/v1/repository/repositories/' + courseId +
-                    '/download/';
+            var runId = $(e.currentTarget).val(),
+                courseId = $('select.course-selector').val();
 
-            Utils.processing();
-
-            $('#download-run-btn').attr('href', downloadUrl);
-            runPromise.done(function (data) {
-                ProducerManager.regions.composition.show(runView);
-                ProducerManager.regions.preview.$el.html('');
-                Utils.doneProcessing();
-
-            });
-            console.log('showing a single run');
+            if (runId !== 'create') {
+                ProducerManager.trigger('userCourseRun:edit', courseId, runId);
+            } else {
+            }
         }
     });
 

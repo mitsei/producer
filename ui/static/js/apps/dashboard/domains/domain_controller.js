@@ -1,13 +1,18 @@
 // apps/dashboard/domains/domain_controller.js
 
 define(["app",
-        "apps/dashboard/domains/collections/courses"],
-    function(ProducerManager, CourseCollection){
+        "apps/dashboard/domains/collections/user_courses",
+        "apps/dashboard/domains/collections/user_course_offerings",
+        "apps/dashboard/domains/domain_views",
+        "apps/common/utilities",
+        "cookies"],
+    function(ProducerManager, UserCourseCollection, UserCourseOfferingsCollection,
+             DomainViews, Utils, Cookies){
   ProducerManager.module("ProducerApp.Domain", function(Domain, ProducerManager, Backbone, Marionette, $, _){
     Domain.Controller = {
-      listCourses: function(id){
+      listUserCourses: function (id) {
         require(["apps/dashboard/domains/domain_views"], function(DomainViews){
-            var courses = new CourseCollection([], {id: id}),
+            var courses = new UserCourseCollection([], {id: id}),
                 coursesView = new DomainViews.CoursesView({collection: courses}),
                 coursesPromise = coursesView.collection.fetch();
 
@@ -16,6 +21,55 @@ define(["app",
                 ProducerManager.regions.preview.$el.html('');
             });
         });
+      },
+      listUserCourseRuns: function (courseId) {
+        var runs = new UserCourseOfferingsCollection([], {id: courseId}),
+            runsView = new DomainViews.RunsView({collection: runs}),
+            runsPromise = runsView.collection.fetch({
+                reset: true,
+                error: function (model, xhr, options) {
+                    ProducerManager.vent.trigger('msg:error', xhr.responseText);
+                    Utils.doneProcessing();
+                }
+            });
+
+        ProducerManager.regions.composition.empty();
+        ProducerManager.regions.preview.$el.html('');
+        $('div.action-menu').addClass('hidden');
+
+        Utils.processing();
+
+        runsPromise.done(function (data) {
+            ProducerManager.regions.run.show(runsView);
+            ProducerManager.regions.preview.$el.html('');
+            Utils.doneProcessing();
+        });
+        console.log('showing runs');
+      },
+      renderUserCourseRun: function (runId) {
+        var run = new RunCollection([], {id: runId}),
+            runView = new DomainViews.SingleRunView({collection: run}),
+            runPromise = runView.collection.fetch({
+                reset: true,
+                error: function (model, xhr, options) {
+                    ProducerManager.vent.trigger('msg:error', xhr.responseText);
+                    Utils.doneProcessing();
+                }
+            }),
+            downloadUrl = window.location.protocol + '//' + window.location.hostname +
+                ':' + window.location.port + '/api/v1/repository/repositories/' + runId +
+                '/download/';
+
+        Utils.processing();
+
+        $('#download-run-btn').attr('href', downloadUrl);
+        runPromise.done(function (data) {
+            ProducerManager.regions.composition.show(runView);
+            ProducerManager.regions.preview.$el.html('');
+            Utils.doneProcessing();
+
+        });
+        console.log('showing a single run');
       }
     }
   });

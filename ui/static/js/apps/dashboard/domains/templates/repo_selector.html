@@ -1,8 +1,13 @@
 <div id="<%- repoType %>-selector-wrapper">
     <select class="<%- repoType %>-selector form-control">
-        <option value="">Now please select a <%- repoType %>...</option>
+        <option value="-1">Now please select a <%- repoType %>...</option>
         <% _.each(repos, function (repo) { %>
-            <option value="<%- repo.id %>"><%- repo.displayName.text %> -- <%- repo.description.text %></option>
+            <% if (preselectedId === repo.id) { %>
+                <option selected value="<%- repo.id %>"><%- repo.displayName.text %> -- <%- repo.description.text %></option>
+            <% } else { %>
+                <option value="<%- repo.id %>"><%- repo.displayName.text %> -- <%- repo.description.text %></option>
+            <% } %>
         <% }); %>
+        <option value="create">+ Create a new <%- repoType %> in your scratch space.</option>
     </select>
 </div>

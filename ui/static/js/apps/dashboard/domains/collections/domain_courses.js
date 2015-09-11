@@ -1,10 +1,10 @@
-// app/dashboard/domains/collections/courses.js
+// app/dashboard/domains/collections/domain_courses.js
 
 define(["backbone",
     "apps/dashboard/domains/models/repository"],
     function(Backbone, RepositoryModel){
 
-    var Courses = Backbone.Collection.extend({
+    var DomainCourses = Backbone.Collection.extend({
         initialize: function (models, options) {
             this.id = options.id;
         },
@@ -17,5 +17,5 @@ define(["backbone",
         }
     });
 
-    return Courses;
+    return DomainCourses;
 });

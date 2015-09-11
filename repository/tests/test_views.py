@@ -18,12 +18,15 @@ from django.test.utils import override_settings
 from django.utils.http import unquote
 
 from utilities import general as gutils
+from utilities import repository as rutils
 from utilities.testing import DjangoTestCase, ABS_PATH
 
 
 LORE_REPOSITORY = Type(**REPOSITORY_RECORD_TYPES['lore-repo'])
 COURSE_REPOSITORY = Type(**REPOSITORY_RECORD_TYPES['course-repo'])
 RUN_REPOSITORY = Type(**REPOSITORY_RECORD_TYPES['run-repo'])
+
+EDX_COMPOSITION = Type(**COMPOSITION_RECORD_TYPES['edx-composition'])
 
 class RepositoryTestCase(DjangoTestCase):
     """
@@ -1562,6 +1565,88 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
         self.num_compositions(0)
         self.num_compositions(1, repo=repo2)
 
+
+class CompositionEndpointTests(RepositoryTestCase):
+    """Test the views for composition "extensions", like /children and /offerings
+
+    """
+    def setUp(self):
+        super(CompositionEndpointTests, self).setUp()
+        self.bad_repo_id = 'assessment.Bank%3A55203f0be7dde0815228bb41%40EDX.ORG'
+        self.repo = self.create_new_repo()
+        self.repo_id = unquote(str(self.repo.ident))
+
+        self.login()
+
+        self.course = self.setup_composition_with_genus(self.repo, 'course')
+        self.offering = self.setup_composition_with_genus(self.repo, 'offering')
+        self.chapter = self.setup_composition_with_genus(self.repo, 'chapter')
+        self.resource_node = self.setup_composition_with_genus(self.repo, 'resource-node')
+
+        self.asset = self.setup_asset(self.repo.ident)
+        self.repo.add_asset(self.asset.ident, self.resource_node.ident)
+        rutils.append_child_composition(self.repo, self.course, self.offering)
+        rutils.append_child_composition(self.repo, self.offering, self.chapter)
+        rutils.append_child_composition(self.repo, self.offering, self.resource_node)
+
+        # reset this, because AssessmentTestCase will make it assessment/
+        self.url = self.base_url + 'repository/compositions/'
+
+    def setup_composition_with_genus(self, repository, genus):
+        genus_type = Type(**EDX_COMPOSITION_GENUS_TYPES[genus])
+
+        form = repository.get_composition_form_for_create([EDX_COMPOSITION])
+        form.display_name = 'my test composition'
+        form.description = 'foobar'
+        form.set_children([])
+        form.set_genus_type(genus_type)
+
+        if genus == 'resource-node':
+            form.set_sequestered(True)
+
+        composition = repository.create_composition(form)
+
+        return composition
+
+    def tearDown(self):
+        super(CompositionEndpointTests, self).tearDown()
+
+    def test_can_get_course_offerings(self):
+        url = self.url + str(self.course.ident) + '/offerings'
+        req = self.client.get(url)
+        self.ok(req)
+        data = self.json(req)
+        self.assertEqual(
+            len(data['data']['results']),
+            1
+        )
+        self.assertEqual(
+            data['data']['results'][0]['id'],
+            str(self.offering.ident)
+        )
+
+    def test_trying_to_get_offerings_of_non_course_throws_exception(self):
+        url = self.url + str(self.offering.ident) + '/offerings'
+        req = self.client.get(url)
+        self.code(req, 500)
+
+    def test_can_get_children_of_offering(self):
+        url = self.url + str(self.offering.ident) + '/children'
+        req = self.client.get(url)
+        self.ok(req)
+        data = self.json(req)
+        self.assertEqual(
+            len(data['data']['results']),
+            2
+        )
+        self.assertEqual(
+            data['data']['results'][0]['id'],
+            str(self.chapter.ident)
+        )
+        self.assertEqual(
+            data['data']['results'][1]['id'],
+            str(self.asset.ident)
+        )
 
 class EdXCompositionCrUDTests(RepositoryTestCase):
     """Test the views for composition crud
