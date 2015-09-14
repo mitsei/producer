@@ -1173,80 +1173,79 @@ class RepositorySearch(ProducerAPIViews, QueryHelpersMixin):
             counter = 0
             list_index = 0
             compiled_lists = asset_lists + composition_lists + item_lists
-            while counter < upper_index:
-                active_list = compiled_lists[list_index][0]
-                active_list_len = compiled_lists[list_index][1]
+            if len(compiled_lists) > 0:
+                while counter < upper_index:
+                    active_list = compiled_lists[list_index][0]
+                    active_list_len = compiled_lists[list_index][1]
 
-                if (counter + active_list_len) <= lower_index:
-                    # the page we need is not part of this list.
-                    # skip it and move on
-                    counter += active_list_len
-                elif (counter <= lower_index and
-                        (counter + active_list_len) >= upper_index):
-                    # we only need this list -- yay
-                    start_index = lower_index - counter
-                    num_skip = start_index
-                    end_index = upper_index - counter
-                    if num_skip > 0:
-                        try:
-                            active_list.skip(num_skip)
-                        except AttributeError:
-                            del active_list[0:num_skip]
-                        counter += num_skip
-                    num_added = 0
-                    for obj in active_list:
-                        object_list.append(obj.object_map)
-                        start_index += 1
-                        num_added += 1
-                        if start_index == end_index:
-                            break
-                    counter += num_added
-                elif (counter <= lower_index and
-                          (counter + active_list_len) < upper_index):
-                    # need this list + at least one more
-                    # so append the items from this list, and keep
-                    # going through the loop
-                    start_index = lower_index - counter
-                    num_skip = start_index
-                    if num_skip > 0:
-                        try:
-                            active_list.skip(num_skip)
-                        except AttributeError:
-                            del active_list[0:num_skip]
-                        counter += num_skip
-                    num_added = 0
-                    for obj in active_list:
-                        object_list.append(obj.object_map)
-                        num_added += 1
-                    counter += num_added
-                else:
-                    # counter > lower_index...so we just need to check
-                    # the upper_index to see what we need from this list
-                    if (counter + active_list_len) < upper_index:
-                        # take this entire list and go to the next one
+                    if (counter + active_list_len) <= lower_index:
+                        # the page we need is not part of this list.
+                        # skip it and move on
+                        counter += active_list_len
+                    elif (counter <= lower_index and
+                            (counter + active_list_len) >= upper_index):
+                        # we only need this list -- yay
+                        start_index = lower_index - counter
+                        num_skip = start_index
+                        end_index = upper_index - counter
+                        if num_skip > 0:
+                            try:
+                                active_list.skip(num_skip)
+                            except AttributeError:
+                                del active_list[0:num_skip]
+                            counter += num_skip
+                        num_added = 0
+                        for obj in active_list:
+                            object_list.append(obj.object_map)
+                            start_index += 1
+                            num_added += 1
+                            if start_index == end_index:
+                                break
+                        counter += num_added
+                    elif (counter <= lower_index and
+                              (counter + active_list_len) < upper_index):
+                        # need this list + at least one more
+                        # so append the items from this list, and keep
+                        # going through the loop
+                        start_index = lower_index - counter
+                        num_skip = start_index
+                        if num_skip > 0:
+                            try:
+                                active_list.skip(num_skip)
+                            except AttributeError:
+                                del active_list[0:num_skip]
+                            counter += num_skip
                         num_added = 0
                         for obj in active_list:
                             object_list.append(obj.object_map)
                             num_added += 1
                         counter += num_added
                     else:
-                        # take only a portion of this list
-                        end_index = upper_index - counter
-                        num_added = 0
-                        for obj in active_list:
-                            object_list.append(obj.object_map)
-                            num_added += 1
-                            if num_added == end_index:
-                                break
-                        counter += num_added
+                        # counter > lower_index...so we just need to check
+                        # the upper_index to see what we need from this list
+                        if (counter + active_list_len) < upper_index:
+                            # take this entire list and go to the next one
+                            num_added = 0
+                            for obj in active_list:
+                                object_list.append(obj.object_map)
+                                num_added += 1
+                            counter += num_added
+                        else:
+                            # take only a portion of this list
+                            end_index = upper_index - counter
+                            num_added = 0
+                            for obj in active_list:
+                                object_list.append(obj.object_map)
+                                num_added += 1
+                                if num_added == end_index:
+                                    break
+                            counter += num_added
 
-                list_index += 1
-                if list_index == len(compiled_lists):
-                    # no results...break
-                    break
+                    list_index += 1
+                    if list_index == len(compiled_lists):
+                        # no results...break
+                        break
 
-            # if len(object_list) > 0:
-            #     object_list = sorted(object_list, key=lambda k: k['id'])
             return_data = {
                 'objects': object_list,
                 'runMap': run_map

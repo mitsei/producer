@@ -8,13 +8,14 @@ define(["app",
         "text!apps/faceted-search/templates/facet_results.html",
         "text!apps/faceted-search/templates/facet_pagination.html",
         "text!apps/faceted-search/templates/domain_selector.html",
+        "cookies",
         "bootstrap",
         "bootstrap-drawer",
         "jquery-bootpag",
         "jquery-sortable"],
        function(ProducerManager, Utils, PreviewViews, DomainsCollection,
                 FacetsTemplate, FacetResultsTemplate,
-                FacetPaginationTemplate, DomainSelectorTemplate){
+                FacetPaginationTemplate, DomainSelectorTemplate, Cookies){
   ProducerManager.module("FacetedSearchApp.View", function(View, ProducerManager, Backbone, Marionette, $, _){
     var selectedFacets = [],
         selectedItemsPerPage = 10,
@@ -154,6 +155,7 @@ define(["app",
             });
         },
         events: {
+            'change select.domain-selector': 'setNewDomain',
             'click button.execute-keyword-search': 'keywordFilter',
             'click button.close-drawer': 'toggleDrawer',
             'keyup input.input-search': 'checkForEnterKey'
@@ -175,6 +177,13 @@ define(["app",
             if ($drawer.hasClass('open')) {
                 updateFacetsAndResults();
             }
+        },
+        setNewDomain: function (e) {
+            var $domain = $(e.currentTarget),
+                domainId = $domain.val();
+
+            Cookies.set('domainId', domainId);
+            updateFacetsAndResults();
         },
         toggleDrawer: function () {
             $('#search-components-menu').drawer('toggle');

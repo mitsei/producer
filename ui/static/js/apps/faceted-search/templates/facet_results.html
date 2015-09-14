@@ -4,6 +4,12 @@
         <% return osidId.slice(osidId.indexOf('%3A') + 3, osidId.indexOf('%40')); %>
     <% } %>
 
+    <% if (objects.length === 0) { %>
+        <li class="alert alert-danger" role="alert">
+            No items match your search
+        </li>
+    <% } %>
+
     <% _.each(objects, function (object) { %>
         <% if (object.hasOwnProperty('assetContents')) { %>
             <% var genusTypeStr = object.assetContents[0].genusTypeId; %>

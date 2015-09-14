@@ -35,6 +35,9 @@
               {% if 'curate' in privileges %}
                 <li class=""><button class="btn btn-lg curate-objects repository-btn"><i aria-hidden="true" class="fa fa-cogs"></i> Curate Objects</button></li>
               {% endif %}
+              {% if 'author' in privileges %}
+                <li class=""><button class="btn btn-lg download-from-library repository-btn"><i aria-hidden="true" class="fa fa-cloud-download"></i> Download From Library</button></li>
+              {% endif %}
           </ul>
           <ul class="nav navbar-nav navbar-right">
             <li class="hidden processing-spinner">

@@ -47,7 +47,7 @@ def dashboard(request):
     """Dashboard for app
     Send list of domain repositories
     """
-    privileges = ['admin', 'curate']
+    privileges = ['admin', 'curate', 'author']
     user_repo = get_or_create_user_repo(request.user.username)
     return render_to_response('ui/dashboard.html',
                               {
