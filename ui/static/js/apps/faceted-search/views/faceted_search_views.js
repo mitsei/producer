@@ -66,7 +66,7 @@ define(["app",
         saveItemsPerPage();
 
         return $.ajax({
-            url: '/api/v1/repository/repositories/' + Utils.selectedRepoId() + '/queryplans/',
+            url: '/api/v1/repository/repositories/' + Utils.selectedDomainId() + '/queryplans/',
             data: {
                 q: keywords,
                 selected_facets: getFacetTerms()
@@ -95,16 +95,18 @@ define(["app",
         // save the selected facets
         saveSelectedFacets();
 
-        // show spinner while searching
-        $('.processing-spinner').removeClass('hidden');
-        Utils.processing();
-        currentFacetsPromise = updateFacets(keywords);
-        currentResultsPromise = updateResults(keywords);
-        $.when(currentFacetsPromise, currentResultsPromise).done(function (facets, objects) {
-            Utils.doneProcessing();
-            $('.processing-spinner').addClass('hidden');
-            selectedFacets = [];
-        });
+        if (Utils.selectedDomainId() !== "-1") {
+            // show spinner while searching
+            $('.processing-spinner').removeClass('hidden');
+            Utils.processing();
+            currentFacetsPromise = updateFacets(keywords);
+            currentResultsPromise = updateResults(keywords);
+            $.when(currentFacetsPromise, currentResultsPromise).done(function (facets, objects) {
+                Utils.doneProcessing();
+                $('.processing-spinner').addClass('hidden');
+                selectedFacets = [];
+            });
+        }
     }
 
     function updateResults (keywords, page) {
@@ -120,7 +122,7 @@ define(["app",
         saveSelectedFacets();
 
         return $.ajax({
-            url: '/api/v1/repository/repositories/' + Utils.selectedRepoId() + '/search/',
+            url: '/api/v1/repository/repositories/' + Utils.selectedDomainId() + '/search/',
             data: {
                 q: keywords,
                 selected_facets: getFacetTerms(),

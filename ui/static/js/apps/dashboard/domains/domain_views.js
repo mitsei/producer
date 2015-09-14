@@ -282,15 +282,22 @@ define(["app",
             // so can sort the chapters
             var hiddenChapter = $('<li></li>').addClass('resortable hidden');
 
-            if (this.$el.children().length === 0) {
-                // insert a "no children" warning
-                var warning = $('<li></li>').addClass('resortable composition no-children alert alert-danger')
-                    .text('No current children');
-                this.$el.append(warning);
-            }
-
-            this.$el.prepend(hiddenChapter.clone());
-            this.$el.append(hiddenChapter.clone());
+//            if (this.$el.children().length === 0) {
+//                // insert a "no children" warning
+//                var warning = $('<li></li>').addClass('list-group-item resortable composition'),
+//                    wrapper = $('<div class="object-wrapper composition-object-wrapper chapter"></div>'),
+//                    row = $('<div class="composition-row"></div>');
+//                row.append('<div class="drag-handles"></div>');
+//                row.append('<div class="vertical-box"></div>');
+//                row.find('.vertical-box').append('<div class="vertical-content">Foo</div>');
+//                wrapper.append(row);
+//                warning.append(wrapper);
+//                this.$el.append(warning.clone());
+//                this.$el.append(warning.clone());
+//            }
+//
+//            this.$el.prepend(hiddenChapter.clone().addClass('no-children'));
+//            this.$el.append(hiddenChapter.clone());
 
             // make the sections sortable
             $('ul.run-list').sortable({
@@ -315,6 +322,7 @@ define(["app",
                     // transform the item if it came from the no-drop area
                     if (container.options.drop) {
                         // if droppable, continue
+                        console.log('transforming dropped item');
                         var $preMoveObj = $item.data('pre-move-parent-obj'),
                             $newObj;
 

@@ -94,7 +94,7 @@ define(["jquery", "underscore", "cookies"],
             return $('select.run-selector').val();
         };
 
-        utils.selectedRepoId = function (path) {
+        utils.selectedDomainId = function (path) {
             if ($("#search-components-menu").hasClass('open')) {
                 return $('#search-components-menu select.domain-selector').val();
             } else {

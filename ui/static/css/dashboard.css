@@ -643,3 +643,8 @@ li.composition.no-children {
 #download-run-btn a:focus {
     text-decoration: none;
 }
+
+ul.run-list {
+    border: dashed lightgrey;
+    min-height: 50px;
+}

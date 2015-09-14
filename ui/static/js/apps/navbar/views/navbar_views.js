@@ -112,8 +112,8 @@ define(["app",
                             click: function () {
                                 // check if a domain is selected or not
                                 var formEl = $('#uploadItemForm'),
-                                    selectedDomain = Utils.selectedRepoId(),
-                                    targetUrl = '/api/v1/repository/repositories/' + Utils.selectedRepoId() + '/upload/',
+                                    selectedDomain = Utils.selectedDomainId(),
+                                    targetUrl = '/api/v1/repository/repositories/' + Utils.selectedDomainId() + '/upload/',
                                     xhr = new XMLHttpRequest();
 
                                 if (selectedDomain === '-1') {
