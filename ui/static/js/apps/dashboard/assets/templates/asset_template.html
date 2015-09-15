@@ -1,7 +1,8 @@
-<div class="<%- resourceType %> resource-object-wrapper object-wrapper" data-obj="<%- rawObject %>">
+<div class="<%- resourceType %> resource-object-wrapper object-wrapper can-edit-state-<%- canEdit %>" data-obj="<%- rawObject %>">
     <div class="resource-row">
-        <div class="drag-handles"></div>
-        <div class="toggle-me"></div>
+        <% if (canEditParent) { %>
+            <div class="drag-handles"></div>
+        <% } %>
         <div class="resource-icon resource-<%- resourceType %>" title="<%- resourceType %>">
             <div class="ic-custom"></div>
         </div>
@@ -28,12 +29,23 @@
             </div>
         </div>
         <div class="pull-right resource-options">
-            <div class="">
-                <button class="btn btn-warning remove-resource">
-                    <i aria-hidden="true" class="fa fa-trash-o"></i>
-                    Remove Resource
-                </button>
-            </div>
+            <% if (canEditParent) { %>
+                <% if (canEdit) { %>
+                    <div class="">
+                        <button class="btn btn-warning remove-resource">
+                            <i aria-hidden="true" class="fa fa-trash-o"></i>
+                            Remove Resource
+                        </button>
+                    </div>
+                <% } else { %>
+                    <div class="">
+                        <button class="btn btn-success unlock-resource">
+                            <i aria-hidden="true" class="fa fa-unlock"></i>
+                            Unlock Resource
+                        </button>
+                    </div>
+                <% } %>
+            <% } %>
         </div>
     </div>
 </div>

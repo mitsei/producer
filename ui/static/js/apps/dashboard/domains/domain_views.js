@@ -50,11 +50,11 @@ define(["app",
 
         _.each(children, function (child) {
             var $wrapper = $('<li></li>').addClass('resortable list-group-item');
-            if (child.type === 'Composition') {
-                if (child.hasOwnProperty('canEdit')) {
-                    canEdit = child.canEdit;
-                }
 
+            if (child.hasOwnProperty('canEdit')) {
+                canEdit = child.canEdit;
+            }
+            if (child.type === 'Composition') {
                 $wrapper.append(_.template(CompositionsTemplate)({
                     canEdit: canEdit,
                     canEditParent: canEditParent,
@@ -65,6 +65,8 @@ define(["app",
                 $wrapper.addClass('composition');
             } else {
                 $wrapper.append(_.template(ResourceTemplate)({
+                    canEdit: canEdit,
+                    canEditParent: canEditParent,
                     resource: child,
                     resourceType: Utils.parseGenusType(child),
                     rawObject: JSON.stringify(child)
@@ -335,13 +337,14 @@ define(["app",
         tagName: 'li',
         className: 'resortable composition list-group-item',
         template: function (serializedData) {
-            if (serializedData.type === 'Composition') {
-                var canEdit = false,
-                    canEditParent = true;
+            var canEdit = false,
+                canEditParent = true;
 
-                if (serializedData.hasOwnProperty('canEdit')) {
-                    canEdit = serializedData.canEdit;
-                }
+            if (serializedData.hasOwnProperty('canEdit')) {
+                canEdit = serializedData.canEdit;
+            }
+
+            if (serializedData.type === 'Composition') {
                 return _.template(CompositionsTemplate)({
                     canEdit: canEdit,
                     canEditParent: canEditParent,
@@ -351,6 +354,8 @@ define(["app",
                 });
             } else {
                 return _.template(ResourceTemplate)({
+                    canEdit: canEdit,
+                    canEditParent: canEditParent,
                     resource: serializedData,
                     resourceType: Utils.parseGenusType(serializedData),
                     rawObject: JSON.stringify(serializedData)
@@ -403,11 +408,7 @@ define(["app",
                 placeholderClass: 'sortable-placeholder',
                 placeholder: '<li class="sortable-placeholder"></li>',
                 isValidTarget: function ($item, container) {
-                    if ($(container.el).hasClass('can-edit-state-false')) {
-                        return false;
-                    } else {
-                        return true;
-                    }
+                    return !$(container.el).hasClass('can-edit-state-false');
                 },
                 onDragStart: function ($item, container, _super) {
                     // Duplicate items of the no drop area
@@ -431,6 +432,8 @@ define(["app",
                             var rawObj = $item.data('obj'),
                                 $newObj = $('<li></li>').addClass('list-group-item resortable');
 
+                            rawObj.canEdit = false;
+
                             if (rawObj.type === 'Composition') {
                                 $newObj.addClass('composition');
                                 $newObj.append(_.template(CompositionsTemplate)({
@@ -440,25 +443,11 @@ define(["app",
                                     compositionType: Utils.parseGenusType(rawObj),
                                     rawObject: JSON.stringify(rawObj)
                                 }));
-
-                                // TODO: here still need to figure out how to get the children...
-//                                if (rawObj.childIds.length > 0) {
-//                                    var composition = new CompositionModel({
-//                                            id: rawObj.id,
-//                                            renderable: true
-//                                        }),
-//                                        promise = composition.fetch();
-//
-//                                    Utils.processing();
-//                                    promise.done(function (data) {
-//                                        renderChildren(data, $newObj);
-//                                        Utils.doneProcessing();
-//                                        _this.refreshNoChildrenWarning();
-//                                    });
-//                                }
                             } else {
                                 $newObj.addClass('resource');
                                 $newObj.append(_.template(ResourceTemplate)({
+                                    canEdit: false,
+                                    canEditParent: true,
                                     resource: rawObj,
                                     resourceType: Utils.parseGenusType(rawObj),
                                     rawObject: JSON.stringify(rawObj)
