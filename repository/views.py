@@ -38,7 +38,7 @@ EDX_COMPOSITION_GENUS_TYPES_STR = [str(Type(**genus_type))
 EDX_COMPOSITION_TYPES = EDX_COMPOSITION_GENUS_TYPES.keys()
 EDX_COMPOSITION_GENUS_TYPES_FOR_FACETS = [str(Type(**genus_type))
     for k, genus_type in EDX_COMPOSITION_GENUS_TYPES.iteritems()
-    if k in ['chapter', 'sequential', 'vertical']]
+    if k in ['chapter', 'sequential', 'split_test', 'vertical']]
 EDX_ASSET_CONTENT_GENUS_TYPES_FOR_FACETS = [str(Type(**genus_type))
     for k, genus_type in EDX_ASSET_CONTENTS_GENUS_TYPES.iteritems()]
 EDX_ASSESSMENT_GENUS_TYPES_FOR_FACETS = [str(Type(**genus_type))

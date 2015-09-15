@@ -155,6 +155,20 @@ div.ic-custom {
     margin-top: 16%;
 }
 
+.composition-split_test {
+    border-color: orange;
+}
+
+.composition-split_test div {
+    margin-left: 1px;
+    margin-top: 2px;
+}
+.composition-split_test div:before {
+    font-family: FontAwesome;
+    content: "\f126";
+    color: orange;
+}
+
 .composition-vertical {
     border-color:#C24242; /* red */
 }
