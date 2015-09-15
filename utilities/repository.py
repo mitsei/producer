@@ -303,16 +303,24 @@ def update_composition_children(repository, composition_id, children_ids,
             # TODO:
             # Should be assigning the composition to THIS repository as well as
             # appending it as a childId.
-            try:
-                rm.assign_composition_to_repository(id_obj, repository.ident)
-            except AlreadyExists:
-                pass
+            # DEPRECATED
+            # Do not assign something to this repository automatically...keep
+            # a separate action. This way we can do authz by checking
+            # where the item belongs to...
+            # try:
+            #     rm.assign_composition_to_repository(id_obj, repository.ident)
+            # except AlreadyExists:
+            #     pass
             unified_list.append(id_obj)
         elif 'repository.Asset' in child_id:
-            try:
-                rm.assign_asset_to_repository(id_obj, repository.ident)
-            except AlreadyExists:
-                pass
+            # DEPRECATED
+            # Do not assign something to this repository automatically...keep
+            # a separate action. This way we can do authz by checking
+            # where the item belongs to...
+            # try:
+            #     rm.assign_asset_to_repository(id_obj, repository.ident)
+            # except AlreadyExists:
+            #     pass
             asset = repository.get_asset(id_obj)
             # Create a new sequestered, resource-node composition...
             wrapper_composition = create_resource_wrapper(repository, asset)

@@ -65,6 +65,12 @@ define(["app",
     function updateFacets (keywords) {
         saveItemsPerPage();
 
+        // save the selected facets
+        saveSelectedFacets();
+
+        // cancel current promises, if they exist
+        cancel(currentFacetsPromise);
+
         return $.ajax({
             url: '/api/v1/repository/repositories/' + Utils.selectedDomainId() + '/queryplans/',
             data: {
@@ -77,6 +83,7 @@ define(["app",
             // pass the data on to the facet renderer region and the
             // facet results region
             // first, order the facets alphabetically
+            console.log('done with facets');
             var totalObjects = _.sum(data.facets.course, function (obj) { return obj[1];});
             ProducerManager.regions.facetedSearchPagination.show(new View.PaginationView({
                 total: totalObjects
@@ -89,20 +96,16 @@ define(["app",
     function updateFacetsAndResults () {
         var keywords = $('.input-search').val();
 
-        // cancel current promises, if they exist
-        cancel(currentFacetsPromise);
-
-        // save the selected facets
-        saveSelectedFacets();
-
         if (Utils.selectedDomainId() !== "-1") {
             // show spinner while searching
             $('.processing-spinner').removeClass('hidden');
             Utils.processing();
+            console.log('starting to update facets and results');
             currentFacetsPromise = updateFacets(keywords);
             currentResultsPromise = updateResults(keywords);
             $.when(currentFacetsPromise, currentResultsPromise).done(function (facets, objects) {
                 Utils.doneProcessing();
+                console.log('done with both facets and results');
                 $('.processing-spinner').addClass('hidden');
                 selectedFacets = [];
             });
@@ -133,6 +136,7 @@ define(["app",
             ProducerManager.vent.trigger('msg:error', xhr.responseText);
         }).done(function (data) {
             // pass the data on to the facet results region
+            console.log('done with results');
             ProducerManager.regions.facetedSearchResults.show(new View.FacetResultsView(data));
         });
     }

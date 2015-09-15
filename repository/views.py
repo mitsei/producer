@@ -32,6 +32,7 @@ USER_REPO_GENUS = Type(**REPOSITORY_GENUS_TYPES['user-repo'])
 COURSE_NODE_GENUS_TYPE = Type(**EDX_COMPOSITION_GENUS_TYPES['course'])
 
 EDX_COMPOSITION_RECORD_TYPE = Type(**COMPOSITION_RECORD_TYPES['edx-composition'])
+USER_OFFERING_COMPOSITION_RECORD_TYPE = Type(**COMPOSITION_RECORD_TYPES['edx-course-run'])
 EDX_COMPOSITION_GENUS_TYPES_STR = [str(Type(**genus_type))
                                    for k, genus_type in EDX_COMPOSITION_GENUS_TYPES.iteritems()]
 EDX_COMPOSITION_TYPES = EDX_COMPOSITION_GENUS_TYPES.keys()
@@ -486,6 +487,37 @@ class CompositionDetails(ProducerAPIViews, CompositionMapMixin):
             gutils.handle_exceptions(ex)
 
 
+class CompositionDownload(ProducerAPIViews):
+    """
+    Download a user course RUN.
+    api/v1/repository/compositions/<composition_id>/download/
+
+    GET
+    """
+    def get(self, request, composition_id, format=None):
+        try:
+            repository = rutils.get_object_repository(self.rm,
+                                                      composition_id,
+                                                      'composition')
+            repository.use_unsequestered_composition_view()
+            composition = repository.get_composition(gutils.clean_id(composition_id))
+
+            if str(composition.genus_type) != str(Type(**EDX_COMPOSITION_GENUS_TYPES['offering'])):
+                raise InvalidArgument('You can only download run repositories.')
+
+            filename, olx = composition.export_run_olx()
+
+            response = HttpResponse(content_type="application/tar")
+            response['Content-Disposition'] = 'attachment; filename=%s' % filename
+            olx.seek(0, os.SEEK_END)
+            response.write(olx.getvalue())
+            olx.close()
+
+            return response
+        except (PermissionDenied, InvalidArgument, NotFound) as ex:
+            gutils.handle_exceptions(ex)
+
+
 class CompositionOfferingsList(ProducerAPIViews):
     """
     Get a course node's offerings
@@ -594,8 +626,13 @@ class CompositionsList(ProducerAPIViews, CompositionMapMixin):
             gutils.verify_keys_present(self.data, ['displayName', 'description'])
 
             if 'genusTypeId' in self.data and 'edx' in self.data['genusTypeId']:
-                form = repository.get_composition_form_for_create([EDX_COMPOSITION_RECORD_TYPE])
                 edx_type = self.data['genusTypeId']  # assumes type is full genusType string
+
+                if 'offering' in edx_type:
+                    form = repository.get_composition_form_for_create([EDX_COMPOSITION_RECORD_TYPE,
+                                                                       USER_OFFERING_COMPOSITION_RECORD_TYPE])
+                else:
+                    form = repository.get_composition_form_for_create([EDX_COMPOSITION_RECORD_TYPE])
                 try:
                     if edx_type not in EDX_COMPOSITION_GENUS_TYPES_STR:
                         raise KeyError
@@ -647,6 +684,7 @@ class CompositionsList(ProducerAPIViews, CompositionMapMixin):
             # appending it as a childId.
             # TODO: we may not want to do this for authz purposes...
             # the unlocking / editing issue as discussed with Jeff
+            repository.use_unsequestered_composition_view()
             try:
                 self.rm.assign_composition_to_repository(composition.ident, repository.ident)
                 composition = repository.get_composition(composition.ident)

@@ -2,7 +2,7 @@
 
 define(["app",
         "apps/dashboard/domains/collections/domain_courses",
-        "apps/dashboard/domains/collections/single_run",
+        "apps/dashboard/domains/collections/single_user_run",
         "apps/dashboard/compositions/collections/compositions",
         "apps/dashboard/compositions/models/composition",
         "apps/preview/views/preview_views",
@@ -13,13 +13,14 @@ define(["app",
         "text!apps/dashboard/assets/templates/asset_template.html",
         "text!apps/common/templates/delete_dialog.html",
         "text!apps/dashboard/compositions/templates/create_user_course.html",
+        "text!apps/dashboard/compositions/templates/create_user_run.html",
         "cookies",
         "jquery-sortable"],
-       function(ProducerManager, DomainCourseCollection, RunCollection, CompositionsCollection,
+       function(ProducerManager, DomainCourseCollection, UserRunCollection, CompositionsCollection,
                 CompositionModel, PreviewViews, Utils,
                 RepoSelectorTemplate, CompositionTemplate, CompositionsTemplate,
                 ResourceTemplate, DeleteConfirmationTemplate, CreateUserCourseTemplate,
-                Cookies){
+                CreateUserRunTemplate, Cookies){
   ProducerManager.module("ProducerApp.Domain.View", function(View, ProducerManager, Backbone, Marionette, $, _){
 
     function renderChildren (data, $el) {
@@ -71,7 +72,7 @@ define(["app",
                     'You cannot add resources to the root level.');
             } else {
                 var runId = $('select.run-selector').val(),
-                    parentRun = new RunCollection([], {id: runId});
+                    parentRun = new UserRunCollection([], {id: runId});
 
                 $parent.children(':visible').not('.no-children,.ui-sortable-helper').each(function () {
                     var thisObj = $(this).children('div.object-wrapper').data('obj');
@@ -103,7 +104,7 @@ define(["app",
             });
         },
         onShow: function () {
-            if (typeof Cookies.get('courseId') !== 'undefined') {
+            if (Utils.cookie('courseId') !== '-1') {
                 this.$el.find('select.course-selector')
                     .trigger('change');
             }
@@ -114,8 +115,15 @@ define(["app",
         showRuns: function (e) {
             var courseId = $(e.currentTarget).val();
 
+            if (courseId === '-1') {
+                return;
+            }
+
             if (courseId !== 'create') {
-                ProducerManager.trigger('userCourseRuns:show', courseId);
+                ProducerManager.navigate("edit/" + courseId);
+                require(["apps/dashboard/domains/domain_controller"], function(DomainController){
+                    DomainController.listUserCourseRuns(courseId);
+                });
             } else {
                 // bring up a modal to create the course
                 ProducerManager.regions.dialog.show(new View.CreateUserCourseView());
@@ -196,10 +204,15 @@ define(["app",
         }
     });
 
+    View.CreateUserRunView = Marionette.ItemView.extend({
+        template: function () {
+            return _.template(CreateUserRunTemplate)();
+        }
+    });
+
     View.RunsView = Marionette.ItemView.extend({
         template: function (serializedData) {
             var preselectedId = Utils.cookie('runId');
-
             return _.template(RepoSelectorTemplate)({
                 preselectedId: preselectedId,
                 repoType: 'run',
@@ -207,7 +220,7 @@ define(["app",
             });
         },
         onShow: function () {
-            if (typeof Cookies.get('runId') !== 'undefined') {
+            if (Utils.cookie('runId') !== '-1') {
                 this.$el.find('select.run-selector')
                     .trigger('change');
             }
@@ -217,11 +230,70 @@ define(["app",
         },
         renderCourseStructure: function (e) {
             var runId = $(e.currentTarget).val(),
-                courseId = $('select.course-selector').val();
+                courseId = $('select.course-selector').val(),
+                courseName = $('select.course-selector option:selected').text();
 
+            if (runId === '-1') {
+                return;
+            }
             if (runId !== 'create') {
-                ProducerManager.trigger('userCourseRun:edit', courseId, runId);
+                ProducerManager.navigate("edit/" + courseId + '/' + runId);
+                require(["apps/dashboard/domains/domain_controller"], function(DomainController){
+                    DomainController.renderUserCourseRun(runId);
+                });
             } else {
+                // bring up a modal to create the course
+                ProducerManager.regions.dialog.show(new View.CreateUserRunView());
+                ProducerManager.regions.dialog.$el.dialog({
+                    modal: true,
+                    width: 500,
+                    height: 450,
+                    title: 'Create a new offering in your scratch space for ' + courseName,
+                    buttons: [
+                        {
+                            text: "Cancel",
+                            class: 'btn btn-danger',
+                            click: function () {
+                                $(this).dialog("close");
+                            }
+                        },
+                        {
+                            text: "Create",
+                            class: 'btn btn-success',
+                            click: function () {
+                                // validate that run name is populated
+                                var courseOffering = $('#newCourseOffering').val();
+
+                                if (courseOffering === "") {
+                                    $('div.create-run-warning').removeClass('hidden');
+                                } else {
+                                    var newCourseRun = new CompositionModel(),
+                                        _this = this;
+
+                                    newCourseRun.set('genusTypeId', 'edx-composition%3Aoffering%40EDX.ORG');
+                                    newCourseRun.set('repositoryId', Utils.userRepoId());
+                                    newCourseRun.set('displayName', courseOffering);
+                                    newCourseRun.set('description', 'A single offering');
+                                    newCourseRun.set('parentId', courseId);
+
+                                    newCourseRun.save(null, {
+                                        success: function (data) {
+                                            // update screen
+                                            var runId = data.id;
+                                            console.log('created new run.');
+                                            ProducerManager.trigger("userCourseRun:edit", courseId, runId);
+                                            $(_this).dialog('close');
+                                        },
+                                        error:function (xhr, status, msg) {
+                                            ProducerManager.vent.trigger('msg:error', xhr.responseText);
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    ]
+                });
+                Utils.bindDialogCloseEvents();
             }
         }
     });
@@ -280,24 +352,9 @@ define(["app",
             var _this = this;
             // prepend a hidden li.resortable.no-children chapter object
             // so can sort the chapters
-            var hiddenChapter = $('<li></li>').addClass('resortable hidden');
+            var hiddenChapter = $('<li></li>').addClass('resortable hidden composition');
 
-//            if (this.$el.children().length === 0) {
-//                // insert a "no children" warning
-//                var warning = $('<li></li>').addClass('list-group-item resortable composition'),
-//                    wrapper = $('<div class="object-wrapper composition-object-wrapper chapter"></div>'),
-//                    row = $('<div class="composition-row"></div>');
-//                row.append('<div class="drag-handles"></div>');
-//                row.append('<div class="vertical-box"></div>');
-//                row.find('.vertical-box').append('<div class="vertical-content">Foo</div>');
-//                wrapper.append(row);
-//                warning.append(wrapper);
-//                this.$el.append(warning.clone());
-//                this.$el.append(warning.clone());
-//            }
-//
-//            this.$el.prepend(hiddenChapter.clone().addClass('no-children'));
-//            this.$el.append(hiddenChapter.clone());
+            this.$el.prepend(hiddenChapter.clone());
 
             // make the sections sortable
             $('ul.run-list').sortable({
@@ -322,7 +379,6 @@ define(["app",
                     // transform the item if it came from the no-drop area
                     if (container.options.drop) {
                         // if droppable, continue
-                        console.log('transforming dropped item');
                         var $preMoveObj = $item.data('pre-move-parent-obj'),
                             $newObj;
 

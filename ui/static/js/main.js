@@ -6,7 +6,7 @@ var socketioPath = window.location.protocol + '//' + window.location.hostname + 
 requirejs.config({
     baseUrl: baseUrl,
     paths: {
-        'backbone'              : 'vendor/backbone/backbone',
+        'backbone'              : 'vendor/backbone/backbone-min',
         'backbone.babysitter'   : 'vendor/backbone.babysitter/lib/backbone.babysitter.min',
         'backbone.radio'        : 'vendor/backbone.radio/build/backbone.radio.min',
         'bootstrap'             : 'vendor/bootstrap/dist/js/bootstrap.min',
@@ -16,7 +16,7 @@ requirejs.config({
         'csrf'                  : 'vendor/csrf',
         'jquery'                : 'vendor/jquery/dist/jquery.min',
         'jquery-bootpag'        : 'vendor/jquery-bootpag/lib/jquery.bootpag.min',
-        'jquery-sortable'       : 'vendor/jquery-sortable/source/js/jquery-sortable',
+        'jquery-sortable'       : 'vendor/jquery-sortable/source/js/jquery-sortable-min',
         'jquery-ui'             : 'vendor/jqueryui/jquery-ui.min',
         'marionette'            : 'vendor/marionette/lib/backbone.marionette.min',
         'mathjax'               : 'https://edx-static.s3.amazonaws.com/mathjax-MathJax-727332c/MathJax.js?config=TeX-MML-AM_HTMLorMML-full',

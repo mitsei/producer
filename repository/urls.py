@@ -33,6 +33,8 @@ urlpatterns = patterns('',
         views.CompositionAssetsList.as_view()),
     url(r'^compositions/(?P<composition_id>[-.:@%\d\w]+)/children/?$',
         views.CompositionChildrenList.as_view()),
+    url(r'^compositions/(?P<composition_id>[-.:@%\d\w]+)/download/?$',
+        views.CompositionDownload.as_view()),
     url(r'^compositions/(?P<composition_id>[-.:@%\d\w]+)/offerings/?$',
         views.CompositionOfferingsList.as_view()),
 )
