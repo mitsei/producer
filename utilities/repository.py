@@ -321,10 +321,14 @@ def update_composition_children(repository, composition_id, children_ids,
             #     rm.assign_asset_to_repository(id_obj, repository.ident)
             # except AlreadyExists:
             #     pass
-            asset = repository.get_asset(id_obj)
+
+            user_repo = get_or_create_user_repo(username)
+            try:
+                asset = repository.get_asset(id_obj)
+            except NotFound:
+                asset = user_repo.get_asset(id_obj)
             # Create a new sequestered, resource-node composition...
             wrapper_composition = create_resource_wrapper(repository, asset)
-            user_repo = get_or_create_user_repo(username)
 
             user_repo.add_asset(asset.ident, wrapper_composition.ident)
             unified_list.append(wrapper_composition.ident)

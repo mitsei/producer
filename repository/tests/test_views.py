@@ -1435,7 +1435,7 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
         self.num_items(orchestrated_bank, 1)
         self.num_items(new_bank, 1)
 
-    def test_assigning_assets_to_composition_also_assign_to_run_repo(self):
+    def test_assigning_assets_to_composition_does_not_assign_to_run_repo(self):
         from dysonx.dysonx import get_or_create_user_repo
 
         self.num_compositions(0, unsequestered=True)
@@ -1470,7 +1470,7 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
         self.num_compositions(1)
 
         self.num_assets(1, user_repo)
-        self.num_assets(1)
+        self.num_assets(0)
 
     def test_can_delete_children_of_composition_with_flag(self):
         self.num_compositions(0, unsequestered=True)
@@ -1491,7 +1491,7 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
         self.deleted(req)
         self.num_compositions(0, unsequestered=True)
 
-    def test_adding_composition_to_new_repo_also_assigns_it(self):
+    def test_adding_composition_to_new_repo_does_not_assign_it(self):
         repo1 = self.repo
         repo2 = self.create_new_repo()
         composition = self.setup_composition(repo2.ident)
@@ -1508,7 +1508,27 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
         req = self.client.put(url, payload, format='json')
         self.updated(req)
 
-        self.num_compositions(1)
+        self.num_compositions(0, repo=repo1)
+        self.num_compositions(1, repo=repo2)
+
+    def test_adding_composition_does_not_automatically_assign_it(self):
+        repo1 = self.repo
+        repo2 = self.create_new_repo()
+        composition = self.setup_composition(repo2.ident)
+
+        self.num_compositions(0)
+        self.num_compositions(1, repo=repo2)
+
+        payload = {
+            'childIds': [str(composition.ident)]
+        }
+
+        url = self.base_url + 'repository/repositories/' + unquote(str(repo1.ident))
+
+        req = self.client.put(url, payload, format='json')
+        self.updated(req)
+
+        self.num_compositions(0)
         self.num_compositions(1, repo=repo2)
 
     def test_deleting_composition_with_multiple_catalogs_requires_parent_id(self):
@@ -1527,6 +1547,10 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
 
         req = self.client.put(url, payload, format='json')
         self.updated(req)
+
+        # manually assign composition to repo1
+        rm = gutils.get_session_data(self.req, 'rm')
+        rm.assign_composition_to_repository(composition.ident, repo1.ident)
 
         url = self.url + str(composition.ident)
         req = self.client.delete(url)
@@ -1551,9 +1575,12 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
         req = self.client.put(url, payload, format='json')
         self.updated(req)
 
+        # manually assign composition to repo1
+        rm = gutils.get_session_data(self.req, 'rm')
+        rm.assign_composition_to_repository(composition.ident, repo1.ident)
+
         self.num_compositions(1)
         self.num_compositions(1, repo=repo2)
-
 
         url = self.url + str(composition.ident)
 
