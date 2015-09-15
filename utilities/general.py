@@ -78,7 +78,13 @@ class DLSerializer(DefaultObjectSerializer):
         results = []
         for item in obj:
             try:
-                item_map = item.object_map
+                if isinstance(item, tuple):
+                    item_map = item[0].object_map
+                    item_map.update({
+                        'canEdit': item[1]
+                    })
+                else:
+                    item_map = item.object_map
                 results.append(item_map)
             except:
                 results.append(item)

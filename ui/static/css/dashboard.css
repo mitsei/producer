@@ -648,3 +648,7 @@ ul.run-list {
     border: dashed lightgrey;
     min-height: 50px;
 }
+
+li.resortable {
+    list-style-type: none;
+}

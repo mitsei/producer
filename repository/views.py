@@ -92,26 +92,27 @@ class CompositionMapMixin(object):
     def _get_map_with_children(self, obj, renderable=False):
         obj_map = obj.object_map
         obj_map['children'] = []
-        for child in obj.all_children:
+        for child_tuple in obj.all_children:
+            child = child_tuple[0]
+            can_edit = child_tuple[1]
             if isinstance(child, Item):
-                item = child
+                child_map = child.object_map
                 if renderable:
-                    item_map = item.object_map
-                    item_map['texts']['edxml'] = item.get_edxml_with_aws_urls()
-                    obj_map['children'].append(item_map)
-                else:
-                    obj_map['children'].append(item.object_map)
+                    child_map['texts']['edxml'] = child.get_edxml_with_aws_urls()
             elif isinstance(child, Asset):
                 if renderable:
                     asset_repo = self.rm.get_repository(gutils.clean_id(child.object_map['repositoryId']))
-                    obj_map['children'].append(
-                        rutils.update_asset_urls(asset_repo,
-                                                 child,
-                                                 {'renderable_edxml': True}))
+                    child_map = rutils.update_asset_urls(asset_repo,
+                                                         child,
+                                                         {'renderable_edxml': True})
                 else:
-                    obj_map['children'].append(child.object_map)
+                    child_map = child.object_map
             else:
-                obj_map['children'].append(self._get_map_with_children(child))
+                child_map = self._get_map_with_children(child)
+            child_map.update({
+                'canEdit': can_edit
+            })
+            obj_map['children'].append(child_map)
         return obj_map
 
 class AssetDetails(ProducerAPIViews):
@@ -432,6 +433,7 @@ class CompositionDetails(ProducerAPIViews, CompositionMapMixin):
             repository = rutils.get_object_repository(self.rm,
                                                       composition_id,
                                                       'composition')
+            repository.use_unsequestered_composition_view()
 
             form = repository.get_composition_form_for_update(gutils.clean_id(composition_id))
 

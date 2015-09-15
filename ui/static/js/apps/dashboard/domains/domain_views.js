@@ -2,8 +2,8 @@
 
 define(["app",
         "apps/dashboard/domains/collections/domain_courses",
-        "apps/dashboard/domains/collections/single_user_run",
         "apps/dashboard/compositions/collections/compositions",
+        "apps/dashboard/compositions/collections/composition_children",
         "apps/dashboard/compositions/models/composition",
         "apps/preview/views/preview_views",
         "apps/common/utilities",
@@ -16,8 +16,8 @@ define(["app",
         "text!apps/dashboard/compositions/templates/create_user_run.html",
         "cookies",
         "jquery-sortable"],
-       function(ProducerManager, DomainCourseCollection, UserRunCollection, CompositionsCollection,
-                CompositionModel, PreviewViews, Utils,
+       function(ProducerManager, DomainCourseCollection, CompositionsCollection,
+                CompositionChildrenCollection, CompositionModel, PreviewViews, Utils,
                 RepoSelectorTemplate, CompositionTemplate, CompositionsTemplate,
                 ResourceTemplate, DeleteConfirmationTemplate, CreateUserCourseTemplate,
                 CreateUserRunTemplate, Cookies){
@@ -28,9 +28,16 @@ define(["app",
         // basically replicate functionality of Marionette's CompositeView, except
         // need to use this when injecting individual compositions from the
         // facet results pane.
-        var $target = $el.children('ul.children-compositions');
+        var $target = $el.children('ul.children-compositions'),
+            children;
 
-        _.each(data.children, function (child) {
+        if (data.hasOwnProperty('children')) {
+            children = data.children;
+        } else {
+            children = data;
+        }
+
+        _.each(children, function (child) {
             var $wrapper = $('<li></li>').addClass('resortable list-group-item');
             if (child.type === 'Composition') {
                 $wrapper.append(_.template(CompositionsTemplate)({
@@ -48,10 +55,16 @@ define(["app",
                 $wrapper.addClass('resource');
             }
             $target.append($wrapper);
-            if (child.type === 'Composition' && child.children.length > 0) {
-                renderChildren(child, $wrapper);
+            try {
+                if (child.type === 'Composition' && child.children.length > 0) {
+                    renderChildren(child, $wrapper);
+                }
+            } catch (e) {
+                console.log(e);
             }
         });
+
+
     }
 
     function updateCompositionChildrenAndAssets ($obj) {
@@ -72,13 +85,13 @@ define(["app",
                     'You cannot add resources to the root level.');
             } else {
                 var runId = $('select.run-selector').val(),
-                    parentRun = new UserRunCollection([], {id: runId});
+                    parentRun = new CompositionModel({id: runId});
 
                 $parent.children(':visible').not('.no-children,.ui-sortable-helper').each(function () {
                     var thisObj = $(this).children('div.object-wrapper').data('obj');
                     childIds.push(thisObj.id);
                 });
-                parentRun.childIds = childIds;
+                parentRun.set('childIds', childIds);
                 parentRun.save();
             }
         } else {
@@ -585,15 +598,29 @@ define(["app",
             var $e = $(e.currentTarget),
                 $footer = $e.parent(),
                 $composition = $e.parent().parent().parent(),
-                $children = $composition.children('.children-compositions');
+                compositionId = $composition.children('.object-wrapper')
+                    .data('obj').id,
+                childrenCollection = new CompositionChildrenCollection([], {id: compositionId}),
+                $children = $composition.children('.children-compositions'),
+                _this = this,
+                promise;
 
-//            this.clearActiveElement();
             $children.toggleClass('hidden');
             $footer.toggleClass('expanded');
             $e.find('.children-icon').toggleClass('fa-chevron-up')
                 .toggleClass('fa-chevron-down');
             $e.find('.children-action-hide').toggleClass('hidden');
             $e.find('.children-action-show').toggleClass('hidden');
+
+            // now get the actual children of the clicked composition and
+            // populate the list
+            if (!$children.hasClass('hidden')) {
+                promise = childrenCollection.fetch();
+                promise.done(function (data) {
+                    renderChildren(data.data.results, $composition);
+                    _this.refreshNoChildrenWarning();
+                });
+            }
         }
     });
 
