@@ -98,6 +98,12 @@ div.ic-custom {
     flex-direction: column;
     -webkit-flex-direction: column;
     width: 100%;
+    padding: 5px 5px 5px 5px;
+}
+
+.composition-object-wrapper.alert-info,
+.resource-object-wrapper.alert-info {
+    border: 5px solid;
 }
 
 .composition-row,
@@ -436,7 +442,6 @@ li.resource.resortable div.resource-row .vertical-box {
     background-image: url('/static/images/drag-handles.png');
     background-repeat: repeat-y;
     width: 12px;
-    margin-left: -8px;
     margin-right: 10px;
     cursor: pointer;
     flex: 0 0 12px;
@@ -647,8 +652,27 @@ li.composition.no-children {
 ul.run-list {
     border: dashed lightgrey;
     min-height: 50px;
+    padding-bottom: 10px;
 }
 
 li.resortable {
     list-style-type: none;
+}
+
+.unlock-composition {
+    margin-bottom: 10px;
+}
+
+.can-edit-state-false {
+    background: repeating-linear-gradient(
+                    45deg,
+                    white,
+                    white 10px,
+                    #FFF0F0 10px,
+                    #FFF0F0 20px
+                );
+}
+
+ul.children-compositions {
+    padding-right: 5px;
 }

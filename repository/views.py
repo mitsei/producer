@@ -92,7 +92,7 @@ class CompositionMapMixin(object):
     def _get_map_with_children(self, obj, renderable=False):
         obj_map = obj.object_map
         obj_map['children'] = []
-        for child_tuple in obj.all_children:
+        for child_tuple in obj.all_children():
             child = child_tuple[0]
             can_edit = child_tuple[1]
             if isinstance(child, Item):
@@ -337,13 +337,20 @@ class CompositionChildrenList(ProducerAPIViews):
     """
     def get(self, request, composition_id, format=None):
         try:
-            repository = rutils.get_object_repository(self.rm,
-                                                      composition_id,
-                                                      'composition')
+            repository = get_or_create_user_repo(request.user.username)
             repository.use_unsequestered_composition_view()
-            composition = repository.get_composition(gutils.clean_id(composition_id))
 
-            children = gutils.extract_items(request, composition.all_children)
+            try:
+                composition = repository.get_composition(gutils.clean_id(composition_id))
+            except NotFound:
+                composition_repository = rutils.get_object_repository(self.rm,
+                                                                      composition_id,
+                                                                      'composition')
+                composition_repository.use_unsequestered_composition_view()
+                composition = composition_repository.get_composition(gutils.clean_id(composition_id))
+
+            children = gutils.extract_items(request,
+                                            composition.all_children(repository=repository))
 
             return Response(children)
         except (PermissionDenied, InvalidArgument, NotFound, InvalidId) as ex:
