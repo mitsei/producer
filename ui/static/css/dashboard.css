@@ -447,6 +447,10 @@ li.resource.resortable div.resource-row .vertical-box {
     flex: 0 0 12px;
 }
 
+#faceted-search-results .drag-handles {
+    margin-left: -8px;
+}
+
 body.dragging, body.dragging * {
     cursor: move !important;
 }

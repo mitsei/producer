@@ -195,7 +195,17 @@ define(["app",
 
                                     newCourseComposition.save(null, {
                                         success: function (data) {
-                                            var courseId = data.id;
+                                            var createdCourseId = data.id,
+                                                $courseOption = $('<option></option>')
+                                                    .attr('value', createdCourseId)
+                                                    .attr('selected', true)
+                                                    .text(courseName + ' -- ' + courseDesc),
+                                                $s = $('select.course-selector');
+
+                                            // prepend this to the select.course-selector and select it
+                                            $s.children('option:selected')
+                                                .attr('selected', false);
+                                            $courseOption.insertAfter($s.children('option[value="-1"]'));
 
                                             newCourseRun.set('genusTypeId', 'edx-composition%3Aoffering%40EDX.ORG');
                                             newCourseRun.set('repositoryId', Utils.userRepoId());
@@ -208,7 +218,8 @@ define(["app",
                                                     // update screen
                                                     var runId = data.id;
                                                     console.log('created course and run.');
-                                                    ProducerManager.trigger("userCourses:show", courseId, runId);
+                                                    ProducerManager.navigate("edit/" + createdCourseId + '/' + runId);
+                                                    ProducerManager.trigger("userCourseRun:edit", createdCourseId, runId);
                                                     $(_this).dialog('close');
                                                 },
                                                 error:function (xhr, status, msg) {
