@@ -72,3 +72,5 @@ tmp.xml
 
 oplog.timestamp
 mongo-connector.log*
+
+producer_main/settings_credentials.py

@@ -7,12 +7,13 @@ define(["app",
         "text!apps/navbar/templates/import_course.html",
         "text!apps/navbar/templates/new_domain.html",
         "text!apps/navbar/templates/domain_selector.html",
+        "text!apps/faceted-search/templates/domain_selector.html",
         "csrf",
         "cookies",
         "jquery-ui"],
        function(ProducerManager, Utils, RepositoryModel, DomainsCollection,
                 ImportCourseTemplate, NewDomainTemplate,
-                DomainSelectorTemplate, csrftoken, Cookies){
+                DomainSelectorTemplate, SearchDomainSelectorTemplate, csrftoken, Cookies){
   ProducerManager.module("NavbarApp.View", function(View, ProducerManager, Backbone, Marionette, $, _){
     View.NavbarView = Marionette.ItemView.extend({
         template: false,
@@ -64,6 +65,20 @@ define(["app",
                             repo.set('genusTypeId', Utils.domainGenus());
                             repo.save()
                                 .success(function (model, response, options) {
+                                    var $t = $('select.domain-selector'),
+                                        domains = new DomainsCollection(),
+                                        promise = domains.fetch(),
+                                        preselectedDomainId = Utils.cookie('domainId');
+
+                                    $t.children()
+                                        .remove();
+
+                                    promise.done(function (data) {
+                                        $t.append(_.template(SearchDomainSelectorTemplate)({
+                                            preselectedDomainId: preselectedDomainId,
+                                            repos: data.data.results
+                                        }));
+                                    });
                                     ProducerManager.vent.trigger("msg:status",
                                         "Domain created");
                                 }).error(function (model, xhr, options) {
