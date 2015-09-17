@@ -665,6 +665,9 @@ class CompositionsList(ProducerAPIViews, CompositionMapMixin):
 
                     if 'course' in edx_type or 'offering' in edx_type:
                         form.set_sequestered(True)
+
+                    if 'course' in edx_type:
+                        form.set_org('MITx')
                 except KeyError:
                     raise InvalidArgument('Bad genus type provided.')
             else:
