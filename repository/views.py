@@ -1331,6 +1331,12 @@ class UnlockComposition(ProducerAPIViews):
             clone = composition.clone_to(target_repo=user_repository,
                                          target_parent=parent_composition)
 
+            for child_id in clone.get_child_ids():
+                child = repository.get_composition(child_id)
+                if child.is_sequestered():
+                    child_clone = child.clone_to(target_repo=user_repository,
+                                                 target_parent=clone)
+
             return gutils.CreatedResponse(clone.object_map)
         except (PermissionDenied, InvalidArgument, InvalidId, KeyError) as ex:
             gutils.handle_exceptions(ex)
