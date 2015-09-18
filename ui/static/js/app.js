@@ -22,17 +22,6 @@ define([
     };
 
     ProducerManager.startSubApp = function(appName, args){
-//        var currentApp = appName ? ProducerManager.module(appName) : null;
-//        if (ProducerManager.currentApp === currentApp){ return; }
-//
-//        if (ProducerManager.currentApp){
-//          ProducerManager.currentApp.stop();
-//        }
-//
-//        ProducerManager.currentApp = currentApp;
-//        if(currentApp){
-//          currentApp.start(args);
-//        }
         var app = ProducerManager.module(appName);
         if (app) {
             app.start(args);

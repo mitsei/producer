@@ -488,6 +488,7 @@ define(["app",
         events: {
             'change .switch-genus-type': 'changeCompositionGenusType',
             'click .toggle-composition-children': 'toggleCompositionChildren',
+            'click .unlock-composition': 'unlockComposition',
             'click .preview': 'previewObject',
             'click .remove-composition': 'removeObject',
             'click .remove-resource': 'removeObject'
@@ -655,6 +656,39 @@ define(["app",
                     _this.refreshNoChildrenWarning();
                 });
             }
+        },
+        unlockComposition: function (e) {
+            var $e = $(e.currentTarget),
+                $composition = $e.parent().parent().parent().parent().parent(),  // is the <li> element
+                compositionId = $composition.children('.object-wrapper')
+                    .data('obj').id,
+                composition = new CompositionModel({id: compositionId}),
+                parentId;
+
+            if ($composition.parent().hasClass('run-list')) {
+                // parentId is the selected run composition
+                parentId = $('select.run-selector').val();
+            } else {
+                // parentId is in the course structure
+                parentId = $composition.parent()
+                    .siblings('div.object-wrapper')
+                    .data('obj').id;
+            }
+
+            composition.unlock(parentId, function (data) {
+                var $newObj = $('<li></li>').addClass('list-group-item resortable composition');
+
+                $newObj.append(_.template(CompositionsTemplate)({
+                    canEdit: true,
+                    canEditParent: true,
+                    composition: data,
+                    compositionType: Utils.parseGenusType(data),
+                    rawObject: JSON.stringify(data)
+                }));
+                console.log(data);
+
+                $composition.replaceWith($newObj);
+            });
         }
     });
 

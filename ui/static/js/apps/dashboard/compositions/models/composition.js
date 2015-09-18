@@ -32,6 +32,28 @@ define(["backbone"],
                 return url;
             }
         },
+        unlock: function (parentId, _callback) {
+            if (this.id) {
+                var url = '/api/v1/repository/compositions/' + this.id + '/unlock/',
+                    _this = this;
+
+                Backbone.ajax({
+                    url: url,
+                    type: 'POST',
+                    data: {
+                        parentId: parentId
+                    }
+                }).success(function (data) {
+                    _callback(data);
+                }).error(function (xhr, status, msg) {
+                    require(["app"], function (ProducerManager) {
+                        ProducerManager.vent.trigger('msg:error',
+                            'Unlock not successful...' + xhr.responseText);
+                        console.log('Unlock not successful...');
+                    });
+                });
+            }
+        },
         updateAssets: function (assetIds) {
             // update the composition's assetIds via PUT to <compositionId>/assets/
             if (this.id) {

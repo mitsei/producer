@@ -1304,6 +1304,38 @@ class RepositorySearch(ProducerAPIViews, QueryHelpersMixin):
         except (PermissionDenied, InvalidId, NotFound) as ex:
             gutils.handle_exceptions(ex)
 
+
+class UnlockComposition(ProducerAPIViews):
+    """
+    Unlock a composition and assign it to the
+    api/v1/repository/compositions/<composition_id>/unlock/
+
+    POST
+    """
+    def post(self, request, composition_id, format=None):
+        try:
+            repository = rutils.get_object_repository(self.rm,
+                                                      composition_id,
+                                                      'composition')
+            repository.use_unsequestered_composition_view()
+
+            composition = repository.get_composition(gutils.clean_id(composition_id))
+
+            user_repository = get_or_create_user_repo(request.user.username)
+
+            if 'parentId' in self.data:
+                user_repository.use_unsequestered_composition_view()
+                parent_composition = user_repository.get_composition(gutils.clean_id(self.data['parentId']))
+            else:
+                parent_composition = None
+            clone = composition.clone_to(target_repo=user_repository,
+                                         target_parent=parent_composition)
+
+            return gutils.CreatedResponse(clone.object_map)
+        except (PermissionDenied, InvalidArgument, InvalidId, KeyError) as ex:
+            gutils.handle_exceptions(ex)
+
+
 class UploadNewClassFile(ProducerAPIViews):
     """Uploads and imports a given class file"""
     def post(self, request, repository_id, format=None):

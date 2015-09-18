@@ -22,8 +22,8 @@ class RabbitMQReceiverTest(DjangoTestCase):
         super(RabbitMQReceiverTest, self).tearDown()
 
     def test_can_emit_new_resources(self):
-        self.mq.new_resources(['id'])
+        self.mq.new_resources('123', ['id'])
 
     def test_can_emit_new_items(self):
-        self.mq.new_items(['id'])
+        self.mq.new_items('456', ['id'])
 

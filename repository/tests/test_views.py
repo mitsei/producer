@@ -8,7 +8,8 @@ from boto.s3.key import Key
 from copy import deepcopy
 
 from dlkit.mongo.records.types import COMPOSITION_RECORD_TYPES, EDX_COMPOSITION_GENUS_TYPES,\
-    REPOSITORY_GENUS_TYPES, REPOSITORY_RECORD_TYPES
+    REPOSITORY_GENUS_TYPES, REPOSITORY_RECORD_TYPES, ASSET_RECORD_TYPES,\
+    ASSET_CONTENT_RECORD_TYPES
 
 from dlkit_django.errors import NotFound
 from dlkit_django.primordium import Id, DataInputStream, Type
@@ -16,6 +17,8 @@ from dlkit_django.primordium import Id, DataInputStream, Type
 from django.conf import settings
 from django.test.utils import override_settings
 from django.utils.http import unquote
+
+from dysonx.dysonx import get_or_create_user_repo
 
 from utilities import general as gutils
 from utilities import repository as rutils
@@ -27,6 +30,9 @@ COURSE_REPOSITORY = Type(**REPOSITORY_RECORD_TYPES['course-repo'])
 RUN_REPOSITORY = Type(**REPOSITORY_RECORD_TYPES['run-repo'])
 
 EDX_COMPOSITION = Type(**COMPOSITION_RECORD_TYPES['edx-composition'])
+EDX_ASSET = Type(**ASSET_RECORD_TYPES['edx-asset'])
+EDX_ASSET_CONTENT = Type(**ASSET_CONTENT_RECORD_TYPES['edx-asset-content-text-files'])
+
 
 class RepositoryTestCase(DjangoTestCase):
     """
@@ -116,13 +122,13 @@ class RepositoryTestCase(DjangoTestCase):
 
         rm = gutils.get_session_data(self.req, 'rm')
         repo = rm.get_repository(repository_id)
-        asset_form = repo.get_asset_form_for_create([])
+        asset_form = repo.get_asset_form_for_create([EDX_ASSET])
         asset_form.display_name = 'test'
         asset_form.description = 'ing'
         new_asset = repo.create_asset(asset_form)
 
         # now add the new data
-        asset_content_type_list = []
+        asset_content_type_list = [EDX_ASSET_CONTENT]
         try:
             config = repo._runtime.get_configuration()
             parameter_id = Id('parameter:assetContentRecordTypeForFiles@mongo')
@@ -137,6 +143,8 @@ class RepositoryTestCase(DjangoTestCase):
         self.default_asset_file = ABS_PATH + test_file
         with open(self.default_asset_file, 'r') as file_:
             asset_content_form.set_data(DataInputStream(file_))
+
+        asset_content_form.set_text('<foo>bar</foo>')
 
         repo.create_asset_content(asset_content_form)
 
@@ -1674,6 +1682,35 @@ class CompositionEndpointTests(RepositoryTestCase):
             data['data']['results'][1]['id'],
             str(self.asset.ident)
         )
+
+    def test_can_clone_composition(self):
+        user_repo = get_or_create_user_repo(self.username)
+        self.num_compositions(0, repo=user_repo, unsequestered=True)
+        self.num_compositions(4, repo=self.repo, unsequestered=True)
+
+        url = self.url + str(self.chapter.ident) + '/unlock/'
+        req = self.client.post(url)
+        self.created(req)
+        data = self.json(req)
+
+        self.assertNotEqual(
+            data['id'],
+            str(self.chapter.ident)
+        )
+
+        self.assertEqual(
+            data['displayName']['text'],
+            self.chapter.display_name.text
+        )
+
+        self.assertEqual(
+            data['description']['text'],
+            self.chapter.description.text
+        )
+
+        self.num_compositions(1, repo=user_repo, unsequestered=True)
+        self.num_compositions(4, repo=self.repo, unsequestered=True)
+
 
 class EdXCompositionCrUDTests(RepositoryTestCase):
     """Test the views for composition crud
