@@ -677,7 +677,8 @@ li.resortable {
     list-style-type: none;
 }
 
-.unlock-composition {
+.unlock-composition,
+.unlock-resource {
     margin-bottom: 10px;
 }
 

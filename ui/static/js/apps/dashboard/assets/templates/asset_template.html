@@ -30,14 +30,7 @@
         </div>
         <div class="pull-right resource-options">
             <% if (canEditParent) { %>
-                <% if (canEdit) { %>
-                    <div class="">
-                        <button class="btn btn-warning remove-resource">
-                            <i aria-hidden="true" class="fa fa-trash-o"></i>
-                            Remove Resource
-                        </button>
-                    </div>
-                <% } else { %>
+                <% if (!canEdit) { %>
                     <div class="">
                         <button class="btn btn-success unlock-resource">
                             <i aria-hidden="true" class="fa fa-unlock"></i>
@@ -45,6 +38,12 @@
                         </button>
                     </div>
                 <% } %>
+                <div class="">
+                    <button class="btn btn-warning remove-resource">
+                        <i aria-hidden="true" class="fa fa-trash-o"></i>
+                        Remove Resource
+                    </button>
+                </div>
             <% } %>
         </div>
     </div>

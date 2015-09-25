@@ -489,6 +489,7 @@ define(["app",
             'change .switch-genus-type': 'changeCompositionGenusType',
             'click .toggle-composition-children': 'toggleCompositionChildren',
             'click .unlock-composition': 'unlockComposition',
+            'click .unlock-resource': 'unlockResource',
             'click .preview': 'previewObject',
             'click .remove-composition': 'removeObject',
             'click .remove-resource': 'removeObject'
@@ -595,9 +596,14 @@ define(["app",
 
                             Utils.processing();
 
-                            if (obj.type === 'Composition') {
+                            // TODO: If the item is locked, just remove it
+                            // as a child...if the item is unlocked, then
+                            // delete it (and have to check the children
+                            // that only delete when they belong to the
+                            // user...not those that belong to others)
+                            if (obj.type === 'Composition' && obj.canEdit == true) {
                                 var compositionModel = new CompositionModel({id: objId,
-                                        withChildren: true});
+                                    withChildren: true});
 
                                 compositionModel.destroy({
                                     data: JSON.stringify({
@@ -615,8 +621,37 @@ define(["app",
                                         Utils.doneProcessing();
                                     }
                                 });
+                            } else if (obj.type === 'Composition') {
+                                // for a locked composition, just remove it
+                                // from the UI and call updateCompositionChildrenAndAssets
+                                $liParent.remove();
+                                updateCompositionChildrenAndAssets($noChildrenObject);
+                                $(_this).dialog("close");
+                                Utils.doneProcessing();
+                            } else if (obj.canEdit == true) {
+                                // if is an editable Asset or Item, delete it
+                                // from the service, then call updateCompositionChildrenAndAssets
+//                                var compositionModel = new CompositionModel({id: objId,
+//                                    withChildren: true});
+//
+//                                compositionModel.destroy({
+//                                    data: JSON.stringify({
+//                                        repoId: Utils.runId()
+//                                    }),
+//                                    success: function (model, response) {
+//                                        $liParent.remove();
+//                                        updateCompositionChildrenAndAssets($noChildrenObject);
+//                                        $(_this).dialog("close");
+//                                        Utils.doneProcessing();
+//                                    },
+//                                    error: function (model, response) {
+//                                        ProducerManager.vent.trigger('msg:error', response.responseText);
+//                                        $(_this).dialog("close");
+//                                        Utils.doneProcessing();
+//                                    }
+//                                });
                             } else {
-                                // if is an Asset or Item, just remove it
+                                // if is a non-editable Asset or Item, just remove it
                                 // from the UI and call updateCompositionChildrenAndAssets
                                 $liParent.remove();
                                 updateCompositionChildrenAndAssets($noChildrenObject);
@@ -689,6 +724,9 @@ define(["app",
 
                 $composition.replaceWith($newObj);
             });
+        },
+        unlockResource: function (e) {
+            ProducerManager.vent.trigger('msg:error', "This feature is not enabled yet.");
         }
     });
 
