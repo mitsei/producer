@@ -1403,8 +1403,6 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
         self.num_compositions(1)
 
     def test_assigning_items_to_composition_also_assign_to_orchestrated_run_bank(self):
-        from dysonx.dysonx import get_or_create_user_repo
-
         self.num_compositions(0, unsequestered=True)
         composition = self.setup_composition(self.repo_id)
 
@@ -1480,7 +1478,7 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
         self.num_assets(1, user_repo)
         self.num_assets(0)
 
-    def test_can_delete_children_of_composition_with_flag(self):
+    def test_user_cannot_delete_composition_when_not_theirs(self):
         self.num_compositions(0, unsequestered=True)
         composition = self.setup_composition(self.repo_id)
         self.num_compositions(1, unsequestered=True)
@@ -1496,8 +1494,29 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
         self.num_compositions(2, unsequestered=True)
         url += '?withChildren'
         req = self.client.delete(url)
+        self.code(req, 500)
+        self.num_compositions(1, unsequestered=True)
+
+    def test_can_delete_children_of_composition_with_flag(self):
+        user_repo = get_or_create_user_repo(self.username)
+
+        self.num_compositions(0, repo=user_repo, unsequestered=True)
+        composition = self.setup_composition(user_repo.ident)
+        self.num_compositions(1, repo=user_repo, unsequestered=True)
+        url = self.url + unquote(str(composition.ident))
+
+        asset = self.setup_asset(user_repo.ident)
+
+        payload = {
+            'childIds': str(asset.ident)
+        }
+        req = self.client.put(url, payload, format='json')
+        self.updated(req)
+        self.num_compositions(2, repo=user_repo, unsequestered=True)
+        url += '?withChildren'
+        req = self.client.delete(url)
         self.deleted(req)
-        self.num_compositions(0, unsequestered=True)
+        self.num_compositions(0, repo=user_repo, unsequestered=True)
 
     def test_adding_composition_to_new_repo_does_not_assign_it(self):
         repo1 = self.repo
