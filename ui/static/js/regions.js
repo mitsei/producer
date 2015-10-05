@@ -12,9 +12,7 @@ define(['marionette'
         el: "#app-container",
 
         regions: {
-            composition: "#composition-region",
-            course: "#course-selector-region",
-            courseActions: "#course-actions-region",
+            canvas: "#left-canvas",
             dialog: "#dialog-region",
             facetedSearchHeader: '#faceted-search-header',
             facetedSearchFacets: '#faceted-search-facets',
@@ -26,8 +24,7 @@ define(['marionette'
                 regionClass: NotificationRegion,
                 selector: "#notifications-region"
             },
-            preview: "#preview-region",
-            run: "#run-selector-region"
+            preview: "#preview-region"
         }
     });
 

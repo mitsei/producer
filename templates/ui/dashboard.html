@@ -36,7 +36,7 @@
                 <li class=""><button class="btn btn-lg curate-objects repository-btn"><i aria-hidden="true" class="fa fa-cogs"></i> Curate Objects</button></li>
               {% endif %}
               {% if 'author' in privileges %}
-                <li class=""><button class="btn btn-lg download-from-library repository-btn"><i aria-hidden="true" class="fa fa-cloud-download"></i> Download From Library</button></li>
+                <li class=""><button class="btn btn-lg download-from-library repository-btn"><i aria-hidden="true" class="fa fa-cloud-download"></i> Export From Library</button></li>
               {% endif %}
           </ul>
           <ul class="nav navbar-nav navbar-right">
@@ -69,42 +69,8 @@
 {% block main_content %}
     <div class="container-fluid">
         <div class="content-wrapper">
-            <div class="class-canvas">
-                <div>
-                    <div id="course-selector-region">
+            <div id="left-canvas">
 
-                    </div>
-                    <div id="run-selector-region">
-
-                    </div>
-                </div>
-                <div id="course-actions-region" class="action-menu hidden">
-                    <div class="btn-group action-btns" role="group" aria-label="Actions for a single class run">
-                        <a href="#" class="btn btn-lg btn-primary" target="_blank" id="download-run-btn">
-                            <i aria-hidden="true" class="fa fa-cloud-download"></i>
-                            Download
-                        </a>
-                        <button class="btn btn-lg btn-primary" data-toggle="button" id="add-new-components-btn">
-                            <i aria-hidden="true" class="fa fa-plus-circle"></i>
-                            Add From Library
-                        </button>
-                        <button class="btn btn-lg btn-warning" data-toggle="button" id="create-new-components-btn">
-                            <i aria-hidden="true" class="fa fa-wrench"></i>
-                            Create Component
-                        </button>
-                        <button class="btn btn-lg btn-warning" data-toggle="button" id="edit-run-info-btn">
-                            <i aria-hidden="true" class="fa fa-pencil-square-o"></i>
-                            Edit Info
-                        </button>
-                        <button class="btn btn-lg btn-warning" data-toggle="button" id="publish-run-btn">
-                            <i aria-hidden="true" class="fa fa-book"></i>
-                            Publish to Library
-                        </button>
-                    </div>
-                </div>
-                <div id="composition-region">
-
-                </div>
             </div>
             <div class="preview-canvas">
                 <div id="notifications-region" class="pull-right">

@@ -1,6 +1,7 @@
 // apps/dashboard/domains/domain_views.js
 
 define(["app",
+        "apps/course-actions/views/course_actions_views",
         "apps/dashboard/domains/collections/domain_courses",
         "apps/dashboard/compositions/collections/compositions",
         "apps/dashboard/compositions/collections/composition_children",
@@ -16,7 +17,7 @@ define(["app",
         "text!apps/dashboard/compositions/templates/create_user_run.html",
         "cookies",
         "jquery-sortable"],
-       function(ProducerManager, DomainCourseCollection, CompositionsCollection,
+       function(ProducerManager, CourseActionsViews, DomainCourseCollection, CompositionsCollection,
                 CompositionChildrenCollection, CompositionModel, PreviewViews, Utils,
                 RepoSelectorTemplate, CompositionTemplate, CompositionsTemplate,
                 ResourceTemplate, DeleteConfirmationTemplate, CreateUserCourseTemplate,
@@ -409,6 +410,9 @@ define(["app",
             var hiddenChapter = $('<li></li>').addClass('resortable hidden composition');
 
             this.$el.prepend(hiddenChapter.clone());
+
+            // init the course actions
+            ProducerManager.regions.courseActions.show(new CourseActionsViews.CourseActionsView({}));
 
             // make the sections sortable
             $('ul.run-list').sortable({
