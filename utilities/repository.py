@@ -108,7 +108,7 @@ def create_domain_repo(rm, name, description):
     course_repo = _get_or_create_root_repo(rm, 'courses')
     form = rm.get_repository_form_for_create([LORE_REPOSITORY])
     form.display_name = str(name)
-    form.description = '{}'.format(str(description))
+    form.description = '{0}'.format(str(description))
     form.set_provider(rm.effective_agent_id)
     form.set_genus_type(DOMAIN_REPO_GENUS)
     repo = rm.create_repository(form)
