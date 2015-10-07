@@ -11,7 +11,7 @@ define(["app",
           ProducerManager.regions.addRegion('course', '#course-selector-region');
           ProducerManager.regions.addRegion('courseActions', '#course-actions-region');
           ProducerManager.regions.addRegion('run', '#run-selector-region');
-          require(["apps/course-actions/views/course_action_views"], function (DomainController) {
+          require(["apps/course-actions/views/course_actions_views"], function (DomainController) {
               executeAction(DomainController.listUserCourseRuns, courseId);
               executeAction(DomainController.renderUserCourseRun, runId);
           });
