@@ -42,7 +42,7 @@ def add_grades_to_grade_system(gradebook, grade_system, data):
                             form.description = val
             gradebook.create_grade(form)
     except KeyError as ex:
-        raise InvalidArgument('"{}" expected in grade object.'.format(str(ex.args[0])))
+        raise InvalidArgument('"{0}" expected in grade object.'.format(str(ex.args[0])))
 
 def check_grade_inputs(data):
     verify_keys_present(data, 'grades')

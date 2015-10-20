@@ -23,6 +23,7 @@ define(["app",
         },
         events: {
             'click .add-new-domain': 'createNewDomain',
+            'click button.curate-objects': 'curateObjects',
             'click button.import-course.repository-btn': 'importNewCourse'
         },
         closeDrawer: function () {
@@ -95,6 +96,9 @@ define(["app",
             $('input[name="fileSelector"]').on('change', function () {
                 _this.loadFileNamePreview(this);
             });
+        },
+        curateObjects: function (e) {
+
         },
         importNewCourse: function () {
             var _this = this,
@@ -173,8 +177,11 @@ define(["app",
         },
         loadUserCourses: function () {
             console.log('loading user courses');
-            require(["apps/dashboard/domains/domain_controller"], function(DomainController){
-              DomainController.listUserCourses(Utils.userRepoId());
+            require(["apps/edit-course/edit_course_controller",
+                     "apps/dashboard/domains/domain_controller"], function(EditCourseController,
+                                                                           DomainController){
+                EditCourseController.renderCanvas();
+                DomainController.listUserCourses(Utils.userRepoId());
             });
         }
     });

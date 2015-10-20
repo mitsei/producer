@@ -22,20 +22,24 @@ define(["app",
     var API = {
         curateObjects: function () {
             // placeholder for a dashboard for curating objects and applying tags
+            console.log('curating objects');
+
         },
         editCourseRun: function (courseId, runId) {
             // placeholder for showing a course run in the edit canvas (on left)
             console.log('editing: ' + courseId + ', ' + runId);
+            require(["apps/edit-course/edit_course_controller"], function(EditCourseController) {
+                EditCourseController.renderCanvas();
+                if (Cookies.get('courseId') !== courseId || Cookies.get('runId') !== runId) {
+                    Cookies.set('courseId', courseId);
+                    Cookies.set('runId', runId);
 
-            if (Cookies.get('courseId') !== courseId || Cookies.get('runId') !== runId) {
-                Cookies.set('courseId', courseId);
-                Cookies.set('runId', runId);
-
-                require(["apps/dashboard/domains/domain_controller"], function(DomainController){
-                    executeAction(DomainController.listUserCourseRuns, courseId);
-                    executeAction(DomainController.renderUserCourseRun, runId);
-                });
-            }
+                    require(["apps/dashboard/domains/domain_controller"], function (DomainController) {
+                        executeAction(DomainController.listUserCourseRuns, courseId);
+                        executeAction(DomainController.renderUserCourseRun, runId);
+                    });
+                }
+            });
         },
         initialize: function () {
             Cookies.remove('courseId');
@@ -43,14 +47,17 @@ define(["app",
         },
         showCourseRuns: function (courseId) {
             console.log('editing course: ' + courseId);
+            require(["apps/edit-course/edit_course_controller"], function(EditCourseController) {
+                EditCourseController.renderCanvas();
 
-            if (Cookies.get('courseId') !== courseId) {
-                Cookies.set('courseId', courseId);
-                Cookies.remove('runId');
-                require(["apps/dashboard/domains/domain_controller"], function (DomainController) {
-                    executeAction(DomainController.listUserCourseRuns, courseId);
-                });
-            }
+                if (Cookies.get('courseId') !== courseId) {
+                    Cookies.set('courseId', courseId);
+                    Cookies.remove('runId');
+                    require(["apps/dashboard/domains/domain_controller"], function (DomainController) {
+                        executeAction(DomainController.listUserCourseRuns, courseId);
+                    });
+                }
+            });
         }
     };
 
