@@ -8,6 +8,7 @@ import shutil
 
 from celery import Task
 from django.core.files.storage import default_storage
+from django.conf import settings
 
 from dlkit_django.proxy_example import TestRequest
 
@@ -28,14 +29,15 @@ class ErrorHandlingTask(Task):
         :param einfo: Traceback (str(einfo))
         :return:
         """
-        test_request = TestRequest(username=targs[2].username)
-        rabbit = RabbitMQReceiver(request=test_request)
-        msg = 'Import of {0} raised exception: {1!r}'.format(targs[0].split('/')[-1],
-                                                             str(exc))
-        rabbit._pub_wrapper('new',
-                            obj_type='repositories',
-                            id_list=[msg],
-                            status='error')
+        if not settings.TEST:
+            test_request = TestRequest(username=targs[2].username)
+            rabbit = RabbitMQReceiver(request=test_request)
+            msg = 'Import of {0} raised exception: {1!r}'.format(targs[0].split('/')[-1],
+                                                                 str(exc))
+            rabbit._pub_wrapper('new',
+                                obj_type='repositories',
+                                id_list=[msg],
+                                status='error')
         default_storage.delete(targs[0])
         extracted_path = targs[0].replace('.zip', '').replace('.tar.gz', '')
         if os.path.isdir(extracted_path):
@@ -51,12 +53,13 @@ class ErrorHandlingTask(Task):
         :param tkwargs:
         :return:
         """
-        test_request = TestRequest(username=targs[2].username)
-        rabbit = RabbitMQReceiver(request=test_request)
-        rabbit._pub_wrapper('new',
-                            obj_type='repositories',
-                            id_list=["Upload successful. You may now view your course."],
-                            status='success')
+        if not settings.TEST:
+            test_request = TestRequest(username=targs[2].username)
+            rabbit = RabbitMQReceiver(request=test_request)
+            rabbit._pub_wrapper('new',
+                                obj_type='repositories',
+                                id_list=["Upload successful. You may now view your course."],
+                                status='success')
         default_storage.delete(targs[0])
         extracted_path = targs[0].replace('.zip', '').replace('.tar.gz', '')
         if os.path.isdir(extracted_path):

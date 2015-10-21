@@ -21,6 +21,7 @@ except ImportError:
     exit(1)
 
 DEBUG = settings_credentials.__dict__.get("DEBUG", False)
+TEST = settings_credentials.__dict__.get("TEST", False)
 PIPELINE_ENABLED = settings_credentials.__dict__.get("PIPELINE_ENABLED", False)
 TEMPLATE_DEBUG = DEBUG
 ADMINS = settings_credentials.__dict__.get("ADMINS", ())
