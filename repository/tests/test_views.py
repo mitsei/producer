@@ -759,15 +759,16 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
         self.code(req, 500)
         self.num_compositions(1)
 
-    def test_can_delete_composition(self):
-        self.num_compositions(0)
-        composition = self.setup_composition(self.repo_id)
-        self.num_compositions(1)
+    def test_user_can_delete_own_composition(self):
+        user_repo = get_or_create_user_repo(self.user.username)
+        self.num_compositions(0, repo=user_repo)
+        composition = self.setup_composition(user_repo.ident)
+        self.num_compositions(1, repo=user_repo)
 
         url = self.url + unquote(str(composition.ident))
         req = self.client.delete(url)
         self.deleted(req)
-        self.num_compositions(0)
+        self.num_compositions(0, repo=user_repo)
 
     def test_can_get_composition_details(self):
         new_composition = self.setup_composition(self.repo_id)
@@ -1495,7 +1496,7 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
         url += '?withChildren'
         req = self.client.delete(url)
         self.code(req, 500)
-        self.num_compositions(1, unsequestered=True)
+        self.num_compositions(2, unsequestered=True)
 
     def test_can_delete_children_of_composition_with_flag(self):
         user_repo = get_or_create_user_repo(self.username)

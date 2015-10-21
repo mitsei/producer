@@ -390,10 +390,11 @@ class CompositionDetails(ProducerAPIViews, CompositionMapMixin):
                 composition = repository.get_composition(gutils.clean_id(composition_id))
                 if self.data['repoId'] == composition.object_map['repositoryId']:
                     # by default move the composition to the ownership of the next one
+                    # TODO
                     raise IllegalState('For now, cannot delete from the owner repository.')
                 else:
                     self.rm.unassign_composition_from_repository(composition.ident,
-                                                                 user_repository.ident)
+                                                                 gutils.clean_id(self.data['repoId']))
             else:
                 if 'withChildren' in self.data:
                     # TODO: Make sure only children that belong to the user
@@ -412,7 +413,7 @@ class CompositionDetails(ProducerAPIViews, CompositionMapMixin):
 
                 user_repository.delete_composition(gutils.clean_id(composition_id))
             return gutils.DeletedResponse()
-        except (PermissionDenied, IllegalState, InvalidId, KeyError) as ex:
+        except (PermissionDenied, IllegalState, InvalidId, NotFound, KeyError) as ex:
             gutils.handle_exceptions(ex)
 
     def get(self, request, composition_id, format=None):

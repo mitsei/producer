@@ -28,8 +28,8 @@ class BasicServiceTests(LearningTestCase):
         super(BasicServiceTests, self).tearDown()
 
     def test_unauthenticated_users_cannot_access(self):
-        banks = self.url + 'banks'
-        req = self.client.get(banks)
+        objectives = self.url + 'objectives'
+        req = self.client.get(objectives)
         self.code(req, 403)
 
 

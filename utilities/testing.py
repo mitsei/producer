@@ -26,7 +26,8 @@ ABS_PATH = os.path.abspath(os.path.join(PROJECT_PATH, os.pardir))
                    CLOUDFRONT_DISTRO='d1v4o60a4yrgi8.cloudfront.net',
                    CLOUDFRONT_DISTRO_ID='E1OEKZHRUO35M9',
                    S3_BUCKET='mitodl-repository-test',
-                   CELERY_ALWAYS_EAGER=True)
+                   CELERY_ALWAYS_EAGER=True,
+                   TEST=True)
 class DjangoTestCase(APITestCase, MockTestCase):
     """
     A TestCase class that combines minimocktest and django.test.TestCase
