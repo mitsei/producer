@@ -1,7 +1,7 @@
 """without an async listener, no way to check that the message was
 received properly. But we can at least make sure no exceptions thrown"""
 
-import pika
+import unittest
 
 from django.test.utils import override_settings
 from dlkit_django.proxy_example import TestRequest
@@ -21,9 +21,11 @@ class RabbitMQReceiverTest(DjangoTestCase):
     def tearDown(self):
         super(RabbitMQReceiverTest, self).tearDown()
 
+    @unittest.skip('RabbitMQ does not work in test environment')
     def test_can_emit_new_resources(self):
         self.mq.new_resources('123', ['id'])
 
+    @unittest.skip('RabbitMQ does not work in test environment')
     def test_can_emit_new_items(self):
         self.mq.new_items('456', ['id'])
 
