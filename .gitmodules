@@ -1,9 +1,9 @@
 [submodule "dlkit"]
 	path = dlkit
-	url = git@github.mit.edu:sei/dlkit.git
+	url = https://sei-jenkins@bitbucket.org/cjshaw/dlkit.git 
 [submodule "dlkit_django"]
 	path = dlkit_django
-	url = git@github.mit.edu:sei/dlkit_django.git
+	url = https://sei-jenkins@bitbucket.org/cjshaw/dlkit_django.git
 [submodule "dysonx"]
 	path = dysonx
-	url = git@github.mit.edu:sei/dysonx.git
+	url = https://sei-jenkins@bitbucket.org/cjshaw/dysonx.git 
