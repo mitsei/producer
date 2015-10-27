@@ -807,7 +807,10 @@ class RepositoriesList(ProducerAPIViews):
                 domain_repo_genus = Type(**REPOSITORY_GENUS_TYPES['domain-repo'])
                 querier = self.rm.get_repository_query()
                 querier.match_genus_type(domain_repo_genus, True)
-                repositories = self.rm.get_repositories_by_query(querier)
+                repositories = list(self.rm.get_repositories_by_query(querier))
+
+                # now add the user's own domain
+                repositories.append(get_or_create_user_repo(request.user.username))
             else:
                 repositories = self.rm.repositories
             repositories = gutils.extract_items(request, repositories)
@@ -993,14 +996,23 @@ class QueryHelpersMixin(object):
                          'match_genus_type',
                          'get_items_by_query')
 
-    def _get_all_items_by_repo(self, repo):
+    def _get_all_items(self, run_id, repository=None):
+        if 'repository.Repository' in run_id:
+            repo = self.rm.get_repository(gutils.clean_id(run_id))
+            assets, compositions, items = self._get_all_items_by_repo(repo)
+        else:
+            # is a composition run
+            composition = repository.get_composition(gutils.clean_id(run_id))
+            assets, compositions, items = self._get_all_items_by_composition(composition, repository)
+        return assets, compositions, items
+
+    def _get_all_items_by_composition(self, composition, repo):
         if isinstance(repo, dict):
             repo = self.rm.get_repository(gutils.clean_id(repo['id']))
         bank = self.am.get_bank(repo.ident)
         bank.use_federated_bank_view()
 
         repo.use_sequestered_composition_view()
-
 
         asset_querier = None
         composition_querier = None
@@ -1057,18 +1069,92 @@ class QueryHelpersMixin(object):
 
         return all_assets, all_compositions, all_items
 
+    def _get_all_items_by_repo(self, repo):
+        if isinstance(repo, dict):
+            repo = self.rm.get_repository(gutils.clean_id(repo['id']))
+        bank = self.am.get_bank(repo.ident)
+        bank.use_federated_bank_view()
 
-    def _get_run_map(self, repository_id):
-        repo_nodes = self.rm.get_repository_nodes(repository_id=gutils.clean_id(repository_id),
-                                                  ancestor_levels=0,
-                                                  descendant_levels=2,
-                                                  include_siblings=False)
-        repo_nodes = repo_nodes.get_object_node_map()
+        repo.use_sequestered_composition_view()
 
-        runs = [(r['id'], '{0}, {1}'.format(course['displayName']['text'],
+        asset_querier = None
+        composition_querier = None
+        item_querier = None
+
+        # match facet selected types
+        if self.facet_resource_types is not None:
+            for resource_type in self.facet_resource_types:
+                if resource_type in EDX_COMPOSITION_GENUS_TYPES_STR:
+                    if composition_querier is None:
+                        composition_querier = repo.get_composition_query()
+                    genus_type = Type(resource_type)
+                    composition_querier.match_genus_type(genus_type, True)
+                elif resource_type == 'edx-assessment-item%3Aproblem%40EDX.ORG':
+                    if item_querier is None:
+                        item_querier = bank.get_item_query()
+                else:
+                    if asset_querier is None:
+                        asset_querier = repo.get_asset_query()
+                    genus_type = Type(resource_type)
+                    asset_querier.match_asset_content_genus_type(genus_type, True)
+        else:
+            # match all objects
+            asset_querier = repo.get_asset_query()
+            asset_querier.match_any(True)
+            composition_querier = repo.get_composition_query()
+            composition_querier.match_any(True)
+            item_querier = bank.get_item_query()
+            item_querier.match_any(True)
+
+        # match query terms
+        if self.query_params is not None and self.query_params != ['']:
+            for term in self.query_params:
+                if asset_querier is not None:
+                    asset_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
+                if composition_querier is not None:
+                    composition_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
+                if item_querier is not None:
+                    item_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
+
+        # run query
+        if asset_querier is not None:
+            all_assets = repo.get_assets_by_query(asset_querier)
+        else:
+            all_assets = None
+        if composition_querier is not None:
+            all_compositions = repo.get_compositions_by_query(composition_querier)
+        else:
+            all_compositions = None
+        if item_querier is not None:
+            all_items = bank.get_items_by_query(item_querier)
+        else:
+            all_items = None
+
+        return all_assets, all_compositions, all_items
+
+    def _get_run_map(self, repository):
+        if repository.genus_type == DOMAIN_REPO_GENUS:
+            repo_nodes = self.rm.get_repository_nodes(repository_id=gutils.clean_id(repository.ident),
+                                                      ancestor_levels=0,
+                                                      descendant_levels=2,
+                                                      include_siblings=False)
+            repo_nodes = repo_nodes.get_object_node_map()
+            runs = [(r['id'], '{0}, {1}'.format(course['displayName']['text'],
                                             r['displayName']['text']))
                 for course in repo_nodes['childNodes']
                 for r in course['childNodes']]
+        else:
+            repository.use_unsequestered_composition_view()
+            querier = repository.get_composition_query()
+            querier.match_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['course']), True)
+            course_compositions = repository.get_compositions_by_query(querier)
+            runs = []
+            for course in course_compositions:
+                run_composition_ids = course_compositions.get_child_ids()
+                for run_id in run_composition_ids:
+                    run_composition = repository.get_composition(run_id)
+                    runs.append((str(run_composition.ident), '{0}, {1}'.format(course.display_name.text,
+                                                                               run_composition.display_name.text)))
 
         run_map = {}
         for run in runs:
@@ -1100,10 +1186,10 @@ class RepositoryQueryPlansAvailable(ProducerAPIViews, QueryHelpersMixin):
 
             domain_repo = self.rm.get_repository(gutils.clean_id(repository_id))
 
-            if domain_repo.genus_type != DOMAIN_REPO_GENUS:
-                raise InvalidArgument('You can only get query plans for domains.')
+            if domain_repo.genus_type not in [DOMAIN_REPO_GENUS, USER_REPO_GENUS]:
+                raise InvalidArgument('You can only get query plans for domains or user repos.')
 
-            run_map = self._get_run_map(repository_id)
+            run_map = self._get_run_map(domain_repo)
             # first for each repository, get count of its total objects that
             # meet the keyword filter requirement and other facet requirements
             for run_identifier, run_name in run_map.iteritems():
@@ -1111,7 +1197,6 @@ class RepositoryQueryPlansAvailable(ProducerAPIViews, QueryHelpersMixin):
                 if self.facet_course_runs is None:
                     # do all courses
                     repo = self.rm.get_repository(gutils.clean_id(run_identifier))
-
                     assets, compositions, items = self._get_all_items_by_repo(repo)
 
                     for obj in [assets, compositions, items]:
@@ -1171,14 +1256,14 @@ class RepositorySearch(ProducerAPIViews, QueryHelpersMixin):
 
             domain_repo = self.rm.get_repository(gutils.clean_id(repository_id))
 
-            if domain_repo.genus_type != DOMAIN_REPO_GENUS:
-                raise InvalidArgument('You can only get query results for domains.')
+            if domain_repo.genus_type not in [DOMAIN_REPO_GENUS, USER_REPO_GENUS]:
+                raise InvalidArgument('You can only get query results for domains or user repos.')
 
             asset_lists = []
             composition_lists = []
             item_lists = []
 
-            run_map = self._get_run_map(repository_id)
+            run_map = self._get_run_map(domain_repo)
             # first for each repository, get OsidLists of total objects that
             # meet the keyword filter requirement and other facet requirements
             for run_identifier, run_name in run_map.iteritems():
@@ -1361,8 +1446,9 @@ class UploadNewClassFile(ProducerAPIViews):
                 raise InvalidArgument('You can only upload a single course at one time.')
 
             domain_repo = self.rm.get_repository(gutils.clean_id(repository_id))
-            if str(domain_repo.genus_type) != str(Type(**REPOSITORY_GENUS_TYPES['domain-repo'])):
-                raise InvalidArgument('You cannot upload classes to a non-domain repository.')
+            if str(domain_repo.genus_type) not in [str(Type(**REPOSITORY_GENUS_TYPES['domain-repo'])),
+                                                   str(Type(**REPOSITORY_GENUS_TYPES['user-repo']))]:
+                raise InvalidArgument('You cannot upload classes to a non-domain / non-user repository.')
 
             uploaded_file = self.data['files'][self.data['files'].keys()[0]]
             self.path = default_storage.save('{0}/{1}'.format(settings.MEDIA_ROOT,

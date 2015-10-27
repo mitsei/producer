@@ -28,6 +28,7 @@ from utilities.testing import DjangoTestCase, ABS_PATH
 LORE_REPOSITORY = Type(**REPOSITORY_RECORD_TYPES['lore-repo'])
 COURSE_REPOSITORY = Type(**REPOSITORY_RECORD_TYPES['course-repo'])
 RUN_REPOSITORY = Type(**REPOSITORY_RECORD_TYPES['run-repo'])
+USER_REPOSITORY_GENUS = Type(**REPOSITORY_GENUS_TYPES['user-repo'])
 
 EDX_COMPOSITION = Type(**COMPOSITION_RECORD_TYPES['edx-composition'])
 EDX_ASSET = Type(**ASSET_RECORD_TYPES['edx-asset'])
@@ -64,6 +65,14 @@ class RepositoryTestCase(DjangoTestCase):
         form.display_name = 'new run repository'
         form.description = 'for testing'
         form.set_genus_type(Type(**REPOSITORY_GENUS_TYPES['course-run-repo']))
+        return rm.create_repository(form)
+
+    def create_new_user_repo(self):
+        rm = gutils.get_session_data(self.req, 'rm')
+        form = rm.get_repository_form_for_create([LORE_REPOSITORY])
+        form.display_name = 'new user repository'
+        form.description = 'for testing'
+        form.set_genus_type(USER_REPOSITORY_GENUS)
         return rm.create_repository(form)
 
     def get_asset(self, asset_id):
@@ -2119,6 +2128,70 @@ class EdXCompositionCrUDTests(RepositoryTestCase):
         )
 
 
+class EdXCompositionUnitTests(RepositoryTestCase):
+    """Test the basic unit functionality for compositions
+
+    """
+    def set_up_user_course(self):
+        form = self.repo.get_composition_form_for_create([EDX_COMPOSITION])
+        form.display_name = 'sequential'
+        form.set_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['sequential']))
+        sequential = self.repo.create_composition(form)
+
+        form = self.repo.get_composition_form_for_create([EDX_COMPOSITION])
+        form.display_name = 'sequential2'
+        form.set_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['sequential']))
+        sequential2 = self.repo.create_composition(form)
+
+        form = self.repo.get_composition_form_for_create([EDX_COMPOSITION])
+        form.display_name = 'chapter'
+        form.set_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['chapter']))
+        form.set_children([sequential.ident])
+        chapter = self.repo.create_composition(form)
+
+        form = self.repo.get_composition_form_for_create([EDX_COMPOSITION])
+        form.display_name = 'run'
+        form.set_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['offering']))
+        form.set_children([chapter.ident])
+        form.set_sequestered(True)
+        run = self.repo.create_composition(form)
+
+        form = self.repo.get_composition_form_for_create([EDX_COMPOSITION])
+        form.display_name = 'test course'
+        form.set_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['course']))
+        form.set_children([run.ident])
+        form.set_sequestered(True)
+        return self.repo.create_composition(form)
+
+    def setUp(self):
+        super(EdXCompositionUnitTests, self).setUp()
+        self.login()
+        self.repo = self.create_new_user_repo()
+        self.repo_id = unquote(str(self.repo.ident))
+        self.rm = gutils.get_session_data(self.req, 'rm')
+
+    def tearDown(self):
+        super(EdXCompositionUnitTests, self).tearDown()
+
+    def test_can_query_descendant_compositions(self):
+        # create course composition, then run, then chapter, then sequential
+        # query that the sequential is found when querying descendants of run
+        course_composition = self.set_up_user_course()
+
+        self.repo.use_unsequestered_composition_view()
+        querier = self.repo.get_composition_query()
+        querier.match_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['sequential']), True)
+        querier.match_composition_descendants(course_composition.ident, True)
+        matches = self.repo.get_compositions_by_query(querier)
+        self.assertEqual(
+            matches.available(),
+            1
+        )
+        self.assertEqual(
+            matches.next().display_name.text,
+            'sequential'
+        )
+
 
 class RepositoryChildrenTests(RepositoryTestCase):
     """Test the views for repository crud
@@ -2696,6 +2769,61 @@ class RepositoryCrUDTests(AssessmentTestCase, RepositoryTestCase):
         run_repos = rm.get_repositories_by_query(querier)
         self.assertEqual(
             run_repos.available(),
+            1
+        )
+
+    def test_can_upload_new_course_to_user_repo(self):
+        user_repo = self.create_new_user_repo()
+        self.num_repos(1)  # my test non-domain, target repo
+        url = self.url + str(user_repo.ident) + '/upload/'
+        payload = {
+            'myFile': self.demo_course
+        }
+        req = self.client.post(url, data=payload)
+        self.ok(req)
+        self.num_repos(3)  # Users, user-repo, target repo
+        rm = gutils.get_session_data(self.req, 'rm')
+        querier = rm.get_repository_query()
+        querier.match_genus_type(Type(**REPOSITORY_GENUS_TYPES['user-repo']), True)
+        user_repos = rm.get_repositories_by_query(querier)
+        self.assertEqual(
+            user_repos.available(),
+            2
+        )
+        self.num_compositions(87, repo=user_repo)  # are these numbers accurate?
+        self.num_compositions(245, repo=user_repo, unsequestered=True)  # are these numbers accurate?
+
+        user_repo.use_sequestered_composition_view()
+        querier = user_repo.get_composition_query()
+        querier.match_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['course']), True)
+        course_compositions = user_repo.get_compositions_by_query(querier)
+        self.assertEqual(
+            course_compositions.available(),
+            0
+        )
+
+        querier = user_repo.get_composition_query()
+        querier.match_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['offering']), True)
+        run_compositions = user_repo.get_compositions_by_query(querier)
+        self.assertEqual(
+            run_compositions.available(),
+            0
+        )
+
+        user_repo.use_unsequestered_composition_view()
+        querier = user_repo.get_composition_query()
+        querier.match_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['course']), True)
+        course_compositions = user_repo.get_compositions_by_query(querier)
+        self.assertEqual(
+            course_compositions.available(),
+            1
+        )
+
+        querier = user_repo.get_composition_query()
+        querier.match_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['offering']), True)
+        run_compositions = user_repo.get_compositions_by_query(querier)
+        self.assertEqual(
+            run_compositions.available(),
             1
         )
 
