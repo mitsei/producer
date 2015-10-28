@@ -2128,6 +2128,78 @@ class EdXCompositionCrUDTests(RepositoryTestCase):
         )
 
 
+class EdXAssetUnitTests(RepositoryTestCase):
+    """Test the basic query functionality for assets
+
+    """
+    def set_up_user_course(self):
+        form = self.repo.get_composition_form_for_create([EDX_COMPOSITION])
+        form.display_name = 'sequential'
+        form.set_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['sequential']))
+        sequential = self.repo.create_composition(form)
+
+        form = self.repo.get_asset_form_for_create([EDX_ASSET])
+        form.display_name = 'asset'
+        asset = self.repo.create_asset(form)
+        self.repo.add_asset(asset.ident, sequential.ident)
+
+        form = self.repo.get_composition_form_for_create([EDX_COMPOSITION])
+        form.display_name = 'sequential2'
+        form.set_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['sequential']))
+        sequential2 = self.repo.create_composition(form)
+
+        form = self.repo.get_asset_form_for_create([EDX_ASSET])
+        form.display_name = 'asset2'
+        asset2 = self.repo.create_asset(form)
+        self.repo.add_asset(asset2.ident, sequential2.ident)
+
+        form = self.repo.get_composition_form_for_create([EDX_COMPOSITION])
+        form.display_name = 'chapter'
+        form.set_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['chapter']))
+        form.set_children([sequential.ident])
+        chapter = self.repo.create_composition(form)
+
+        form = self.repo.get_composition_form_for_create([EDX_COMPOSITION])
+        form.display_name = 'run'
+        form.set_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['offering']))
+        form.set_children([chapter.ident])
+        form.set_sequestered(True)
+        run = self.repo.create_composition(form)
+
+        form = self.repo.get_composition_form_for_create([EDX_COMPOSITION])
+        form.display_name = 'test course'
+        form.set_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['course']))
+        form.set_children([run.ident])
+        form.set_sequestered(True)
+        return self.repo.create_composition(form)
+
+    def setUp(self):
+        super(EdXAssetUnitTests, self).setUp()
+        self.login()
+        self.repo = self.create_new_user_repo()
+        self.repo_id = unquote(str(self.repo.ident))
+
+    def tearDown(self):
+        super(EdXAssetUnitTests, self).tearDown()
+
+    def test_can_query_descendant_compositions_for_assets(self):
+        # create course composition, then run, then chapter, then sequential
+        # query that the sequential is found when querying descendants of run
+        course_composition = self.set_up_user_course()
+
+        querier = self.repo.get_asset_query()
+        querier.match_composition_descendants(course_composition.ident, True)
+        matches = self.repo.get_assets_by_query(querier)
+        self.assertEqual(
+            matches.available(),
+            1
+        )
+        self.assertEqual(
+            matches.next().display_name.text,
+            'asset'
+        )
+
+
 class EdXCompositionUnitTests(RepositoryTestCase):
     """Test the basic unit functionality for compositions
 
@@ -2168,7 +2240,6 @@ class EdXCompositionUnitTests(RepositoryTestCase):
         self.login()
         self.repo = self.create_new_user_repo()
         self.repo_id = unquote(str(self.repo.ident))
-        self.rm = gutils.get_session_data(self.req, 'rm')
 
     def tearDown(self):
         super(EdXCompositionUnitTests, self).tearDown()
