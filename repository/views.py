@@ -1007,6 +1007,8 @@ class QueryHelpersMixin(object):
         return assets, compositions, items
 
     def _get_all_items_by_composition(self, composition, repo):
+        # these items / assets / compositions must be children
+        # of the descendants of the passed-in composition
         if isinstance(repo, dict):
             repo = self.rm.get_repository(gutils.clean_id(repo['id']))
         bank = self.am.get_bank(repo.ident)

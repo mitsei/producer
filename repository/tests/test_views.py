@@ -9,7 +9,7 @@ from copy import deepcopy
 
 from dlkit.mongo.records.types import COMPOSITION_RECORD_TYPES, EDX_COMPOSITION_GENUS_TYPES,\
     REPOSITORY_GENUS_TYPES, REPOSITORY_RECORD_TYPES, ASSET_RECORD_TYPES,\
-    ASSET_CONTENT_RECORD_TYPES
+    ASSET_CONTENT_RECORD_TYPES, ITEM_RECORD_TYPES
 
 from dlkit_django.errors import NotFound
 from dlkit_django.primordium import Id, DataInputStream, Type
@@ -33,7 +33,7 @@ USER_REPOSITORY_GENUS = Type(**REPOSITORY_GENUS_TYPES['user-repo'])
 EDX_COMPOSITION = Type(**COMPOSITION_RECORD_TYPES['edx-composition'])
 EDX_ASSET = Type(**ASSET_RECORD_TYPES['edx-asset'])
 EDX_ASSET_CONTENT = Type(**ASSET_CONTENT_RECORD_TYPES['edx-asset-content-text-files'])
-
+EDX_ITEM = Type(**ITEM_RECORD_TYPES['edx_item'])
 
 class RepositoryTestCase(DjangoTestCase):
     """
@@ -2261,6 +2261,92 @@ class EdXCompositionUnitTests(RepositoryTestCase):
         self.assertEqual(
             matches.next().display_name.text,
             'sequential'
+        )
+
+
+class EdXItemUnitTests(AssessmentTestCase, RepositoryTestCase):
+    """Test the basic query functionality for edX items relative to compositions
+
+    """
+    def set_up_user_course(self):
+        form = self.repo.get_composition_form_for_create([EDX_COMPOSITION])
+        form.display_name = 'sequential'
+        form.set_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['sequential']))
+        sequential = self.repo.create_composition(form)
+
+        form = self.bank.get_item_form_for_create([EDX_ITEM])
+        form.display_name = 'item'
+        item = self.bank.create_item(form)
+
+        form = self.bank.get_assessment_form_for_create([])
+        form.display_name = 'assessment'
+        assessment = self.bank.create_assessment(form)
+        self.bank.add_item(assessment.ident, item.ident)
+
+        self.repo.add_asset(assessment.ident, sequential.ident)
+
+        form = self.repo.get_composition_form_for_create([EDX_COMPOSITION])
+        form.display_name = 'sequential2'
+        form.set_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['sequential']))
+        sequential2 = self.repo.create_composition(form)
+
+        form = self.bank.get_item_form_for_create([EDX_ITEM])
+        form.display_name = 'item2'
+        item2 = self.bank.create_item(form)
+
+        form = self.bank.get_assessment_form_for_create([])
+        form.display_name = 'assessment2'
+        assessment2 = self.bank.create_assessment(form)
+        self.bank.add_item(assessment2.ident, item2.ident)
+
+        self.repo.add_asset(assessment2.ident, sequential2.ident)
+
+        form = self.repo.get_composition_form_for_create([EDX_COMPOSITION])
+        form.display_name = 'chapter'
+        form.set_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['chapter']))
+        form.set_children([sequential.ident])
+        chapter = self.repo.create_composition(form)
+
+        form = self.repo.get_composition_form_for_create([EDX_COMPOSITION])
+        form.display_name = 'run'
+        form.set_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['offering']))
+        form.set_children([chapter.ident])
+        form.set_sequestered(True)
+        run = self.repo.create_composition(form)
+
+        form = self.repo.get_composition_form_for_create([EDX_COMPOSITION])
+        form.display_name = 'test course'
+        form.set_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['course']))
+        form.set_children([run.ident])
+        form.set_sequestered(True)
+        return self.repo.create_composition(form)
+
+    def setUp(self):
+        super(EdXItemUnitTests, self).setUp()
+        self.login()
+        self.repo = self.create_new_user_repo()
+        self.repo_id = unquote(str(self.repo.ident))
+        am = gutils.get_session_data(self.req, 'am')
+        self.bank = am.get_bank(self.repo.ident)
+
+    def tearDown(self):
+        super(EdXItemUnitTests, self).tearDown()
+
+    def test_can_query_descendant_compositions_for_items(self):
+        # create course composition, then run, then chapter, then sequential
+        # query that the sequential is found when querying descendants of run
+        course_composition = self.set_up_user_course()
+
+        querier = self.bank.get_item_query()
+        querier.match_composition_descendants(course_composition.ident, True)
+        matches = self.bank.get_items_by_query(querier)
+        self.assertEqual(
+            matches.available(),
+            1
+        )
+        self.assertEqual(
+            matches.next().display_name.text,
+            'item'
         )
 
 
