@@ -90,6 +90,10 @@ CELERY_RESULT_BACKEND = settings_credentials.__dict__.get('CELERY_RESULT_BACKEND
 CELERY_RESULT_PERSISTENT = settings_credentials.__dict__.get('CELERY_RESULT_PERSISTENT', True)
 CELERY_IGNORE_RESULT = settings_credentials.__dict__.get('CELERY_IGNORE_RESULT', '')
 
+RABBITMQ_USER = settings_credentials.__dict__.get('RABBITMQ_USER', '')
+RABBITMQ_PWD = settings_credentials.__dict__.get('RABBITMQ_PWD', True)
+RABBITMQ_VHOST = settings_credentials.__dict__.get('RABBITMQ_VHOST', '')
+
 if "default" not in DATABASES or "PASSWORD" not in DATABASES["default"] or DATABASES["default"]["PASSWORD"]=="":
     print msg_credentials()
     exit(1)
