@@ -1,5 +1,5 @@
 import os
-import grp
+import stat
 
 from bson.errors import InvalidId
 
@@ -1369,7 +1369,7 @@ class UploadNewClassFile(ProducerAPIViews):
             self.path = default_storage.save('{0}/{1}'.format(settings.MEDIA_ROOT,
                                                               uploaded_file.name),
                                              uploaded_file)
-            os.chown(self.path, -1, grp.getgrnam('www').gr_gid)
+            os.chmod(self.path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IROTH)
             self.async_result = import_file.apply_async((self.path, domain_repo, request.user))
             return Response()
         except (PermissionDenied, TypeError, InvalidArgument, NotFound, KeyError) as ex:
