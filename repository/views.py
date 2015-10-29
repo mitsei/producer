@@ -1369,7 +1369,7 @@ class UploadNewClassFile(ProducerAPIViews):
             self.path = default_storage.save('{0}/{1}'.format(settings.MEDIA_ROOT,
                                                               uploaded_file.name),
                                              uploaded_file)
-            os.chmod(self.path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IROTH)
+            os.chmod(self.path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IROTH | stat.S_IWOTH | stat.S_IRGRP | stat.S_IWGRP)
             self.async_result = import_file.apply_async((self.path, domain_repo, request.user))
             return Response()
         except (PermissionDenied, TypeError, InvalidArgument, NotFound, KeyError) as ex:
