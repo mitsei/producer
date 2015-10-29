@@ -14,6 +14,7 @@ from django.utils.http import unquote, quote
 # http://www.django-rest-framework.org/api-guide/pagination
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.contrib.auth.models import User
+from django.conf import settings
 
 from dlkit.abstract_osid.assessment import objects as abc_assessment_objects
 from dlkit.abstract_osid.learning import objects as abc_learning_objects
@@ -616,7 +617,7 @@ def upload_class(path, domain_repo, user):
     """use DysonX to parse and upload the class"""
     request = TestRequest(username=user.username)
 
-    if ABS_PATH not in path:
+    if settings.MEDIA_ROOT not in path:
         if '/' != path[0]:
             path = '/' + path
         path = ABS_PATH + path
