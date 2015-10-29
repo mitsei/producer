@@ -620,7 +620,7 @@ def upload_class(path, domain_repo, user):
     """use DysonX to parse and upload the class"""
     request = TestRequest(username=user.username)
 
-    if settings.MEDIA_ROOT not in path:
+    if not settings.TEST and settings.MEDIA_ROOT not in path:
         if '/' != path[0]:
             path = '/' + path
         path = ABS_PATH + path
