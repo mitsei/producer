@@ -186,6 +186,9 @@ def clean_up_post(bank, item):
         elif isinstance(item, abc_assessment_objects.Answer):
             bank.delete_answer(item.ident)
 
+def clean_up_path(path):
+    return path.replace('//', '/')
+
 def config_osid_object_querier(querier, params):
     for param, value in params.iteritems():
         try:
@@ -621,6 +624,7 @@ def upload_class(path, domain_repo, user):
         if '/' != path[0]:
             path = '/' + path
         path = ABS_PATH + path
+    path = clean_up_path(path)
     dyson = DysonXUtil(request=request)
     return dyson.vacuum(path, domain_repo=domain_repo, user=user)
 
