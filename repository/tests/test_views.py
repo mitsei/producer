@@ -2188,7 +2188,7 @@ class EdXAssetUnitTests(RepositoryTestCase):
         course_composition = self.set_up_user_course()
 
         querier = self.repo.get_asset_query()
-        querier.match_composition_descendants(course_composition.ident, True)
+        querier.match_composition_descendants(course_composition.ident, self.repo.ident, True)
         matches = self.repo.get_assets_by_query(querier)
         self.assertEqual(
             matches.available(),
@@ -2252,7 +2252,7 @@ class EdXCompositionUnitTests(RepositoryTestCase):
         self.repo.use_unsequestered_composition_view()
         querier = self.repo.get_composition_query()
         querier.match_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['sequential']), True)
-        querier.match_composition_descendants(course_composition.ident, True)
+        querier.match_composition_descendants(course_composition.ident, self.repo.ident, True)
         matches = self.repo.get_compositions_by_query(querier)
         self.assertEqual(
             matches.available(),
@@ -2338,7 +2338,7 @@ class EdXItemUnitTests(AssessmentTestCase, RepositoryTestCase):
         course_composition = self.set_up_user_course()
 
         querier = self.bank.get_item_query()
-        querier.match_composition_descendants(course_composition.ident, True)
+        querier.match_composition_descendants(course_composition.ident, self.repo.ident, True)
         matches = self.bank.get_items_by_query(querier)
         self.assertEqual(
             matches.available(),
