@@ -13,7 +13,7 @@ from django.conf import settings
 from dlkit_django.proxy_example import TestRequest
 
 from producer.receivers import RabbitMQReceiver
-from producer_main.celery import app
+from producer_main.celery_app import app
 from utilities.general import upload_class
 
 
