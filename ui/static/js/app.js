@@ -6,7 +6,7 @@ define([
   'backbone',
   'marionette',
   'regions',
-//  'socketio',
+  'socketio',
   'apps/common/utilities',
   'jquery-ui'
 ], function($, _, Backbone, Marionette, RegionContainer, io, Utils){
@@ -29,32 +29,33 @@ define([
     };
 
     ProducerManager.on('before:start', function () {
-        var socketBaseUrl = window.location.protocol + '//' + window.location.hostname + ':8080/';
-//            conn = io.connect(socketBaseUrl);
+        var socketBaseUrl = window.location.protocol + '//' + window.location.hostname + ':8888/',
+            secure = window.location.protocol === 'https',
+            conn = io.connect(socketBaseUrl, {secure: secure});
 
         ProducerManager.regions = new RegionContainer();
 
-//        conn.on('message', function (obj) {
-//            var msg = JSON.parse(obj);
-//            console.log(obj);
-//
-//            // parse the message, and do something -- hand off to a
-//            // notification view?
-//            if (msg.username === Utils.activeUser || msg.username === "all") {
-//                if (msg.hasOwnProperty('status')) {
-//                    if (msg.status === 'success') {
-//                        ProducerManager.vent.trigger('msg:success',
-//                            msg);
-//                    } else if (msg.status === 'error') {
-//                        ProducerManager.vent.trigger('msg:error',
-//                            msg);
-//                    }
-//                } else {
-//                    ProducerManager.vent.trigger("msg:status",
-//                        msg);
-//                }
-//            }
-//        });
+        conn.on('message', function (obj) {
+            var msg = JSON.parse(obj);
+            console.log(obj);
+
+            // parse the message, and do something -- hand off to a
+            // notification view?
+            if (msg.username === Utils.activeUser || msg.username === "all") {
+                if (msg.hasOwnProperty('status')) {
+                    if (msg.status === 'success') {
+                        ProducerManager.vent.trigger('msg:success',
+                            msg);
+                    } else if (msg.status === 'error') {
+                        ProducerManager.vent.trigger('msg:error',
+                            msg);
+                    }
+                } else {
+                    ProducerManager.vent.trigger("msg:status",
+                        msg);
+                }
+            }
+        });
     });
 
     ProducerManager.on('start', function () {
