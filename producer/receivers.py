@@ -11,7 +11,9 @@ class RabbitMQReceiver(object):
     def __init__(self, request):
         self.username = request.user.username
         self.exch = settings.WEBSOCKET_EXCHANGE or ''
-        conn = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+        creds = pika.PlainCredentials(settings.RABBITMQ_USER,
+                                      settings.RABBITMQ_PWD)
+        conn = pika.BlockingConnection(pika.ConnectionParameters('localhost', 5672, settings.RABBITMQ_VHOST, creds))
         self.ch = conn.channel()
         self.ch.exchange_declare(exchange=self.exch,
                                  type='fanout')
