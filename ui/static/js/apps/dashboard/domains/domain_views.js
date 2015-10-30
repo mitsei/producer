@@ -6,6 +6,7 @@ define(["app",
         "apps/dashboard/compositions/collections/compositions",
         "apps/dashboard/compositions/collections/composition_children",
         "apps/dashboard/compositions/models/composition",
+        "apps/dashboard/domains/models/repository",
         "apps/preview/views/preview_views",
         "apps/common/utilities",
         "text!apps/dashboard/domains/templates/repo_selector.html",
@@ -18,7 +19,7 @@ define(["app",
         "cookies",
         "jquery-sortable"],
        function(ProducerManager, CourseActionsViews, DomainCourseCollection, CompositionsCollection,
-                CompositionChildrenCollection, CompositionModel, PreviewViews, Utils,
+                CompositionChildrenCollection, CompositionModel, RepositoryModel, PreviewViews, Utils,
                 RepoSelectorTemplate, CompositionTemplate, CompositionsTemplate,
                 ResourceTemplate, DeleteConfirmationTemplate, CreateUserCourseTemplate,
                 CreateUserRunTemplate, Cookies){
@@ -185,8 +186,8 @@ define(["app",
                                 if (courseName === "" || courseOffering === "") {
                                     $('div.create-course-warning').removeClass('hidden');
                                 } else {
-                                    var newCourseComposition = new CompositionModel(),
-                                        newCourseRun = new CompositionModel(),
+                                    var newCourseComposition = new RepositoryModel(),
+                                        newCourseRun = new RepositoryModel(),
                                         _this = this;
 
                                     newCourseComposition.set('genusTypeId', 'edx-composition%3Acourse%40EDX.ORG');

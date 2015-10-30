@@ -1,20 +1,20 @@
 // apps/dashboard/domains/domain_controller.js
 
 define(["app",
-        "apps/dashboard/domains/collections/user_courses",
-        "apps/dashboard/domains/collections/user_course_offerings",
-        "apps/dashboard/compositions/collections/composition_children",
+        "apps/dashboard/domains/collections/domain_courses",
+        "apps/dashboard/domains/collections/domain_course_offerings",
+        "apps/dashboard/domains/collections/single_run",
         "apps/dashboard/domains/domain_views",
         "apps/common/utilities",
         "cookies"],
-    function(ProducerManager, UserCourseCollection, UserCourseOfferingsCollection,
-             CompositionChildrenCollection,
+    function(ProducerManager, DomainCourseCollection, DomainCourseOfferingsCollection,
+             SingleRunCollection,
              DomainViews, Utils, Cookies){
   ProducerManager.module("ProducerApp.Domain", function(Domain, ProducerManager, Backbone, Marionette, $, _){
     Domain.Controller = {
       listUserCourses: function (id) {
         require(["apps/dashboard/domains/domain_views"], function(DomainViews){
-            var courses = new UserCourseCollection([], {id: id}),
+            var courses = new DomainCourseCollection([], {id: id}),
                 coursesView = new DomainViews.CoursesView({collection: courses}),
                 coursesPromise = coursesView.collection.fetch();
 
@@ -25,7 +25,7 @@ define(["app",
         });
       },
       listUserCourseRuns: function (courseId) {
-        var runs = new UserCourseOfferingsCollection([], {id: courseId}),
+        var runs = new DomainCourseOfferingsCollection([], {id: courseId}),
             runsView = new DomainViews.RunsView({collection: runs}),
             runsPromise = runsView.collection.fetch({
                 reset: true,
@@ -49,7 +49,7 @@ define(["app",
         console.log('showing runs');
       },
       renderUserCourseRun: function (runId) {
-        var run = new CompositionChildrenCollection([], {id: runId}),
+        var run = new SingleRunCollection([], {id: runId}),
             runView = new DomainViews.SingleRunView({collection: run}),
             runPromise = runView.collection.fetch({
                 reset: true,

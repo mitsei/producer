@@ -17,7 +17,7 @@ from dlkit_django.errors import PermissionDenied, InvalidArgument, IllegalState,
 from dlkit_django.primordium import Type
 from dlkit.mongo.records.types import EDX_COMPOSITION_GENUS_TYPES,\
     COMPOSITION_RECORD_TYPES, REPOSITORY_GENUS_TYPES, OSID_OBJECT_RECORD_TYPES,\
-    EDX_ASSET_CONTENTS_GENUS_TYPES, EDX_ASSESSMENT_ITEM_GENUS_TYPES
+    EDX_ASSET_CONTENTS_GENUS_TYPES, EDX_ASSESSMENT_ITEM_GENUS_TYPES, REPOSITORY_RECORD_TYPES
 
 from dysonx.dysonx import get_or_create_user_repo, _get_genus_type,\
     _get_asset_content_genus_type
@@ -27,8 +27,13 @@ from utilities import repository as rutils
 from producer.tasks import import_file
 from producer.views import ProducerAPIViews
 
+LORE_REPO_RECORD_TYPE = Type(**REPOSITORY_RECORD_TYPES['lore-repo'])
+COURSE_REPO_RECORD_TYPE = Type(**REPOSITORY_RECORD_TYPES['course-repo'])
+COURSE_RUN_REPO_RECORD_TYPE = Type(**REPOSITORY_RECORD_TYPES['run-repo'])
 
 DOMAIN_REPO_GENUS = Type(**REPOSITORY_GENUS_TYPES['domain-repo'])
+COURSE_REPO_GENUS = Type(**REPOSITORY_GENUS_TYPES['course-repo'])
+COURSE_RUN_REPO_GENUS = Type(**REPOSITORY_GENUS_TYPES['course-run-repo'])
 USER_REPO_GENUS = Type(**REPOSITORY_GENUS_TYPES['user-repo'])
 COURSE_NODE_GENUS_TYPE = Type(**EDX_COMPOSITION_GENUS_TYPES['course'])
 
@@ -833,8 +838,17 @@ class RepositoriesList(ProducerAPIViews):
                                                  self.data['description'])
             else:
                 if 'bankId' not in self.data:
-                    form = self.rm.get_repository_form_for_create([])
-                    gutils.verify_keys_present(self.data, ['displayName', 'description'])
+                    gutils.verify_keys_present(self.data, ['displayName', 'description', 'genusTypeId'])
+                    if self.data['genusTypeId'] == str(COURSE_RUN_REPO_GENUS):
+                        # is a run
+                        form = self.rm.get_repository_form_for_create([LORE_REPO_RECORD_TYPE,
+                                                                       COURSE_RUN_REPO_RECORD_TYPE])
+                        gutils.verify_keys_present(self.data, ['parentId'])
+                    else:
+                        # is a course
+                        form = self.rm.get_repository_form_for_create([LORE_REPO_RECORD_TYPE,
+                                                                       COURSE_REPO_RECORD_TYPE])
+                        form.set_org('MITx')
                     finalize_method = self.rm.create_repository
                 else:
                     repository = self.rm.get_repository(gutils.clean_id(self.data['bankId']))
@@ -843,6 +857,11 @@ class RepositoriesList(ProducerAPIViews):
 
                 form = gutils.set_form_basics(form, self.data)
                 repo = finalize_method(form)
+
+                if ('genusTypeId' in self.data and
+                        self.data['genusTypeId'] == str(COURSE_RUN_REPO_GENUS)):
+                    self.rm.add_child_repository(gutils.clean_id(self.data['parentId']),
+                                                 repo.ident)
 
             new_repo = gutils.convert_dl_object(repo)
 

@@ -2660,10 +2660,11 @@ class RepositoryCrUDTests(AssessmentTestCase, RepositoryTestCase):
         self.demo_course.close()
         self.non_course.close()
 
-    def test_can_create_new_repository(self):
+    def test_can_create_new_course_repository(self):
         payload = {
             'displayName': 'my new repository',
-            'description': 'for testing with'
+            'description': 'for testing with',
+            'genusTypeId': 'repository-genus-type%3Acourse-repo%40ODL.MIT.EDU'
         }
         req = self.client.post(self.url,
                                data=payload,
@@ -2678,6 +2679,49 @@ class RepositoryCrUDTests(AssessmentTestCase, RepositoryTestCase):
             repo['description']['text'],
             payload['description']
         )
+
+        self.assertEqual(
+            repo['genusTypeId'],
+            payload['genusTypeId']
+        )
+
+    def test_can_create_new_course_run_repository(self):
+        course = self.create_new_course_repo()
+        payload = {
+            'displayName': 'my new repository',
+            'description': 'for testing with',
+            'genusTypeId': 'repository-genus-type%3Acourse-run-repo%40ODL.MIT.EDU',
+            'parentId': str(course.ident)
+        }
+        req = self.client.post(self.url,
+                               data=payload,
+                               format='json')
+        self.created(req)
+        repo = self.json(req)
+        self.assertEqual(
+            repo['displayName']['text'],
+            payload['displayName']
+        )
+        self.assertEqual(
+            repo['description']['text'],
+            payload['description']
+        )
+        self.assertEqual(
+            repo['genusTypeId'],
+            payload['genusTypeId']
+        )
+
+
+    def test_creating_course_run_repository_requires_parent_id(self):
+        payload = {
+            'displayName': 'my new repository',
+            'description': 'for testing with',
+            'genusTypeId': 'repository-genus-type%3Acourse-run-repo%40ODL.MIT.EDU'
+        }
+        req = self.client.post(self.url,
+                               data=payload,
+                               format='json')
+        self.code(req, 500)
 
     def test_can_create_orchestrated_repository_with_default_attributes(self):
         payload = {
