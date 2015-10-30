@@ -106,7 +106,7 @@ define(["app",
                     'You cannot add resources to the root level.');
             } else {
                 var runId = $('select.run-selector').val(),
-                    parentRun = new CompositionModel({id: runId});
+                    parentRun = new RepositoryModel({id: runId});
 
                 $parent.children(':visible').not('.no-children,.ui-sortable-helper').each(function () {
                     var thisObj = $(this).children('div.object-wrapper').data('obj');
