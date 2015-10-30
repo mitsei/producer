@@ -29,9 +29,8 @@ define([
     };
 
     ProducerManager.on('before:start', function () {
-        var socketBaseUrl = window.location.protocol + '//' + window.location.hostname + ':8888/',
-            secure = window.location.protocol === 'https',
-            conn = io.connect(socketBaseUrl, {secure: secure});
+        var socketBaseUrl = 'http://' + window.location.hostname + ':8888/',
+            conn = io.connect(socketBaseUrl);
 
         ProducerManager.regions = new RegionContainer();
 
