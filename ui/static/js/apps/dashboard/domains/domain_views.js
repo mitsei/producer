@@ -315,11 +315,10 @@ define(["app",
                                 if (courseOffering === "") {
                                     $('div.create-run-warning').removeClass('hidden');
                                 } else {
-                                    var newCourseRun = new CompositionModel(),
+                                    var newCourseRun = new RepositoryModel(),
                                         _this = this;
 
-                                    newCourseRun.set('genusTypeId', 'edx-composition%3Aoffering%40EDX.ORG');
-                                    newCourseRun.set('repositoryId', Utils.userRepoId());
+                                    newCourseRun.set('genusTypeId', 'repository-genus-type%3Acourse-run-repo%40ODL.MIT.EDU');
                                     newCourseRun.set('displayName', courseOffering);
                                     newCourseRun.set('description', 'A single offering');
                                     newCourseRun.set('parentId', courseId);

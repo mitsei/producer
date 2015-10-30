@@ -59,7 +59,7 @@ define(["app",
                 }
             }),
             downloadUrl = window.location.protocol + '//' + window.location.hostname +
-                ':' + window.location.port + '/api/v1/repository/compositions/' + runId +
+                ':' + window.location.port + '/api/v1/repository/repositories/' + runId +
                 '/download/';
 
         Utils.processing();
