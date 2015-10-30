@@ -858,10 +858,13 @@ class RepositoriesList(ProducerAPIViews):
                 form = gutils.set_form_basics(form, self.data)
                 repo = finalize_method(form)
 
-                if ('genusTypeId' in self.data and
-                        self.data['genusTypeId'] == str(COURSE_RUN_REPO_GENUS)):
-                    self.rm.add_child_repository(gutils.clean_id(self.data['parentId']),
-                                                 repo.ident)
+                if 'genusTypeId' in self.data:
+                    if self.data['genusTypeId'] == str(COURSE_RUN_REPO_GENUS):
+                        self.rm.add_child_repository(gutils.clean_id(self.data['parentId']),
+                                                     repo.ident)
+                    elif self.data['genusTypeId'] == str(COURSE_REPO_GENUS):
+                        self.rm.add_child_repository(get_or_create_user_repo(request.user.username).ident,
+                                                     repo.ident)
 
             new_repo = gutils.convert_dl_object(repo)
 

@@ -35,6 +35,7 @@ define(["app",
                     Cookies.set('runId', runId);
 
                     require(["apps/dashboard/domains/domain_controller"], function (DomainController) {
+                        executeAction(DomainController.listUserCourses, Utils.userRepoId());
                         executeAction(DomainController.listUserCourseRuns, courseId);
                         executeAction(DomainController.renderUserCourseRun, runId);
                     });
@@ -54,6 +55,7 @@ define(["app",
                     Cookies.set('courseId', courseId);
                     Cookies.remove('runId');
                     require(["apps/dashboard/domains/domain_controller"], function (DomainController) {
+                        executeAction(DomainController.listUserCourses, Utils.userRepoId());
                         executeAction(DomainController.listUserCourseRuns, courseId);
                     });
                 }

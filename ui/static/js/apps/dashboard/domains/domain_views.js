@@ -190,8 +190,7 @@ define(["app",
                                         newCourseRun = new RepositoryModel(),
                                         _this = this;
 
-                                    newCourseComposition.set('genusTypeId', 'edx-composition%3Acourse%40EDX.ORG');
-                                    newCourseComposition.set('repositoryId', Utils.userRepoId());
+                                    newCourseComposition.set('genusTypeId', 'repository-genus-type%3Acourse-repo%40ODL.MIT.EDU');
                                     newCourseComposition.set('displayName', courseName);
                                     newCourseComposition.set('description', courseDesc);
 
@@ -209,11 +208,10 @@ define(["app",
                                                 .attr('selected', false);
                                             $courseOption.insertAfter($s.children('option[value="-1"]'));
 
-                                            newCourseRun.set('genusTypeId', 'edx-composition%3Aoffering%40EDX.ORG');
-                                            newCourseRun.set('repositoryId', Utils.userRepoId());
+                                            newCourseRun.set('genusTypeId', 'repository-genus-type%3Acourse-run-repo%40ODL.MIT.EDU');
                                             newCourseRun.set('displayName', courseOffering);
                                             newCourseRun.set('description', 'A single offering');
-                                            newCourseRun.set('parentId', data.id);
+                                            newCourseRun.set('parentId', createdCourseId);
 
                                             newCourseRun.save(null, {
                                                 success: function (data) {
@@ -281,6 +279,11 @@ define(["app",
             if (runId === '-1') {
                 return;
             }
+
+            if (typeof courseId === 'undefined') {
+                courseId = Utils.cookie('courseId');
+            }
+
             if (runId !== 'create') {
                 ProducerManager.navigate("edit/" + courseId + '/' + runId);
                 require(["apps/dashboard/domains/domain_controller"], function(DomainController){
