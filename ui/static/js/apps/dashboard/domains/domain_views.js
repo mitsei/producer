@@ -62,6 +62,7 @@ define(["app",
                     canEditParent: canEditParent,
                     composition: child,
                     compositionType: Utils.parseGenusType(child),
+                    exportUrl: Utils.compositionExportUrl(child),
                     rawObject: JSON.stringify(child)
                 }));
                 $wrapper.addClass('composition');
@@ -365,6 +366,7 @@ define(["app",
                     canEditParent: canEditParent,
                     composition: serializedData,
                     compositionType: Utils.parseGenusType(serializedData.genusTypeId),
+                    exportUrl: Utils.compositionExportUrl(serializedData),
                     rawObject: JSON.stringify(serializedData)
                 });
             } else {
@@ -459,6 +461,7 @@ define(["app",
                                     canEditParent: true,
                                     composition: rawObj,
                                     compositionType: Utils.parseGenusType(rawObj),
+                                    exportUrl: Utils.compositionExportUrl(rawObj),
                                     rawObject: JSON.stringify(rawObj)
                                 }));
                             } else {
@@ -505,7 +508,7 @@ define(["app",
             var $e = $(e.currentTarget),
                 $liParent = $e.parent().parent().parent().parent().parent(),
                 $wrapper = $liParent.children('div.object-wrapper'),
-                $icon = $wrapper.find('.composition-icon'),
+                $icon = $wrapper.find('.content-type'),
                 obj = $wrapper.data('obj'),
                 objId = obj.id,
                 originalGenus = Utils.parseGenusType(obj.genusTypeId),
@@ -518,9 +521,10 @@ define(["app",
                     // now change it in the UI and update the raw object
                     $wrapper.removeClass(originalGenus)
                         .addClass(newType);
-                    $icon.removeClass('composition-' + originalGenus)
-                        .addClass('composition-' + newType);
+                    $icon.removeClass('badge-' + originalGenus)
+                        .addClass('badge-' + newType);
                     $icon.attr('title', newType);
+                    $icon.text(newType);
 
                     obj.genusTypeId = response.genusTypeId;
 
@@ -707,7 +711,8 @@ define(["app",
                 $composition = $e.parent().parent().parent().parent().parent(),  // is the <li> element
                 compositionId = $composition.children('.object-wrapper')
                     .data('obj').id,
-                composition = new CompositionModel({id: compositionId}),
+                composition = new CompositionModel({id: compositionId},
+                    {repositoryId: Utils.runId()}),
                 parentId;
 
             if ($composition.parent().hasClass('run-list')) {
@@ -728,6 +733,7 @@ define(["app",
                     canEditParent: true,
                     composition: data,
                     compositionType: Utils.parseGenusType(data),
+                    exportUrl: Utils.compositionExportUrl(data),
                     rawObject: JSON.stringify(data)
                 }));
                 console.log(data);

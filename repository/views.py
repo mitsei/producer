@@ -530,9 +530,10 @@ class CompositionDownload(ProducerAPIViews):
             composition = repository.get_composition(gutils.clean_id(composition_id))
 
             if str(composition.genus_type) != str(Type(**EDX_COMPOSITION_GENUS_TYPES['offering'])):
-                raise InvalidArgument('You can only download run repositories.')
-
-            filename, olx = composition.export_run_olx()
+                # raise InvalidArgument('You can only download run repositories.')
+                filename, olx = composition.export_standalone_olx()
+            else:
+                filename, olx = composition.export_run_olx()
 
             response = HttpResponse(content_type="application/tar")
             response['Content-Disposition'] = 'attachment; filename=%s' % filename
@@ -1464,7 +1465,7 @@ class UnlockComposition(ProducerAPIViews):
 
     POST
     """
-    def post(self, request, composition_id, format=None):
+    def post(self, request, composition_id, repository_id=None, format=None):
         try:
             repository = rutils.get_object_repository(self.rm,
                                                       composition_id,

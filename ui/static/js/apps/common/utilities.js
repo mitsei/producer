@@ -19,6 +19,10 @@ define(["jquery", "underscore", "cookies"],
             return text;
         };
 
+        utils.compositionExportUrl = function (obj) {
+            return window.location.protocol + '//' + window.location.hostname + (window.location.port ? ':' + window.location.port : '') + '/api/v1/repository/compositions/' + obj.id + '/download/';
+        };
+
         utils.cookie = function (name) {
             var cookieValue = typeof Cookies.get(name) === 'undefined' ? '-1' : Cookies.get(name);
 

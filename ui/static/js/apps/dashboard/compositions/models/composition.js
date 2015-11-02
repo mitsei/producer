@@ -33,8 +33,8 @@ define(["backbone"],
             }
         },
         unlock: function (parentId, _callback) {
-            if (this.id) {
-                var url = '/api/v1/repository/compositions/' + this.id + '/unlock/',
+            if (this.id && this.options.repositoryId) {
+                var url = '/api/v1/repository/repositories/' + this.options.repositoryId + '/compositions/' + this.id + '/unlock/',
                     _this = this;
 
                 Backbone.ajax({
@@ -52,6 +52,8 @@ define(["backbone"],
                         console.log('Unlock not successful...');
                     });
                 });
+            } else {
+                console.log('Cannot unlock something unless you provide a repositoryId.');
             }
         },
         updateAssets: function (assetIds) {

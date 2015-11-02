@@ -3,11 +3,11 @@
         <% if (canEditParent) { %>
             <div class="drag-handles"></div>
         <% } %>
-        <div class="composition-icon composition-<%- compositionType %>" title="<%- compositionType %>">
-            <div class="ic-custom"></div>
-        </div>
         <div class="vertical-box">
             <div class="vertical-content">
+                <span class="content-type badge badge-<%-compositionType %>">
+                    <%- compositionType %>
+                </span>
                 <span class="display-name">
                     <%- composition.displayName.text %>
                 </span>
@@ -21,10 +21,10 @@
                         <i aria-hidden="true" class="fa fa-eye"></i>
                         Preview
                     </span>
-                    <span class="export-composition export clickable">
+                    <a class="export-composition export clickable" target="_blank" href="<%- exportUrl %>">
                         <i aria-hidden="true" class="fa fa-arrow-right"></i>
                         Export
-                    </span>
+                    </a>
                 </div>
             </div>
         </div>

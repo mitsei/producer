@@ -137,6 +137,10 @@ div.ic-custom {
     border-color:#B01574; /* purple */
 }
 
+.badge-chapter {
+    background-color: #B01574; /* purple */
+}
+
 .composition-chapter div {
     background-image: url("/static/images/ic-book.png");
     background-repeat: no-repeat;
@@ -148,6 +152,10 @@ div.ic-custom {
     border-color:#417505; /* green */
 }
 
+.badge-sequential {
+    background-color: #417505; /* green */
+}
+
 .composition-sequential div {
     background-image: url("/static/images/ic-sequential.png");
     background-repeat: no-repeat;
@@ -157,6 +165,10 @@ div.ic-custom {
 
 .composition-split_test {
     border-color: orange;
+}
+
+.badge-split_test {
+    background-color: orange;
 }
 
 .composition-split_test div {
@@ -171,6 +183,10 @@ div.ic-custom {
 
 .composition-vertical {
     border-color:#C24242; /* red */
+}
+
+.badge-vertical {
+    background-color: #C24242; /* red */
 }
 
 .composition-vertical div {
@@ -189,6 +205,7 @@ div.ic-custom {
 }
 
 div.composition-actions span,
+div.composition-actions a,
 div.resource-actions span {
     color: blue;
 }
@@ -324,6 +341,10 @@ ul.repository-navbar button.repository-btn {
     border-color:#1589B0; /* blue */
 }
 
+.badge-problem {
+    background-color: #1589B0; /* blue */;
+}
+
 .resource-problem div.ic-custom {
     background-image: url("/static/images/ic-pieces.png");
     background-repeat: no-repeat;
@@ -333,6 +354,10 @@ ul.repository-navbar button.repository-btn {
 
 .resource-html {
     border-color:#F5A623; /* yellow */
+}
+
+.badge-html {
+    background-color: #F5A623; /* yellow */
 }
 
 .resource-html div.ic-custom {
@@ -345,6 +370,11 @@ ul.repository-navbar button.repository-btn {
 .resource-video,
 .resource-videoalpha {
     border-color:#5C7694; /* navy blue */
+}
+
+.badge-video,
+.badge-videoalpha {
+    background-color: #5C7694; /* navy blue */
 }
 
 .resource-video div.ic-custom,
@@ -387,8 +417,9 @@ li.resource.resortable div.resource-row .vertical-box {
     cursor: pointer;
 }
 
-.show-preview:hover {
-    text-decoration: underline;
+.show-preview:hover,
+.export-composition:hover {
+    text-decoration: none;
     font-weight: bold;
 }
 
@@ -686,9 +717,9 @@ li.resortable {
     background: repeating-linear-gradient(
                     45deg,
                     white,
-                    white 10px,
-                    #FFF0F0 10px,
-                    #FFF0F0 20px
+                    white 40px,
+                    #FFF0F0 5px,
+                    #FFF0F0 45px
                 );
 }
 

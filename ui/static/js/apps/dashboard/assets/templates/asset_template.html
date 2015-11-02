@@ -3,11 +3,11 @@
         <% if (canEditParent) { %>
             <div class="drag-handles"></div>
         <% } %>
-        <div class="resource-icon resource-<%- resourceType %>" title="<%- resourceType %>">
-            <div class="ic-custom"></div>
-        </div>
         <div class="vertical-box">
             <div class="vertical-content">
+                <span class="content-type badge badge-<%-resourceType %>">
+                    <%- resourceType %>
+                </span>
                 <span class="display-name">
                     <%- resource.displayName.text %>
                 </span>
@@ -29,7 +29,7 @@
             </div>
         </div>
         <div class="pull-right resource-options">
-            <% if (canEditParent) { %>
+<!--            <% if (canEditParent) { %>
                 <% if (!canEdit) { %>
                     <div class="">
                         <button class="btn btn-success unlock-resource">
@@ -37,7 +37,7 @@
                             Unlock Resource
                         </button>
                     </div>
-                <% } %>
+                <% } %> -->
                 <div class="">
                     <button class="btn btn-warning remove-resource">
                         <i aria-hidden="true" class="fa fa-trash-o"></i>
