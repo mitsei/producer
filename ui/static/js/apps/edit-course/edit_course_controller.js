@@ -11,9 +11,6 @@ define(["app",
           ProducerManager.regions.addRegion('course', '#course-selector-region');
           ProducerManager.regions.addRegion('courseActions', '#course-actions-region');
           ProducerManager.regions.addRegion('run', '#run-selector-region');
-          require(["apps/course-actions/views/course_action_views"], function (CourseActionsViews) {
-              ProducerManager.regions.courseActions.show(new CourseActionsViews.CourseActionsView({}));
-          });
       }
     }
   });
