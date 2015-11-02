@@ -62,7 +62,7 @@ define(["app",
                     canEditParent: canEditParent,
                     composition: child,
                     compositionType: Utils.parseGenusType(child),
-                    exportUrl: Utils.compositionExportUrl(child),
+                    exportUrl: Utils.exportUrl(child),
                     rawObject: JSON.stringify(child)
                 }));
                 $wrapper.addClass('composition');
@@ -70,6 +70,7 @@ define(["app",
                 $wrapper.append(_.template(ResourceTemplate)({
                     canEdit: canEdit,
                     canEditParent: canEditParent,
+                    exportUrl: Utils.exportUrl(child),
                     resource: child,
                     resourceType: Utils.parseGenusType(child),
                     rawObject: JSON.stringify(child)
@@ -366,13 +367,14 @@ define(["app",
                     canEditParent: canEditParent,
                     composition: serializedData,
                     compositionType: Utils.parseGenusType(serializedData.genusTypeId),
-                    exportUrl: Utils.compositionExportUrl(serializedData),
+                    exportUrl: Utils.exportUrl(serializedData),
                     rawObject: JSON.stringify(serializedData)
                 });
             } else {
                 return _.template(ResourceTemplate)({
                     canEdit: canEdit,
                     canEditParent: canEditParent,
+                    exportUrl: Utils.exportUrl(serializedData),
                     resource: serializedData,
                     resourceType: Utils.parseGenusType(serializedData),
                     rawObject: JSON.stringify(serializedData)
@@ -461,7 +463,7 @@ define(["app",
                                     canEditParent: true,
                                     composition: rawObj,
                                     compositionType: Utils.parseGenusType(rawObj),
-                                    exportUrl: Utils.compositionExportUrl(rawObj),
+                                    exportUrl: Utils.exportUrl(rawObj),
                                     rawObject: JSON.stringify(rawObj)
                                 }));
                             } else {
@@ -469,6 +471,7 @@ define(["app",
                                 $newObj.append(_.template(ResourceTemplate)({
                                     canEdit: false,
                                     canEditParent: true,
+                                    exportUrl: Utils.exportUrl(rawObj),
                                     resource: rawObj,
                                     resourceType: Utils.parseGenusType(rawObj),
                                     rawObject: JSON.stringify(rawObj)
@@ -677,8 +680,7 @@ define(["app",
         },
         toggleCompositionChildren: function (e) {
             var $e = $(e.currentTarget),
-                $footer = $e.parent(),
-                $composition = $e.parent().parent().parent(),
+                $composition = $e.closest('li.resortable.composition'),
                 compositionId = $composition.children('.object-wrapper')
                     .data('obj').id,
                 childrenCollection = new CompositionChildrenCollection([],
@@ -690,7 +692,6 @@ define(["app",
                 promise;
 
             $children.toggleClass('hidden');
-            $footer.toggleClass('expanded');
             $e.find('.children-icon').toggleClass('fa-chevron-up')
                 .toggleClass('fa-chevron-down');
             $e.find('.children-action-hide').toggleClass('hidden');
@@ -733,7 +734,7 @@ define(["app",
                     canEditParent: true,
                     composition: data,
                     compositionType: Utils.parseGenusType(data),
-                    exportUrl: Utils.compositionExportUrl(data),
+                    exportUrl: Utils.exportUrl(data),
                     rawObject: JSON.stringify(data)
                 }));
                 console.log(data);

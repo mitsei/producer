@@ -1,6 +1,8 @@
+import os
 import json
 
 from django.db import IntegrityError
+from django.http import HttpResponse
 
 from dlkit_django.errors import *
 from dlkit_django.primitives import Type
@@ -377,4 +379,31 @@ class ItemDetails(ProducerAPIViews):
             data = gutils.convert_dl_object(full_item)
             return gutils.UpdatedResponse(data)
         except (PermissionDenied, Unsupported, InvalidArgument) as ex:
+            gutils.handle_exceptions(ex)
+
+
+class ItemDownload(ProducerAPIViews):
+    """
+    Download a single item.
+    api/v1/assessment/items/<item_id>/download/
+
+    GET
+    """
+    def get(self, request, item_id, format=None):
+        try:
+            bank = autils.get_object_bank(self.am,
+                                          item_id,
+                                          'item')
+            item = bank.get_item(gutils.clean_id(item_id))
+
+            filename, olx = item.export_standalone_olx()
+
+            response = HttpResponse(content_type="application/tar")
+            response['Content-Disposition'] = 'attachment; filename=%s' % filename
+            olx.seek(0, os.SEEK_END)
+            response.write(olx.getvalue())
+            olx.close()
+
+            return response
+        except (PermissionDenied, InvalidArgument, NotFound) as ex:
             gutils.handle_exceptions(ex)

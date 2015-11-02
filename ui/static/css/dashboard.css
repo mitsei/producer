@@ -125,7 +125,7 @@ div.ic-custom {
     color: darkviolet;
 }
 
-.composition-footer:hover {
+.toggle-composition-children:hover {
     font-weight: bold;
 }
 
@@ -206,13 +206,17 @@ div.ic-custom {
 
 div.composition-actions span,
 div.composition-actions a,
-div.resource-actions span {
+div.resource-actions span,
+div.resource-actions a {
     color: blue;
 }
 
 .composition-actions,
 .resource-actions {
     margin-left: 5px;
+    display: flex;
+    display: -webkit-flex;
+    justify-content: space-between;
 }
 
 .composition-actions span,
@@ -418,7 +422,8 @@ li.resource.resortable div.resource-row .vertical-box {
 }
 
 .show-preview:hover,
-.export-composition:hover {
+.export-composition:hover,
+.export-resource:hover {
     text-decoration: none;
     font-weight: bold;
 }

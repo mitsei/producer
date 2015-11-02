@@ -7,6 +7,10 @@ define(["jquery", "underscore", "cookies"],
 
         utils.activeUser = $('span.active-user').text().trim();
 
+        utils.assetExportUrl = function (obj) {
+            return window.location.protocol + '//' + window.location.hostname + (window.location.port ? ':' + window.location.port : '') + '/api/v1/repository/assets/' + obj.id + '/download/';
+        };
+
         utils.bindDialogCloseEvents = function () {
             $('div[role="dialog"] button.ui-dialog-titlebar-close').text('x');
 
@@ -42,6 +46,16 @@ define(["jquery", "underscore", "cookies"],
             $('body').removeClass('processing');
         };
 
+        utils.exportUrl = function (obj) {
+            if (obj.type === 'Composition') {
+                return utils.compositionExportUrl(obj);
+            } else if (obj.type === 'Asset') {
+                return utils.assetExportUrl(obj);
+            } else {
+                return utils.itemExportUrl(obj);
+            }
+        };
+
         utils.genusType = function (identifier) {
             return utils.id('edx-composition',
                 identifier,
@@ -71,6 +85,10 @@ define(["jquery", "underscore", "cookies"],
 
         utils.id = function (namespace, identifier, authority) {
             return namespace + '%3A' + identifier + '%40' + authority;
+        };
+
+        utils.itemExportUrl = function (obj) {
+            return window.location.protocol + '//' + window.location.hostname + (window.location.port ? ':' + window.location.port : '') + '/api/v1/assessment/items/' + obj.id + '/download/';
         };
 
         utils.parseGenusType = function (genusTypeStr) {

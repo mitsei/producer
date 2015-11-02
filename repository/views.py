@@ -206,6 +206,33 @@ class AssetDetails(ProducerAPIViews):
             gutils.handle_exceptions(ex)
 
 
+class AssetDownload(ProducerAPIViews):
+    """
+    Download a single asset.
+    api/v1/repository/assets/<asset_id>/download/
+
+    GET
+    """
+    def get(self, request, asset_id, format=None):
+        try:
+            repository = rutils.get_object_repository(self.rm,
+                                                      asset_id,
+                                                      'asset')
+            asset = repository.get_asset(gutils.clean_id(asset_id))
+
+            filename, olx = asset.export_standalone_olx()
+
+            response = HttpResponse(content_type="application/tar")
+            response['Content-Disposition'] = 'attachment; filename=%s' % filename
+            olx.seek(0, os.SEEK_END)
+            response.write(olx.getvalue())
+            olx.close()
+
+            return response
+        except (PermissionDenied, InvalidArgument, NotFound) as ex:
+            gutils.handle_exceptions(ex)
+
+
 class AssetsList(ProducerAPIViews):
     """
     Get or add assets to a repository

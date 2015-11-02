@@ -25,6 +25,10 @@
                         <i aria-hidden="true" class="fa fa-arrow-right"></i>
                         Export
                     </a>
+                    <span class="toggle-composition-children">
+                        <i aria-hidden="true" class="children-icon fa fa-chevron-down"></i>
+                        Click here to <span class="children-action-hide hidden">hide</span><span class="children-action-show">show</span> the children objects.
+                    </span>
                 </div>
             </div>
         </div>
@@ -67,12 +71,6 @@
                 </div>
             <% } %>
         </div>
-    </div>
-    <div class="composition-footer expanded text-center">
-        <span class="toggle-composition-children">
-            <i aria-hidden="true" class="children-icon fa fa-chevron-down"></i>
-            Click here to <span class="children-action-hide hidden">hide</span><span class="children-action-show">show</span> the children objects.
-        </span>
     </div>
 </div>
 <ul class="children-compositions hidden can-edit-state-<%- canEdit %>">

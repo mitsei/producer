@@ -11,6 +11,8 @@ urlpatterns = patterns('',
         views.AssessmentBanksList.as_view()),
     url(r'^items/(?P<item_id>[-.:@%\d\w]+)/?$',
         views.ItemDetails.as_view()),
+    url(r'^items/(?P<item_id>[-.:@%\d\w]+)/download/?$',
+        views.ItemDownload.as_view()),
     url(r'^items/?$',
         views.ItemsList.as_view()),
 )
