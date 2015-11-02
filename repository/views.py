@@ -955,17 +955,11 @@ class QueryHelpersMixin(object):
                 asset_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
                 composition_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
                 item_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
-        import logging
-        import time
-        logging.info('making asset query: ' + str(time.time()))
         if composition_id is not None:
             # match the composition descendants
             asset_querier.match_composition_descendants(composition_id, repo.ident, True)
-            logging.info('making composition query: ' + str(time.time()))
             composition_querier.match_composition_descendants(composition_id, repo.ident, True)
-            logging.info('making item query: ' + str(time.time()))
             item_querier.match_composition_descendants(composition_id, repo.ident, True)
-            logging.info('done: ' + str(time.time()))
 
         return asset_querier, composition_querier, item_querier
 
@@ -997,9 +991,6 @@ class QueryHelpersMixin(object):
                     counts[genus_type.identifier][0] += getattr(catalog, get_method)(querier).available()
 
     def _count_objects(self, run_identifier, asset_counts, domain_repo):
-        import logging
-        import time
-        logging.info('starting count: ' + str(time.time()))
         if isinstance(run_identifier, basestring):
             run_identifier = gutils.clean_id(run_identifier)
         if 'repository.Repository' in str(run_identifier):
@@ -1016,11 +1007,9 @@ class QueryHelpersMixin(object):
         composition_genus_types = EDX_COMPOSITION_GENUS_TYPES_FOR_FACETS
         item_genus_types = EDX_ASSESSMENT_GENUS_TYPES_FOR_FACETS
 
-        logging.info('making queries: ' + str(time.time()))
         asset_querier, composition_querier, item_querier = self._construct_count_queries(repo,
                                                                                          composition_id)
 
-        logging.info('counting assets: ' + str(time.time()))
         self._count_type(asset_counts,
                          asset_genus_types,
                          asset_querier,
@@ -1029,7 +1018,6 @@ class QueryHelpersMixin(object):
                          'match_asset_content_genus_type',
                          'get_assets_by_query')
 
-        logging.info('counting compositions: ' + str(time.time()))
         self._count_type(asset_counts,
                          composition_genus_types,
                          composition_querier,
@@ -1038,7 +1026,6 @@ class QueryHelpersMixin(object):
                          'match_genus_type',
                          'get_compositions_by_query')
 
-        logging.info('counting items: ' + str(time.time()))
         self._count_type(asset_counts,
                          item_genus_types,
                          item_querier,
@@ -1046,8 +1033,6 @@ class QueryHelpersMixin(object):
                          'clear_genus_type_terms',
                          'match_genus_type',
                          'get_items_by_query')
-
-        logging.info('done counting: ' + str(time.time()))
 
     def _get_all_items(self, run_id, repository=None):
         if isinstance(run_id, basestring):
@@ -1066,9 +1051,6 @@ class QueryHelpersMixin(object):
         # these items / assets / compositions must be children
         # of the descendants of the passed-in composition
         # So add in a query filter for them all
-        import logging
-        import time
-        logging.info('getting all items via composition: ' + str(time.time()))
         if isinstance(repo, dict):
             repo = self.rm.get_repository(gutils.clean_id(repo['id']))
         bank = self.am.get_bank(repo.ident)
@@ -1080,7 +1062,6 @@ class QueryHelpersMixin(object):
         composition_querier = None
         item_querier = None
 
-        logging.info('matching facet types: ' + str(time.time()))
         # match facet selected types
         if self.facet_resource_types is not None:
             for resource_type in self.facet_resource_types:
@@ -1106,7 +1087,6 @@ class QueryHelpersMixin(object):
             item_querier = bank.get_item_query()
             item_querier.match_any(True)
 
-        logging.info('adding composition descendant filters: ' + str(time.time()))
         # match the composition descendants
         if asset_querier is not None:
             asset_querier.match_composition_descendants(composition.ident, repo.ident, True)
@@ -1115,7 +1095,6 @@ class QueryHelpersMixin(object):
         if item_querier is not None:
             item_querier.match_composition_descendants(composition.ident, repo.ident, True)
 
-        logging.info('matching query terms: ' + str(time.time()))
         # match query terms
         if self.query_params is not None and self.query_params != ['']:
             for term in self.query_params:
@@ -1126,7 +1105,6 @@ class QueryHelpersMixin(object):
                 if item_querier is not None:
                     item_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
 
-        logging.info('running query: ' + str(time.time()))
         # run query
         if asset_querier is not None:
             all_assets = repo.get_assets_by_query(asset_querier)
@@ -1141,7 +1119,6 @@ class QueryHelpersMixin(object):
         else:
             all_items = None
 
-        logging.info('returning: ' + str(time.time()))
         return all_assets, all_compositions, all_items
 
     def _get_all_items_by_repo(self, repo):
@@ -1208,28 +1185,28 @@ class QueryHelpersMixin(object):
         return all_assets, all_compositions, all_items
 
     def _get_run_map(self, repository):
-        if repository.genus_type == DOMAIN_REPO_GENUS:
-            repo_nodes = self.rm.get_repository_nodes(repository_id=gutils.clean_id(repository.ident),
-                                                      ancestor_levels=0,
-                                                      descendant_levels=2,
-                                                      include_siblings=False)
-            repo_nodes = repo_nodes.get_object_node_map()
-            runs = [(r['id'], '{0}, {1}'.format(course['displayName']['text'],
-                                            r['displayName']['text']))
-                for course in repo_nodes['childNodes']
-                for r in course['childNodes']]
-        else:
-            repository.use_unsequestered_composition_view()
-            querier = repository.get_composition_query()
-            querier.match_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['course']), True)
-            course_compositions = repository.get_compositions_by_query(querier)
-            runs = []
-            for course in course_compositions:
-                run_composition_ids = course.get_child_ids()
-                for run_id in run_composition_ids:
-                    run_composition = repository.get_composition(run_id)
-                    runs.append((str(run_composition.ident), '{0}, {1}'.format(course.display_name.text,
-                                                                               run_composition.display_name.text)))
+        # if repository.genus_type == DOMAIN_REPO_GENUS:
+        repo_nodes = self.rm.get_repository_nodes(repository_id=gutils.clean_id(repository.ident),
+                                                  ancestor_levels=0,
+                                                  descendant_levels=2,
+                                                  include_siblings=False)
+        repo_nodes = repo_nodes.get_object_node_map()
+        runs = [(r['id'], '{0}, {1}'.format(course['displayName']['text'],
+                                        r['displayName']['text']))
+            for course in repo_nodes['childNodes']
+            for r in course['childNodes']]
+        # else:
+        #     repository.use_unsequestered_composition_view()
+        #     querier = repository.get_composition_query()
+        #     querier.match_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['course']), True)
+        #     course_compositions = repository.get_compositions_by_query(querier)
+        #     runs = []
+        #     for course in course_compositions:
+        #         run_composition_ids = course.get_child_ids()
+        #         for run_id in run_composition_ids:
+        #             run_composition = repository.get_composition(run_id)
+        #             runs.append((str(run_composition.ident), '{0}, {1}'.format(course.display_name.text,
+        #                                                                        run_composition.display_name.text)))
 
         run_map = {}
         for run in runs:
@@ -1247,14 +1224,10 @@ class RepositoryQueryPlansAvailable(ProducerAPIViews, QueryHelpersMixin):
     """
     def get(self, request, repository_id, format=None):
         try:
-            import logging
-            import time
-            logging.info('starting query: ' + str(time.time()))
             self.facet_resource_types = get_facets_values(self.data, 'resource_type_exact')
             self.facet_course_runs = get_facets_values(self.data, 'course_exact')
             self.query_params = get_query_values(self.data.get('q', None))
 
-            logging.info('got params: ' + str(time.time()))
             facets = {
                 'course': [],
                 'resource_type': []
@@ -1268,20 +1241,16 @@ class RepositoryQueryPlansAvailable(ProducerAPIViews, QueryHelpersMixin):
             if domain_repo.genus_type not in [DOMAIN_REPO_GENUS, USER_REPO_GENUS]:
                 raise InvalidArgument('You can only get query plans for domains or user repos.')
 
-            logging.info('getting run map: ' + str(time.time()))
             run_map = self._get_run_map(domain_repo)
             # first for each repository, get count of its total objects that
             # meet the keyword filter requirement and other facet requirements
-            logging.info('got run map, getting counts: ' + str(time.time()))
             for run_identifier, run_name in run_map.iteritems():
                 course_run_counts[run_name] = [0, run_identifier]
                 if self.facet_course_runs is None:
                     # do all courses
-                    logging.info('getting all items: ' + str(time.time()))
                     run_id = gutils.clean_id(run_identifier)
                     assets, compositions, items = self._get_all_items(run_id, domain_repo)
 
-                    logging.info('got items, counting: ' + str(time.time()))
                     for obj in [assets, compositions, items]:
                         if obj is not None:
                             course_run_counts[run_name][0] += obj.available()
@@ -1289,7 +1258,6 @@ class RepositoryQueryPlansAvailable(ProducerAPIViews, QueryHelpersMixin):
                     self._count_objects(run_id,
                                         asset_counts,
                                         domain_repo)
-                    logging.info('got count: ' + str(time.time()))
                 else:
                     # only do courses that have been selected
                     if any(run_identifier in course for course in self.facet_course_runs):
@@ -1303,8 +1271,6 @@ class RepositoryQueryPlansAvailable(ProducerAPIViews, QueryHelpersMixin):
                         self._count_objects(run_id,
                                             asset_counts,
                                             domain_repo)
-
-            logging.info('got counts, reorganizing: ' + str(time.time()))
 
             count_cases = [(asset_counts, 'resource_type'),
                            (course_run_counts, 'course')]
@@ -1320,7 +1286,6 @@ class RepositoryQueryPlansAvailable(ProducerAPIViews, QueryHelpersMixin):
             return_data = {
                 'facets': facets
             }
-            logging.info('returning: ' + str(time.time()))
             return Response(return_data)
         except (PermissionDenied, InvalidId, InvalidArgument, NotFound) as ex:
             gutils.handle_exceptions(ex)
