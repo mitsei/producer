@@ -95,10 +95,10 @@ def increment(dictionary, key):
 
 
 class CompositionMapMixin(object):
-    def _get_map_with_children(self, obj, renderable=False):
+    def _get_map_with_children(self, obj, renderable=False, repository=None):
         obj_map = obj.object_map
         obj_map['children'] = []
-        for child_tuple in obj.all_children():
+        for child_tuple in obj.all_children(repository=repository):
             child = child_tuple[0]
             can_edit = child_tuple[1]
             if isinstance(child, Item):
@@ -114,7 +114,9 @@ class CompositionMapMixin(object):
                 else:
                     child_map = child.object_map
             else:
-                child_map = self._get_map_with_children(child)
+                child_map = self._get_map_with_children(child,
+                                                        renderable=renderable,
+                                                        repository=repository)
             child_map.update({
                 'canEdit': can_edit
             })
@@ -341,9 +343,13 @@ class CompositionChildrenList(ProducerAPIViews):
 
     GET
     """
-    def get(self, request, composition_id, format=None):
+    def get(self, request, composition_id, repository_id=None, format=None):
         try:
-            repository = get_or_create_user_repo(request.user.username)
+            if repository_id is None:
+                repository = get_or_create_user_repo(request.user.username)
+            else:
+                repository = self.rm.get_repository(gutils.clean_id(repository_id))
+
             repository.use_unsequestered_composition_view()
 
             try:
@@ -606,7 +612,11 @@ class CompositionsList(ProducerAPIViews, CompositionMapMixin):
                   (len(self.data) == 2 and 'nested' in self.data and 'page' in self.data)):
                 compositions = []
                 course_node = rutils.get_course_node(composition_query_session)
-                compositions.append(self._get_map_with_children(course_node))
+                if repository_id is not None:
+                    compositions.append(self._get_map_with_children(course_node,
+                                                                    repository=composition_lookup_session))
+                else:
+                    compositions.append(self._get_map_with_children(course_node))
                 compositions = compositions[0]['children']  # remove the phantom course_node
             else:
                 allowable_query_terms = ['displayName', 'description', 'course', 'chapter',

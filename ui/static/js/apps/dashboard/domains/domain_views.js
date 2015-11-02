@@ -677,7 +677,10 @@ define(["app",
                 $composition = $e.parent().parent().parent(),
                 compositionId = $composition.children('.object-wrapper')
                     .data('obj').id,
-                childrenCollection = new CompositionChildrenCollection([], {id: compositionId}),
+                childrenCollection = new CompositionChildrenCollection([],
+                    {id: compositionId,
+                     repoId: Utils.runId()
+                    }),
                 $children = $composition.children('.children-compositions'),
                 _this = this,
                 promise;

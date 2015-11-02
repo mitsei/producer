@@ -7,10 +7,11 @@ define(["backbone",
     var Compositions = Backbone.Collection.extend({
         initialize: function (models, options) {
             this.id = options.id;
+            this.repoId = options.repoId;
         },
         model: CompositionModel,
         url: function () {
-            return '/api/v1/repository/compositions/' + this.id + '/children/?page=all';
+            return '/api/v1/repository/repositories/' + this.repoId + '/compositions/' + this.id + '/children/?page=all';
         },
         parse: function (response) {
             return response.data.results;
