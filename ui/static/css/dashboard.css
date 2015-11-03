@@ -67,6 +67,10 @@ div.action-menu {
     font-weight: bold;
 }
 
+.composition-row .vertical-box .vertical-footer {
+    margin-bottom: 15px;
+}
+
 .composition-icon,
 .resource-icon {
     border-radius:50%;
@@ -725,6 +729,16 @@ li.resortable {
                     white 40px,
                     #FFF0F0 5px,
                     #FFF0F0 45px
+                );
+}
+
+.can-edit-state-false.alert.alert-info {
+    background: repeating-linear-gradient(
+                    45deg,
+                    #d9edf7,
+                    #d9edf7 40px,
+                    #B4E2F9 5px,
+                    #B4E2F9 45px
                 );
 }
 

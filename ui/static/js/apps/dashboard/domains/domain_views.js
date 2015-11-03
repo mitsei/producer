@@ -500,6 +500,8 @@ define(["app",
         },
         events: {
             'change .switch-genus-type': 'changeCompositionGenusType',
+            'click .export-composition': 'export',
+            'click .export-resource': 'export',
             'click .toggle-composition-children': 'toggleCompositionChildren',
             'click .unlock-composition': 'unlockComposition',
             'click .unlock-resource': 'unlockResource',
@@ -541,17 +543,19 @@ define(["app",
         clearActiveElement: function () {
             $('div.object-wrapper').removeClass('alert alert-info');
         },
+        export: function (e) {
+            var $wrapper = $(e.currentTarget).closest('.object-wrapper');
+            this.setActiveElement($wrapper);
+        },
         hideNoChildren: function (el) {
             $(el).siblings('li.no-children').addClass('hidden');
         },
         previewObject: function (e) {
             var $wrapper = $(e.currentTarget).closest('div.object-wrapper'),
                 rawObj = $wrapper.data('obj'),
-                objId = rawObj.id,
-                $drawer = $('#search-components-menu');
+                objId = rawObj.id;
 
-            this.clearActiveElement();
-            $wrapper.addClass('alert alert-info');
+            this.setActiveElement($wrapper);
 
             if (rawObj.type === 'Composition') {
                 ProducerManager.regions.preview.show(new PreviewViews.CompositionView({
@@ -562,11 +566,6 @@ define(["app",
                     objId: objId
                 }));
             }
-
-            if ($drawer.hasClass('open')) {
-                $drawer.drawer('hide');
-            }
-            $('#add-new-components-btn').removeClass('active');
         },
         refreshNoChildrenWarning: function () {
             _.each(this.$el.find('ul.children-compositions'), function (childList) {
@@ -678,6 +677,18 @@ define(["app",
             });
             Utils.bindDialogCloseEvents();
         },
+        setActiveElement: function ($el) {
+            var $wrapper = $el.closest('div.object-wrapper'),
+                $drawer = $('#search-components-menu');
+
+            this.clearActiveElement();
+            $wrapper.addClass('alert alert-info');
+
+            if ($drawer.hasClass('open')) {
+                $drawer.drawer('hide');
+            }
+            $('#add-new-components-btn').removeClass('active');
+        },
         toggleCompositionChildren: function (e) {
             var $e = $(e.currentTarget),
                 $composition = $e.closest('li.resortable.composition'),
@@ -690,6 +701,8 @@ define(["app",
                 $children = $composition.children('.children-compositions'),
                 _this = this,
                 promise;
+
+            this.setActiveElement($composition.children('.object-wrapper'));
 
             $children.toggleClass('hidden');
             $e.find('.children-icon').toggleClass('fa-chevron-up')
