@@ -58,16 +58,20 @@
                 <% } else { %>
                     <div>
                         <button class="btn btn-success unlock-composition">
-                            <i aria-hidden="true" class="fa fa-lock"></i>
-                            Unlock Component
+                            <i aria-hidden="true" class="fa fa-lock" title="Unlock Composition"></i>
+                            <span class="sr-only">Unlock Component</span>
                         </button>
                     </div>
                 <% } %>
-                <div class="">
-                    <button class="btn btn-warning remove-composition">
-                        <i aria-hidden="true" class="fa fa-trash-o"></i>
-                        Remove Component
+                <div class="btn-group composition-dropdown">
+                    <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Actions <span class="caret"></span>
                     </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="cut-component"><i aria-hidden="true" class="fa fa-scissors"></i> Cut Component</a></li>
+                        <li role="separator" class="divider"></li>
+                        <li><a class="remove-composition"><i aria-hidden="true" class="fa fa-trash-o"></i> Remove Composition</a></li>
+                    </ul>
                 </div>
             <% } %>
         </div>

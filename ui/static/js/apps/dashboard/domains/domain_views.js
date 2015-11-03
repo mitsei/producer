@@ -110,7 +110,7 @@ define(["app",
                 var runId = $('select.run-selector').val(),
                     parentRun = new RepositoryModel({id: runId});
 
-                $parent.children(':visible').not('.no-children,.ui-sortable-helper').each(function () {
+                $parent.children(':visible').not('.no-children,.ui-sortable-helper,.potential-drop-zone').each(function () {
                     var thisObj = $(this).children('div.object-wrapper').data('obj');
                     childIds.push(thisObj.id);
                 });
@@ -121,7 +121,7 @@ define(["app",
             parentObj = $parent.siblings('.composition-object-wrapper')
                 .data('obj');
             parentComposition = new CompositionModel(parentObj);
-            $parent.children(':visible').not('.no-children,.ui-sortable-helper').each(function () {
+            $parent.children(':visible').not('.no-children,.ui-sortable-helper,.potential-drop-zone').each(function () {
                 var thisObj = $(this).children('div.object-wrapper').data('obj');
                 childIds.push(thisObj.id);
             });
@@ -412,6 +412,31 @@ define(["app",
         },
         onShow: function () {
             var _this = this;
+
+            // bind the global key events, to handle cutting / pasting?
+            $('body').unbind('keydown').on('keydown', function (e) {
+                console.log(e);
+                if (e.keyCode === 27 && $(this).hasClass('dragging')) {
+                    // escape key
+                    // cancel the cut / paste operation
+                    _this.cancelCutPaste();
+                } else if (e.keyCode === 86 && (e.metaKey || e.ctrlKey) && $(this).hasClass('dragging')) {
+                    // ctrl-v / cmd-v
+                    // paste at the highlighted drop-zone
+                    if ($('.potential-drop-zone:hover').length > 0) {
+                        _this.pasteTo($('.potential-drop-zone:hover'));
+                    }
+                } else if (e.keyCode === 88 && (e.metaKey || e.ctrlKey) && !$(this).hasClass('dragging')) {
+                    // ctrl-x / cmd-x
+                    // initialize cut / paste for the active <li.resortable>
+                    if ($('div.object-wrapper.alert').length > 0) {
+                        $('div.object-wrapper.alert').parent().addClass('cut');
+                        $(this).addClass('dragging');
+                        _this.createPotentialPlaceholders();
+                    }
+                }
+            });
+
             // prepend a hidden li.resortable.no-children chapter object
             // so can sort the chapters
             var hiddenChapter = $('<li></li>').addClass('resortable hidden composition');
@@ -498,13 +523,42 @@ define(["app",
                 }
             });
         },
+        cancelCutPaste: function () {
+            $('body').removeClass('dragging');
+            $('.potential-drop-zone').remove();
+            $('li.resortable.cut').removeClass('cut');
+        },
+        createPotentialPlaceholders: function () {
+            // to enable the cut / paste functionality,
+            // we need to populate the visible "spaces"
+            // between objects with potential drop zones
+            $('.potential-drop-zone').remove();
+            $('#composition-region li.resortable').each(function () {
+                if ($(this).parent('.can-edit-state-false').length === 0) {
+                    $('<li class="potential-drop-zone list-group-item"></li>').insertAfter($(this));
+                }
+            });
+        },
+        pasteTo: function ($target) {
+            var _this = this,
+                $origObject = $('li.resortable.cut');
+
+            $target.replaceWith($origObject);
+            $origObject.removeClass('cut');
+            updateCompositionChildrenAndAssets($origObject);
+            _this.cancelCutPaste();
+            _this.refreshNoChildrenWarning();
+        },
         events: {
             'change .switch-genus-type': 'changeCompositionGenusType',
+            'click .cut-component': 'cutObject',
             'click .export-composition': 'export',
             'click .export-resource': 'export',
+            'click .object-wrapper': 'selectObject',
             'click .toggle-composition-children': 'toggleCompositionChildren',
             'click .unlock-composition': 'unlockComposition',
             'click .unlock-resource': 'unlockResource',
+            'click .potential-drop-zone': 'pasteObject',
             'click .preview': 'previewObject',
             'click .remove-composition': 'removeObject',
             'click .remove-resource': 'removeObject'
@@ -543,12 +597,25 @@ define(["app",
         clearActiveElement: function () {
             $('div.object-wrapper').removeClass('alert alert-info');
         },
+        cutObject: function (e) {
+            var $e = $(e.currentTarget).closest('li.resortable');
+
+            $('li.resortable.cut').removeClass('cut');
+            $e.addClass('cut');
+            $('body').addClass('dragging');
+            this.createPotentialPlaceholders();
+        },
         export: function (e) {
             var $wrapper = $(e.currentTarget).closest('.object-wrapper');
             this.setActiveElement($wrapper);
         },
         hideNoChildren: function (el) {
             $(el).siblings('li.no-children').addClass('hidden');
+        },
+        pasteObject: function (e) {
+            var _this = this,
+                $target = $(e.currentTarget);
+            _this.pasteTo($target);
         },
         previewObject: function (e) {
             var $wrapper = $(e.currentTarget).closest('div.object-wrapper'),
@@ -581,7 +648,7 @@ define(["app",
             // first destroy the composition
             // then, update the parent's childIds list
             var $e = $(e.currentTarget),
-                $liParent = $e.parent().parent().parent().parent().parent(),
+                $liParent = $e.closest('li.resortable'),
                 $noChildrenObject = $liParent.siblings('li.no-children'),
                 obj = $liParent.children('div.object-wrapper').data('obj'),
                 displayName = obj.displayName.text,
@@ -677,6 +744,10 @@ define(["app",
                 ]
             });
             Utils.bindDialogCloseEvents();
+        },
+        selectObject: function (e) {
+            var $wrapper = $(e.currentTarget);
+            this.setActiveElement($wrapper);
         },
         setActiveElement: function ($el) {
             var $wrapper = $el.closest('div.object-wrapper'),

@@ -544,6 +544,16 @@ body.processing, body.processing * {
     border-right: none;
 }
 
+.potential-drop-zone {
+    height: 2px;
+    border: none;
+    padding: 0 0;
+}
+
+.potential-drop-zone:hover {
+    border: 2px solid red;
+}
+
 li.composition.no-children {
     height: 50px;
 
@@ -744,4 +754,16 @@ li.resortable {
 
 ul.children-compositions {
     padding-right: 5px;
+}
+
+div.composition-dropdown li {
+    cursor: pointer;
+}
+
+div.composition-dropdown .dropdown-menu {
+    min-width: 180px;
+}
+
+li.resortable.cut {
+    opacity: 0.4;
 }
