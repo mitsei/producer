@@ -60,6 +60,8 @@ div.action-menu {
 
 .vertical-footer {
     flex: 0 1 20px;
+    margin-left: 5px;
+    margin-right: 5px;
 }
 
 .vertical-footer span.clickable:hover {

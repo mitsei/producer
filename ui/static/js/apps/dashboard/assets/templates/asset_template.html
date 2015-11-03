@@ -38,11 +38,15 @@
                         </button>
                     </div>
                 <% } %> -->
-                <div class="">
-                    <button class="btn btn-warning remove-resource">
-                        <i aria-hidden="true" class="fa fa-trash-o"></i>
-                        Remove Resource
+                <div class="btn-group composition-dropdown">
+                    <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Actions <span class="caret"></span>
                     </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="cut-component"><i aria-hidden="true" class="fa fa-scissors"></i> Cut Component</a></li>
+                        <li role="separator" class="divider"></li>
+                        <li><a class="remove-resource"><i aria-hidden="true" class="fa fa-trash-o"></i> Remove Resource</a></li>
+                    </ul>
                 </div>
             <% } %>
         </div>
