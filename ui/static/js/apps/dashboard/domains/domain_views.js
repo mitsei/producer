@@ -437,6 +437,13 @@ define(["app",
                 }
             });
 
+            //$('body.dragging:not(.potential-drop-zone)').on('click', function () {
+            $('body:not(.potential-drop-zone)').on('click', function () {
+                if ($('body').hasClass('dragging')) {
+                    _this.cancelCutPaste();
+                }
+            });
+
             // prepend a hidden li.resortable.no-children chapter object
             // so can sort the chapters
             var hiddenChapter = $('<li></li>').addClass('resortable hidden composition');
