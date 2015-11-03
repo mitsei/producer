@@ -541,11 +541,21 @@ define(["app",
         },
         pasteTo: function ($target) {
             var _this = this,
-                $origObject = $('li.resortable.cut');
+                $origObject = $('li.resortable.cut'),
+                $preMoveParent = $origObject.parent(),
+                $preMoveObj = $preMoveParent.children('li.no-children'),
+                $targetParent = $target.parent(),
+                $newObj = $origObject.clone();
 
-            $target.replaceWith($origObject);
-            $origObject.removeClass('cut');
-            updateCompositionChildrenAndAssets($origObject);
+            $newObj.removeClass('cut');
+            $target.replaceWith($newObj);
+            $origObject.remove();
+
+            if ($preMoveParent[0] != $targetParent[0]) {
+                updateCompositionChildrenAndAssets($preMoveObj);
+            }
+
+            updateCompositionChildrenAndAssets($newObj);
             _this.cancelCutPaste();
             _this.refreshNoChildrenWarning();
         },
