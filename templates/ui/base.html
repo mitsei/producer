@@ -18,7 +18,12 @@
         <link rel="stylesheet" href="{{ STATIC_URL }}css/producer.css">
         {% endcompress %}
 
-        <script data-main="{{ STATIC_URL }}js/main" src="{{ STATIC_URL }}js/vendor/requirejs/require.js"></script>
+        {% if enable_notifications %}
+            <script data-main="{{ STATIC_URL }}js/main" src="{{ STATIC_URL }}js/vendor/requirejs/require.js"></script>
+        {% else %}
+            <script data-main="{{ STATIC_URL }}js/main-nn" src="{{ STATIC_URL }}js/vendor/requirejs/require.js"></script>
+        {% endif %}
+
         {% compress css %}
         {% block header_script %} {% endblock %}
         {% endcompress %}

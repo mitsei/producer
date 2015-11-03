@@ -29,7 +29,7 @@ class ErrorHandlingTask(Task):
         :param einfo: Traceback (str(einfo))
         :return:
         """
-        if not settings.TEST:
+        if not settings.TEST and settings.ENABLE_NOTIFICATIONS:
             test_request = TestRequest(username=targs[2].username)
             rabbit = RabbitMQReceiver(request=test_request)
             msg = 'Import of {0} raised exception: {1!r}'.format(targs[0].split('/')[-1],
@@ -53,7 +53,7 @@ class ErrorHandlingTask(Task):
         :param tkwargs:
         :return:
         """
-        if not settings.TEST:
+        if not settings.TEST and settings.ENABLE_NOTIFICATIONS:
             test_request = TestRequest(username=targs[2].username)
             rabbit = RabbitMQReceiver(request=test_request)
             rabbit._pub_wrapper('new',

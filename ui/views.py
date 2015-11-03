@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.shortcuts import render_to_response
 from django.template import RequestContext
 from django.contrib.auth import authenticate, login, logout
@@ -51,6 +52,7 @@ def dashboard(request):
     user_repo = get_or_create_user_repo(request.user.username)
     return render_to_response('ui/dashboard.html',
                               {
+                                  'enable_notifications': settings.ENABLE_NOTIFICATIONS,
                                   'privileges': privileges,
                                   'user_repo_id': str(user_repo.ident)
                               },
