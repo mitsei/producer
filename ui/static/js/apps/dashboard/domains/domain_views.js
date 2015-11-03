@@ -610,17 +610,18 @@ define(["app",
                             Utils.processing();
 
                             // TODO: If the item is locked, just remove it
-                            // as a child...if the item is unlocked, then
+                            // as a child / in the UI
+                            // ...if the item is unlocked, then
                             // delete it (and have to check the children
                             // that only delete when they belong to the
                             // user...not those that belong to others)
                             if (obj.type === 'Composition' && obj.canEdit == true) {
-                                var compositionModel = new CompositionModel({id: objId,
-                                    withChildren: true});
+                                var compositionModel = new CompositionModel({id: objId});
 
                                 compositionModel.destroy({
                                     data: JSON.stringify({
-                                        repoId: Utils.runId()
+                                        repoId: Utils.runId(),
+                                        withChildren: true
                                     }),
                                     success: function (model, response) {
                                         $liParent.remove();

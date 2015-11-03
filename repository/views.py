@@ -420,37 +420,37 @@ class CompositionDetails(ProducerAPIViews, CompositionMapMixin):
     def delete(self, request, composition_id, format=None):
         try:
             user_repository = get_or_create_user_repo(request.user.username)
-            repository = rutils.get_object_repository(self.rm,
-                                                      composition_id,
-                                                      'composition')
+            user_repository.use_federated_repository_view()
+            user_repository.use_unsequestered_composition_view()
 
-            if self.rm.get_repositories_by_composition(
-                    gutils.clean_id(composition_id)).available() > 1:
-                composition = repository.get_composition(gutils.clean_id(composition_id))
-                if self.data['repoId'] == composition.object_map['repositoryId']:
-                    # by default move the composition to the ownership of the next one
-                    # TODO
-                    raise IllegalState('For now, cannot delete from the owner repository.')
-                else:
-                    self.rm.unassign_composition_from_repository(composition.ident,
-                                                                 gutils.clean_id(self.data['repoId']))
-            else:
-                if 'withChildren' in self.data:
-                    # TODO: Make sure only children that belong to the user
-                    # are deleted...
-                    # remove children compositions too
-                    composition = user_repository.get_composition(gutils.clean_id(composition_id))
-                    user_repository.use_unsequestered_composition_view()
+            composition = user_repository.get_composition(gutils.clean_id(composition_id))
+            # if not in a sub-repo, the above line should throw a NotFound exception
 
-                    for child_ids in composition.get_child_ids():
-                        # use this instead of get_children() because sequestered
-                        # compositions don't show up with get_children()
-                        try:
-                            user_repository.delete_composition(child_ids)
-                        except NotFound:
-                            pass  # not unlocked / cloned into user repo
+            if 'withChildren' in self.data:
+                # remove children compositions too
+                for child_id in composition.get_child_ids():
+                    # use this instead of get_children() because sequestered
+                    # compositions don't show up with get_children()
+                    try:
+                        child = user_repository.get_composition(child_id)
 
-                user_repository.delete_composition(gutils.clean_id(composition_id))
+                        # if the child is found in a sub-repo
+                        sub_repo = rutils.get_object_repository(self.rm,
+                                                                child_id,
+                                                                'composition')
+                        sub_repo.delete_composition(child_id)
+                    except NotFound:
+                        pass  # not unlocked / cloned into the target repo
+
+            sub_repo = rutils.get_object_repository(self.rm,
+                                                    composition_id,
+                                                    'composition')
+            sub_repo.delete_composition(gutils.clean_id(composition_id))
+
+            # have to remove references to it in other repo / compositions
+            # that may not have cloned it locally
+            rutils.clean_up_dangling_references(self.rm, composition_id)
+
             return gutils.DeletedResponse()
         except (PermissionDenied, IllegalState, InvalidId, NotFound, KeyError) as ex:
             gutils.handle_exceptions(ex)

@@ -67,6 +67,29 @@ def attach_asset_content_to_asset(bundle):
 
     repository.create_asset_content(content_form)
 
+def clean_up_dangling_references(rm, composition_id):
+    # check all repositories for references to this composition, and remove
+    # the composition_id from child_ids
+    # may not work for all parent compositions, depending on authorizations
+    cqs = rm.get_composition_query_session()
+    cqs.use_federated_repository_view()
+    cqs.use_unsequestered_composition_view()
+    querier = cqs.get_composition_query()
+    querier.match_contained_composition_id(clean_id(composition_id), True)
+    compositions = cqs.get_compositions_by_query(querier)
+    for composition in compositions:
+        repo = get_object_repository(rm, composition.ident, 'composition')
+        try:
+            current_child_ids = composition.get_child_ids()
+            current_child_idstrs = [str(i) for i in current_child_ids]
+            current_child_idstrs.remove(str(clean_id(composition_id)))
+            form = repo.get_composition_form_for_update(composition.ident)
+            updated_child_ids = [clean_id(i) for i in current_child_idstrs]
+            form.set_children(updated_child_ids)
+            repo.update_composition(form)
+        except (PermissionDenied, NotFound, IllegalState):
+            pass
+
 def convert_to_id_list(str_list):
     """convert a list of string ids to a list of OSID Ids"""
     if not isinstance(str_list, list):
@@ -171,7 +194,9 @@ def get_object_repository(manager, object_id, object_type='asset', repository_id
             lookup_session.use_unsequestered_composition_view()
         except AttributeError:
             pass
-        object_ = getattr(lookup_session, 'get_{0}'.format(object_type))(clean_id(object_id))
+        if isinstance(object_id, basestring):
+            object_id = clean_id(object_id)
+        object_ = getattr(lookup_session, 'get_{0}'.format(object_type))(object_id)
         repository_id = object_.object_map['repositoryId']
     return manager.get_repository(clean_id(repository_id))
 

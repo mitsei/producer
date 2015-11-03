@@ -168,7 +168,7 @@ class RepositoryTestCase(DjangoTestCase):
 
         # new_asset = self.setup_asset(repository_id)
 
-        form = repo.get_composition_form_for_create([])
+        form = repo.get_composition_form_for_create([EDX_COMPOSITION])
         form.display_name = 'my test composition'
         form.description = 'foobar'
         form.set_children([])
@@ -819,83 +819,6 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
                 data[key]['text'],
                 payload[key]
             )
-
-    # DEPRECATED
-    # def test_updating_child_ids_removes_previous_ones(self):
-    #     composition = self.setup_composition(self.repo_id)
-    #     self.num_compositions(1)
-    #     url = self.url + unquote(str(composition.ident))
-    #
-    #     # get the original asset id
-    #     req = self.client.get(url)
-    #     data = self.json(req)
-    #     old_asset_id = data['childIds'][0]
-    #
-    #     new_asset = self.setup_asset(self.repo_id)
-    #
-    #     payload = {
-    #         'childIds': str(new_asset.ident)
-    #     }
-    #
-    #     req = self.client.put(url, payload, format='json')
-    #     self.updated(req)
-    #     data = self.json(req)
-    #     self.assertNotEqual(
-    #         old_asset_id,
-    #         str(new_asset.ident)
-    #     )
-    #     self.assertEqual(
-    #         data['childIds'],
-    #         [str(new_asset.ident)]
-    #     )
-    #     self.num_compositions(1)
-
-    # DEPRECATED
-    # def test_updating_child_ids_preserves_order(self):
-    #     composition = self.setup_composition(self.repo_id)
-    #     self.num_compositions(1)
-    #     url = self.url + unquote(str(composition.ident))
-    #
-    #     # get the original asset id
-    #     req = self.client.get(url)
-    #     data = self.json(req)
-    #     old_asset_id = data['childIds'][0]
-    #
-    #     new_asset = self.setup_asset(self.repo_id)
-    #
-    #     payload = {
-    #         'childIds': [old_asset_id, str(new_asset.ident)]
-    #     }
-    #
-    #     req = self.client.put(url, payload, format='json')
-    #     self.updated(req)
-    #     data = self.json(req)
-    #     self.assertNotEqual(
-    #         old_asset_id,
-    #         str(new_asset.ident)
-    #     )
-    #     self.assertEqual(
-    #         data['childIds'],
-    #         [old_asset_id, str(new_asset.ident)]
-    #     )
-    #     self.num_compositions(1)
-    #
-    #     payload = {
-    #         'childIds': [str(new_asset.ident), old_asset_id]
-    #     }
-    #
-    #     req = self.client.put(url, payload, format='json')
-    #     self.updated(req)
-    #     data = self.json(req)
-    #     self.assertNotEqual(
-    #         old_asset_id,
-    #         str(new_asset.ident)
-    #     )
-    #     self.assertEqual(
-    #         data['childIds'],
-    #         [str(new_asset.ident), old_asset_id]
-    #     )
-    #     self.num_compositions(1)
 
     def test_update_with_no_parameters_throws_exception(self):
         new_composition = self.setup_composition(self.repo_id)
@@ -1595,39 +1518,138 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
         self.num_compositions(1)
         self.num_compositions(1, repo=repo2)
 
-    def test_removing_composition_from_one_repo_does_not_delete_it_from_db(self):
+    # DEPRECATED -- THIS DOES NOT HAPPEN ANYMORE BECAUSE WE DON'T ASSIGN TO MULTIPLE
+    # FOR AUTHZ REASONS
+    # def test_removing_composition_from_one_repo_does_not_delete_it_from_db(self):
+    #     repo1 = self.repo
+    #     repo2 = self.create_new_repo()
+    #     composition = self.setup_composition(repo2.ident)
+    #
+    #     self.num_compositions(0)
+    #     self.num_compositions(1, repo=repo2)
+    #
+    #     payload = {
+    #         'childIds': [str(composition.ident)]
+    #     }
+    #
+    #     url = self.base_url + 'repository/repositories/' + unquote(str(repo1.ident))
+    #
+    #     req = self.client.put(url, payload, format='json')
+    #     self.updated(req)
+    #
+    #     # manually assign composition to repo1
+    #     rm = gutils.get_session_data(self.req, 'rm')
+    #     rm.assign_composition_to_repository(composition.ident, repo1.ident)
+    #
+    #     self.num_compositions(1)
+    #     self.num_compositions(1, repo=repo2)
+    #
+    #     url = self.url + str(composition.ident)
+    #
+    #     payload = {
+    #         'repoId': str(repo1.ident)
+    #     }
+    #     req = self.client.delete(url, payload, format='json')
+    #     self.deleted(req)
+    #     self.num_compositions(0)
+    #     self.num_compositions(1, repo=repo2)
+
+    def test_removing_composition_also_removes_references_in_other_repos(self):
         repo1 = self.repo
         repo2 = self.create_new_repo()
-        composition = self.setup_composition(repo2.ident)
+        user_repo = get_or_create_user_repo(self.user.username)
 
-        self.num_compositions(0)
-        self.num_compositions(1, repo=repo2)
-
-        payload = {
-            'childIds': [str(composition.ident)]
-        }
-
-        url = self.base_url + 'repository/repositories/' + unquote(str(repo1.ident))
-
-        req = self.client.put(url, payload, format='json')
-        self.updated(req)
-
-        # manually assign composition to repo1
         rm = gutils.get_session_data(self.req, 'rm')
-        rm.assign_composition_to_repository(composition.ident, repo1.ident)
+        rm.add_child_repository(user_repo.ident, repo1.ident)
+        rm.add_child_repository(user_repo.ident, repo2.ident)
+
+        composition1 = self.setup_composition(repo1.ident)
+        composition2 = self.setup_composition(repo2.ident)
 
         self.num_compositions(1)
         self.num_compositions(1, repo=repo2)
 
-        url = self.url + str(composition.ident)
+        payload = {
+            'childIds': [str(composition1.ident)]
+        }
+
+        url = self.base_url + 'repository/compositions/' + unquote(str(composition2.ident))
+
+        req = self.client.put(url, payload, format='json')
+        self.updated(req)
+
+        composition2 = repo2.get_composition(composition2.ident)
+        self.assertIn(
+            str(composition1.ident),
+            [str(i) for i in composition2.get_child_ids()]
+        )
+
+        url = self.base_url + 'repository/compositions/' + unquote(str(composition1.ident))
+        req = self.client.delete(url)
+        self.deleted(req)
+
+        composition2 = repo2.get_composition(composition2.ident)
+        self.assertEqual(
+            [],
+            [str(i) for i in composition2.get_child_ids()]
+        )
+
+    def test_if_composition_child_not_found_filler_warning_returned(self):
+        repo1 = self.repo
+        repo2 = self.create_new_repo()
+
+        user_repo = get_or_create_user_repo(self.user.username)
+
+        rm = gutils.get_session_data(self.req, 'rm')
+        rm.add_child_repository(user_repo.ident, repo1.ident)
+
+        composition1 = self.setup_composition(repo1.ident)
+        composition2 = self.setup_composition(repo2.ident)
+
+        self.num_compositions(1)
+        self.num_compositions(1, repo=repo2)
 
         payload = {
-            'repoId': str(repo1.ident)
+            'childIds': [str(composition1.ident)]
         }
-        req = self.client.delete(url, payload, format='json')
-        self.deleted(req)
-        self.num_compositions(0)
-        self.num_compositions(1, repo=repo2)
+
+        url = self.base_url + 'repository/compositions/' + unquote(str(composition2.ident))
+
+        req = self.client.put(url, payload, format='json')
+        self.updated(req)
+
+        composition2 = repo2.get_composition(composition2.ident)
+        self.assertIn(
+            str(composition1.ident),
+            [str(i) for i in composition2.get_child_ids()]
+        )
+
+        # Now delete composition1 manually...as if the dangling reference cleaner
+        # did not work
+        repo1.delete_composition(composition1.ident)
+
+        composition2 = repo2.get_composition(composition2.ident)
+        self.assertIn(
+            str(composition1.ident),
+            [str(i) for i in composition2.get_child_ids()]
+        )
+
+        # Now getting children of composition2 should show a filler composition
+        # with a warning
+
+        url = self.base_url + 'repository/repositories/' + unquote(str(repo2.ident)) + '/compositions/' + unquote(str(composition2.ident)) + '/children/'
+        req = self.client.get(url)
+        self.ok(req)
+        data = self.json(req)
+        self.assertEqual(
+            1,
+            data['data']['count']
+        )
+
+        self.assertEqual(
+            str(Type(**EDX_COMPOSITION_GENUS_TYPES['error-deleted'])),
+            data['data']['results'][0]['genusTypeId']
+        )
 
 
 class CompositionEndpointTests(RepositoryTestCase):
@@ -2982,50 +3004,36 @@ class RepositoryCrUDTests(AssessmentTestCase, RepositoryTestCase):
         }
         req = self.client.post(url, data=payload)
         self.ok(req)
-        self.num_repos(3)  # Users, user-repo, target repo
+        self.num_repos(5)  # Users, user-repo, target repo, course repo, run repo
         rm = gutils.get_session_data(self.req, 'rm')
         querier = rm.get_repository_query()
-        querier.match_genus_type(Type(**REPOSITORY_GENUS_TYPES['user-repo']), True)
-        user_repos = rm.get_repositories_by_query(querier)
+        querier.match_genus_type(Type(**REPOSITORY_GENUS_TYPES['course-run-repo']), True)
+        course_run_repos = rm.get_repositories_by_query(querier)
         self.assertEqual(
-            user_repos.available(),
-            2
+            course_run_repos.available(),
+            1
         )
-        self.num_compositions(87, repo=user_repo)  # are these numbers accurate?
-        self.num_compositions(245, repo=user_repo, unsequestered=True)  # are these numbers accurate?
+        course_run_repo = course_run_repos.next()
+        course_run_repo = rm.get_repository(course_run_repo.ident)
+        self.num_compositions(87, repo=course_run_repo)  # are these numbers accurate?
+        self.num_compositions(244, repo=course_run_repo, unsequestered=True)  # are these numbers accurate?
 
-        user_repo.use_sequestered_composition_view()
-        querier = user_repo.get_composition_query()
+        course_run_repo.use_unsequestered_composition_view()
+
+        querier = course_run_repo.get_composition_query()
         querier.match_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['course']), True)
-        course_compositions = user_repo.get_compositions_by_query(querier)
-        self.assertEqual(
-            course_compositions.available(),
-            0
-        )
-
-        querier = user_repo.get_composition_query()
-        querier.match_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['offering']), True)
-        run_compositions = user_repo.get_compositions_by_query(querier)
-        self.assertEqual(
-            run_compositions.available(),
-            0
-        )
-
-        user_repo.use_unsequestered_composition_view()
-        querier = user_repo.get_composition_query()
-        querier.match_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['course']), True)
-        course_compositions = user_repo.get_compositions_by_query(querier)
+        course_compositions = course_run_repo.get_compositions_by_query(querier)
         self.assertEqual(
             course_compositions.available(),
             1
         )
 
-        querier = user_repo.get_composition_query()
+        querier = course_run_repo.get_composition_query()
         querier.match_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['offering']), True)
-        run_compositions = user_repo.get_compositions_by_query(querier)
+        run_compositions = course_run_repo.get_compositions_by_query(querier)
         self.assertEqual(
             run_compositions.available(),
-            1
+            0
         )
 
     def test_bad_file_upload_throws_exception(self):
