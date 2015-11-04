@@ -811,16 +811,18 @@ define(["app",
         },
         unlockComposition: function (e) {
             var $e = $(e.currentTarget),
-                $composition = $e.parent().parent().parent().parent().parent(),  // is the <li> element
+                $composition = $e.closest('li.resortable.composition'),  // is the <li> element
                 compositionId = $composition.children('.object-wrapper')
                     .data('obj').id,
-                composition = new CompositionModel({id: compositionId},
-                    {repositoryId: Utils.runId()}),
+                composition = new CompositionModel({
+                        id: compositionId,
+                        repositoryId: Utils.runId()
+                }),
                 parentId;
 
             if ($composition.parent().hasClass('run-list')) {
-                // parentId is the selected run composition
-                parentId = $('select.run-selector').val();
+                // no parentId
+                parentId = '';
             } else {
                 // parentId is in the course structure
                 parentId = $composition.parent()

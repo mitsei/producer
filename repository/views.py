@@ -1501,20 +1501,26 @@ class UnlockComposition(ProducerAPIViews):
 
             composition = repository.get_composition(gutils.clean_id(composition_id))
 
-            user_repository = get_or_create_user_repo(request.user.username)
+            if repository_id is not None:
+                target_repository = self.rm.get_repository(gutils.clean_id(repository_id))
+            else:
+                target_repository = get_or_create_user_repo(request.user.username)
 
-            if 'parentId' in self.data:
-                user_repository.use_unsequestered_composition_view()
-                parent_composition = user_repository.get_composition(gutils.clean_id(self.data['parentId']))
+            if 'parentId' in self.data and self.data['parentId'] != '':
+                target_repository.use_unsequestered_composition_view()
+                parent_composition = target_repository.get_composition(gutils.clean_id(self.data['parentId']))
+            elif str(target_repository.genus_type) == str(COURSE_RUN_REPO_GENUS):
+                parent_composition = rutils.get_course_node(target_repository)
             else:
                 parent_composition = None
-            clone = composition.clone_to(target_repo=user_repository,
+            clone = composition.clone_to(target_repo=target_repository,
                                          target_parent=parent_composition)
 
             for child_id in clone.get_child_ids():
                 child = repository.get_composition(child_id)
                 if child.is_sequestered():
-                    child_clone = child.clone_to(target_repo=user_repository,
+                    # clone the resource nodes that point to the assets / items
+                    child_clone = child.clone_to(target_repo=target_repository,
                                                  target_parent=clone)
 
             return gutils.CreatedResponse(clone.object_map)
