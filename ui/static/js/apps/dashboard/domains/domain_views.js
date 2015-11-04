@@ -438,7 +438,7 @@ define(["app",
             });
 
             //$('body.dragging:not(.potential-drop-zone)').on('click', function () {
-            $('body:not(.potential-drop-zone)').on('click', function () {
+            $('body:not(.potential-drop-zone)').unbind('click').on('click', function () {
                 if ($('body').hasClass('dragging')) {
                     _this.cancelCutPaste();
                 }
