@@ -1,7 +1,11 @@
 // Filename: main.js
 
 var baseUrl = '/static/js/';
-var socketioPath = window.location.protocol + '//' + window.location.hostname + '/socket.io/socket.io';
+if (window.location.hostname == 'localhost' || window.location.hostname == '127.0.0.1') {
+    var socketioPath = window.location.protocol + '//' + window.location.hostname + ':8888/socket.io/socket.io';
+} else {
+    var socketioPath = window.location.protocol + '//' + window.location.hostname + '/socket.io/socket.io';
+}
 var enableNotifications = true;
 
 requirejs.config({

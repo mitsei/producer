@@ -21,6 +21,7 @@ django-appconf==1.0.1
 django-compressor==1.5
 django-cors-headers==1.1.0
 djangorestframework==2.4.0
+docopt==0.6.2
 elasticsearch==1.6.0
 enum34==1.0.4
 envoy==0.0.3
@@ -30,7 +31,7 @@ idna==2.0
 inflection==0.3.1
 ipaddress==1.0.14
 kombu==3.0.26
-lxml==3.4.4
+lxml==3.5.0
 mistune==0.7
 mongo-connector==2.1
 ndg-httpsclient==0.4.0
@@ -56,4 +57,5 @@ treq==15.0.0
 txaio==1.0.2
 urllib3==1.11
 wsgiref==0.1.2
+xbundle==0.3.1
 zope.interface==4.1.2
