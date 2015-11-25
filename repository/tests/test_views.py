@@ -413,6 +413,23 @@ class AssetCrUDTests(RepositoryTestCase):
             updated_asset['assetContents']
         )
 
+    def test_can_update_asset_objectives(self):
+        asset = self.setup_asset(self.repo_id)
+        url = self.url + unquote(str(asset.ident))
+
+        payload = {
+            'learningObjectiveIds': ['mc3-objective%3A9730%40MIT-OEIT']
+        }
+
+        req = self.client.put(url, payload, format='json')
+        self.updated(req)
+
+        updated_asset = self.json(req)
+        self.assertEqual(
+            updated_asset['learningObjectiveIds'],
+            payload['learningObjectiveIds']
+        )
+
     def test_can_update_asset_description(self):
         asset = self.setup_asset(self.repo_id)
         url = self.url + unquote(str(asset.ident))
@@ -844,21 +861,28 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
         )
 
     def test_can_update_composition_attributes(self):
-        composition = self.setup_composition(self.repo_id)
+        composition = self.setup_composition(self.repo_id, with_lo=True)
         url = self.url + unquote(str(composition.ident))
 
         test_cases = [{'displayName': 'ha'},
-                      {'description': 'funny'}]
+                      {'description': 'funny'},
+                      {'learningObjectiveIds': ['mc3-objective%3A9730%40MIT-OEIT']}]
 
         for payload in test_cases:
             req = self.client.put(url, payload, format='json')
             self.updated(req)
             data = self.json(req)
             key = payload.keys()[0]
-            self.assertEqual(
-                data[key]['text'],
-                payload[key]
-            )
+            if key in ['displayName', 'description']:
+                self.assertEqual(
+                    data[key]['text'],
+                    payload[key]
+                )
+            else:
+                self.assertEqual(
+                    data[key],
+                    payload[key]
+                )
 
     def test_update_with_no_parameters_throws_exception(self):
         new_composition = self.setup_composition(self.repo_id)

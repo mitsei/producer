@@ -297,20 +297,29 @@ class AssessmentItemCrUDTests(AssessmentTestCase):
         url = '{0}/{1}'.format(self.items,
                                unquote(str(item.ident)))
 
-        payload = {
-            "displayName": "a new name"
-        }
+        test_cases = [{
+            'displayName': 'a new name'
+        },{
+            'learningObjectiveIds': ['mc3-objective%3A9730%40MIT-OEIT']
+        }]
+        for payload in test_cases:
+            req = self.client.put(url,
+                                  data=payload,
+                                  format='json')
+            self.updated(req)
+            data = self.json(req)
 
-        req = self.client.put(url,
-                              data=payload,
-                              format='json')
-        self.updated(req)
-        data = self.json(req)
-
-        self.assertEqual(
-            data['displayName']['text'],
-            payload['displayName']
-        )
+            key = payload.keys()[0]
+            if key == 'displayName':
+                self.assertEqual(
+                    data['displayName']['text'],
+                    payload['displayName']
+                )
+            else:
+                self.assertEqual(
+                    data[key],
+                    payload[key]
+                )
 
     def test_can_get_bank_items(self):
         item = self.create_item(self.bank)

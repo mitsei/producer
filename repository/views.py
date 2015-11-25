@@ -173,7 +173,8 @@ class AssetDetails(ProducerAPIViews):
     def put(self, request, asset_id, format=None):
         try:
             gutils.verify_at_least_one_key_present(self.data,
-                                                   ['displayName', 'description', 'files'])
+                                                   ['displayName', 'description', 'files',
+                                                    'learningObjectiveIds'])
 
             repository = rutils.get_object_repository(self.rm,
                                                       asset_id,
@@ -199,6 +200,12 @@ class AssetDetails(ProducerAPIViews):
                 updated_asset = repository.update_asset(form)
             else:
                 updated_asset = original_asset
+
+            if 'learningObjectiveIds' in self.data:
+                form = repository.get_asset_form_for_update(gutils.clean_id(asset_id))
+                form.set_learning_objective_ids([gutils.clean_id(i)
+                                                 for i in self.data['learningObjectiveIds']])
+                updated_asset = repository.update_asset(form)
 
             data = updated_asset.object_map
             return gutils.UpdatedResponse(data)
@@ -514,7 +521,8 @@ class CompositionDetails(ProducerAPIViews, CompositionMapMixin):
             gutils.verify_at_least_one_key_present(self.data,
                                                    ['displayName', 'description', 'childIds',
                                                     'startDate', 'endDate', 'visibleToStudents',
-                                                    'draft', 'assetIds', 'genusTypeId'])
+                                                    'draft', 'assetIds', 'genusTypeId',
+                                                    'learningObjectiveIds'])
 
             repository = rutils.get_object_repository(self.rm,
                                                       composition_id,
@@ -555,6 +563,13 @@ class CompositionDetails(ProducerAPIViews, CompositionMapMixin):
                                                                      bool(self.data['draft']))
                     except IllegalState:
                         pass
+
+            if 'learningObjectiveIds' in self.data:
+                try:
+                    form.set_learning_objective_ids([gutils.clean_id(i)
+                                                     for i in self.data['learningObjectiveIds']])
+                except (AttributeError, IllegalState):
+                    pass
 
             composition = repository.update_composition(form)
 
