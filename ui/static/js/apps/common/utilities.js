@@ -87,6 +87,10 @@ define(["jquery", "underscore", "cookies"],
             return namespace + '%3A' + identifier + '%40' + authority;
         };
 
+        utils.isCurating = function () {
+            return $('.curate-objects.active').length > 0;
+        };
+
         utils.itemExportUrl = function (obj) {
             return window.location.protocol + '//' + window.location.hostname + (window.location.port ? ':' + window.location.port : '') + '/api/v1/assessment/items/' + obj.id + '/download/';
         };
@@ -119,6 +123,8 @@ define(["jquery", "underscore", "cookies"],
         utils.selectedDomainId = function (path) {
             if ($("#search-components-menu").hasClass('open')) {
                 return $('#search-components-menu select.domain-selector').val();
+            } else if (utils.isCurating()) {
+                return $('select.curate-domain-selector').val();
             } else {
                 return $('.ui-dialog select.domain-selector').val();
             }

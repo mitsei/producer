@@ -779,3 +779,12 @@ div.composition-dropdown .dropdown-menu {
 li.resortable.cut {
     opacity: 0.4;
 }
+
+#curate-faceted-search-results ul.facet-results-list {
+    margin-left: 10px;
+    margin-right: 10px;
+}
+
+#curate-faceted-search-header {
+    margin-bottom: 10px;
+}

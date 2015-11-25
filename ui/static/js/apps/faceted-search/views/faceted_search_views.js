@@ -6,6 +6,7 @@ define(["app",
         "apps/dashboard/domains/collections/domains",
         "text!apps/faceted-search/templates/facets.html",
         "text!apps/faceted-search/templates/facet_results.html",
+        "text!apps/faceted-search/templates/curate_facet_results.html",
         "text!apps/faceted-search/templates/facet_pagination.html",
         "text!apps/faceted-search/templates/domain_selector.html",
         "cookies",
@@ -14,7 +15,7 @@ define(["app",
         "jquery-bootpag",
         "jquery-sortable"],
        function(ProducerManager, Utils, PreviewViews, DomainsCollection,
-                FacetsTemplate, FacetResultsTemplate,
+                FacetsTemplate, FacetResultsTemplate, CurateFacetResultsTemplate,
                 FacetPaginationTemplate, DomainSelectorTemplate, Cookies){
   ProducerManager.module("FacetedSearchApp.View", function(View, ProducerManager, Backbone, Marionette, $, _){
     var selectedFacets = [],
@@ -85,10 +86,17 @@ define(["app",
             // first, order the facets alphabetically
             console.log('done with facets');
             var totalObjects = _.sum(data.facets.course, function (obj) { return obj[1];});
-            ProducerManager.regions.facetedSearchPagination.show(new View.PaginationView({
-                total: totalObjects
-            }));
-            ProducerManager.regions.facetedSearchFacets.show(new View.FacetsView(data));
+            if (Utils.isCurating()) {
+                ProducerManager.regions.curateFacetedSearchPagination.show(new View.PaginationView({
+                    total: totalObjects
+                }));
+                ProducerManager.regions.curateFacetedSearchFacets.show(new View.FacetsView(data));
+            } else {
+                ProducerManager.regions.facetedSearchPagination.show(new View.PaginationView({
+                    total: totalObjects
+                }));
+                ProducerManager.regions.facetedSearchFacets.show(new View.FacetsView(data));
+            }
         }).always(function () {
         });
     }
@@ -137,7 +145,11 @@ define(["app",
         }).done(function (data) {
             // pass the data on to the facet results region
             console.log('done with results');
-            ProducerManager.regions.facetedSearchResults.show(new View.FacetResultsView(data));
+            if (Utils.isCurating()) {
+                ProducerManager.regions.curateFacetedSearchResults.show(new View.FacetResultsView(data));
+            } else {
+                ProducerManager.regions.facetedSearchResults.show(new View.FacetResultsView(data));
+            }
         });
     }
 
@@ -158,10 +170,15 @@ define(["app",
                     preselectedDomainId: preselectedDomainId,
                     repos: data.data.results
                 }));
+
+                if (Utils.isCurating() && preselectedDomainId != '-1') {
+                    $('button.curate-execute-keyword-search').trigger('click');
+                }
             });
         },
         events: {
             'change select.domain-selector': 'setNewDomain',
+            'click button.curate-execute-keyword-search': 'curateKeywordFilter',
             'click button.execute-keyword-search': 'keywordFilter',
             'click button.close-drawer': 'toggleDrawer',
             'keyup input.input-search': 'checkForEnterKey'
@@ -171,6 +188,9 @@ define(["app",
             if (e.keyCode === 13) {
                 updateFacetsAndResults();
             }
+        },
+        curateKeywordFilter: function (e) {
+            updateFacetsAndResults();
         },
         keywordFilter: function (e) {
             var $drawer = $('#search-components-menu');
@@ -310,17 +330,26 @@ define(["app",
             };
         },
         template: function (serializedModel) {
-            return _.template(FacetResultsTemplate)({
-                objects: serializedModel.options.objects,
-                runMap: serializedModel.options.runMap
-            });
+            if (Utils.isCurating()) {
+                return _.template(CurateFacetResultsTemplate)({
+                    objects: serializedModel.options.objects,
+                    runMap: serializedModel.options.runMap
+                });
+            } else {
+                return _.template(FacetResultsTemplate)({
+                    objects: serializedModel.options.objects,
+                    runMap: serializedModel.options.runMap
+                });
+            }
         },
         onShow: function () {
-            // initialize the sortables here and connect to the course view
-            $('ul.facet-results-list').sortable({
-                group: 'producer',
-                drop: false
-            });
+            if (!Utils.isCurating()) {
+                // initialize the sortables here and connect to the course view
+                $('ul.facet-results-list').sortable({
+                    group: 'producer',
+                    drop: false
+                });
+            }
         },
         events: {
             'click .show-preview': 'togglePreview'

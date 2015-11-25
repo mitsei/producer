@@ -1,0 +1,69 @@
+<!--iframe inject code from http://stackoverflow.com/questions/13439625/how-to-inject-external-js-files-to-an-iframe-->
+<ul class="list-group curate-facet-results-list facet-results-list">
+    <% function getIdentifier (osidId) { %>
+        <% return osidId.slice(osidId.indexOf('%3A') + 3, osidId.indexOf('%40')); %>
+    <% } %>
+
+    <% if (objects.length === 0) { %>
+        <li class="alert alert-danger" role="alert">
+            No items match your search
+        </li>
+    <% } %>
+
+    <% _.each(objects, function (object) { %>
+        <% if (object.hasOwnProperty('assetContents')) { %>
+            <% var genusTypeStr = object.assetContents[0].genusTypeId; %>
+            <% var sourceDoc = object.assetContents[0].text.text %>
+        <% } else { %>
+            <% var genusTypeStr = object.genusTypeId; %>
+            <% var sourceDoc = object.texts.edxml %>
+        <% } %>
+
+        <% if (object.type === 'Composition') { %>
+            <% var className = 'composition'; %>
+        <% } else { %>
+            <% var className = 'resource'; %>
+        <% } %>
+
+        <% var objectType = getIdentifier(genusTypeStr); %>
+        <% var objMap = JSON.stringify(object); %>
+
+        <li class="<%- objectType %> <%- className %> list-group-item search-result" data-run="<%- object.runNames %>" data-obj="<%- objMap %>">
+            <div class="object-wrapper <%- className %>-object-wrapper">
+                <div class="<%- className %>-row">
+                    <div class="vertical-box">
+                        <div class="vertical-content">
+                            <span class="content-type badge badge-<%- objectType %>">
+                                <%- objectType %>
+                            </span>
+                            <span class="display-name">
+                                <%- object.displayName.text %>
+                            </span>
+                            <span class="description">
+                                <%- object.description.text %>
+                            </span>
+                        </div>
+                        <div class="vertical-footer">
+                            <span class="<%- className %>-run">
+                                <%- object.runNames %>
+                            </span>
+                            <span class="objectives">
+                                <%- object.objectives %>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="pull-right <%- className %>-preview">
+                        <span class="show-preview collapsed">Preview Me</span>
+                        <div class="hidden preview-processing">
+                            <span class="fa fa-spin fa-refresh" aria-hidden="true"></span>
+                            <span class="sr-only">Processing the preview</span>
+                        </div>
+                        <% if (object.type !== 'Composition') { %>
+                            <iframe class="preview-frame hidden" srcdoc="<%- sourceDoc %>"></iframe>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        </li>
+    <% }); %>
+</ul>
