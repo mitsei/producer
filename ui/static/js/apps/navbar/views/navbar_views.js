@@ -19,7 +19,6 @@ define(["app",
         template: false,
         el: 'nav.navbar',
         onRender: function () {
-            this.loadUserCourses();
         },
         onShow: function () {
             var loc = window.location.href;
@@ -30,6 +29,7 @@ define(["app",
                 loc.indexOf('#sandbox') >= 0 ||
                 loc.indexOf('#') < 0) {
                 this.updateActiveStatus($('button.repository-btn.sandbox'));
+                this.loadUserCourses();
             }
         },
         updateActiveStatus: function ($el) {
@@ -118,6 +118,7 @@ define(["app",
             ProducerManager.navigate("curate");
             ProducerManager.trigger('curate');
             this.updateActiveStatus($(e.currentTarget));
+            this.closeDrawer();
         },
         importNewCourse: function () {
             var _this = this,
