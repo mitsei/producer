@@ -453,7 +453,9 @@ define(["app",
             this.$el.prepend(hiddenChapter.clone());
 
             // init the course actions
-            ProducerManager.regions.courseActions.show(new CourseActionsViews.CourseActionsView({}));
+            if (!ProducerManager.regions.courseActions.hasView()) {
+                ProducerManager.regions.courseActions.show(new CourseActionsViews.CourseActionsView({}));
+            }
 
             // make the sections sortable
             $('ul.run-list').sortable({

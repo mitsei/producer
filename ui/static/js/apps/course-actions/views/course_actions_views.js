@@ -7,10 +7,13 @@ define(["app",
        function(ProducerManager, Utils){
   ProducerManager.module("CourseActionsApp.View", function(View, ProducerManager, Backbone, Marionette, $, _){
     View.CourseActionsView = Marionette.ItemView.extend({
+        initialize: function () {
+            console.log('initializing course actions');
+        },
         template: false,
         el: '.action-btns',
         events: {
-            'click #add-new-components-btn' : 'toggleComponentSearchPane'
+            'click .add-new-components-btn' : 'toggleComponentSearchPane'
         },
         toggleComponentSearchPane: function () {
             var $searchMenu =$('#search-components-menu');

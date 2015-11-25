@@ -6,6 +6,7 @@ define(["app",
   ProducerManager.module("ProducerApp.EditCourse", function(EditCourse, ProducerManager, Backbone, Marionette, $, _){
     EditCourse.Controller = {
       renderCanvas: function () {
+          console.log('rendering the canvas');
           ProducerManager.regions.canvas.show(new EditCourseViews.CourseCanvasView({}));
           ProducerManager.regions.addRegion('composition', '#composition-region');
           ProducerManager.regions.addRegion('course', '#course-selector-region');
