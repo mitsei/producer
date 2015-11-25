@@ -21,6 +21,22 @@ define(["app",
         onRender: function () {
             this.loadUserCourses();
         },
+        onShow: function () {
+            var loc = window.location.href;
+
+            if (loc.indexOf('#curate') >= 0) {
+                this.updateActiveStatus($('button.repository-btn.curate-objects'));
+            } else if (loc.indexOf('#edit') >= 0 ||
+                loc.indexOf('#sandbox') >= 0 ||
+                loc.indexOf('#') < 0) {
+                this.updateActiveStatus($('button.repository-btn.sandbox'));
+            }
+        },
+        updateActiveStatus: function ($el) {
+            $('button.repository-btn.active').removeClass('active');
+
+            $el.addClass('active');
+        },
         events: {
             'click .add-new-domain': 'createNewDomain',
             'click .curate-objects': 'curateObjects',
@@ -101,6 +117,7 @@ define(["app",
         curateObjects: function (e) {
             ProducerManager.navigate("curate");
             ProducerManager.trigger('curate');
+            this.updateActiveStatus($(e.currentTarget));
         },
         importNewCourse: function () {
             var _this = this,
@@ -186,9 +203,10 @@ define(["app",
                 DomainController.listUserCourses(Utils.userRepoId());
             });
         },
-        mySandbox: function () {
+        mySandbox: function (e) {
             ProducerManager.navigate("sandbox");
             ProducerManager.trigger('sandbox');
+            this.updateActiveStatus($(e.currentTarget));
         }
     });
 

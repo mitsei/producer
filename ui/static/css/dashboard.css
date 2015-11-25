@@ -241,6 +241,12 @@ ul.repository-navbar button.repository-btn {
     margin-top: 2px;
 }
 
+ul.repository-navbar button.repository-btn.active,
+ul.repository-navbar button.repository-btn:hover {
+    background-color: blue;
+    color: white;
+}
+
 /*File upload styling borrowed from jQuery-file-upload:*/
 /*https://github.com/blueimp/jQuery-File-Upload/blob/master/css/jquery.fileupload.css*/
 .upload-file-button {
