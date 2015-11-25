@@ -31,6 +31,7 @@ RUN_REPOSITORY = Type(**REPOSITORY_RECORD_TYPES['run-repo'])
 USER_REPOSITORY_GENUS = Type(**REPOSITORY_GENUS_TYPES['user-repo'])
 
 EDX_COMPOSITION = Type(**COMPOSITION_RECORD_TYPES['edx-composition'])
+EDX_CHAPTER = Type(**EDX_COMPOSITION_GENUS_TYPES['chapter'])
 EDX_ASSET = Type(**ASSET_RECORD_TYPES['edx-asset'])
 EDX_ASSET_CONTENT = Type(**ASSET_CONTENT_RECORD_TYPES['edx-asset-content-text-files'])
 EDX_ITEM = Type(**ITEM_RECORD_TYPES['edx_item'])
@@ -123,7 +124,7 @@ class RepositoryTestCase(DjangoTestCase):
         super(RepositoryTestCase, self).setUp()
         self.url = self.base_url + 'repository/'
 
-    def setup_asset(self, repository_id):
+    def setup_asset(self, repository_id, with_lo=False):
         if not isinstance(repository_id, Id):
             repository_id = Id(repository_id)
 
@@ -134,6 +135,11 @@ class RepositoryTestCase(DjangoTestCase):
         asset_form = repo.get_asset_form_for_create([EDX_ASSET])
         asset_form.display_name = 'test'
         asset_form.description = 'ing'
+
+        if with_lo:
+            self._lo = 'mc3-objective%3A9729%40MIT-OEIT'
+            asset_form.set_learning_objective_ids([Id(self._lo)])
+
         new_asset = repo.create_asset(asset_form)
 
         # now add the new data
@@ -160,7 +166,7 @@ class RepositoryTestCase(DjangoTestCase):
         new_asset = repo.get_asset(new_asset.ident)
         return new_asset
 
-    def setup_composition(self, repository_id):
+    def setup_composition(self, repository_id, with_lo=False):
         if isinstance(repository_id, basestring):
             repository_id = Id(repository_id)
         rm = gutils.get_session_data(self.req, 'rm')
@@ -173,6 +179,12 @@ class RepositoryTestCase(DjangoTestCase):
         form.description = 'foobar'
         form.set_children([])
         # form.set_children([new_asset.ident])
+
+        if with_lo:
+            form.set_genus_type(EDX_CHAPTER)
+            self._lo = 'mc3-objective%3A9729%40MIT-OEIT'
+            form.set_learning_objective_ids([Id(self._lo)])
+
         composition = repo.create_composition(form)
         return composition
 
@@ -590,6 +602,34 @@ class AssetCrUDTests(RepositoryTestCase):
         self.code(req, 500)
         self.message(req,
                      'At least one of the following must be passed in: [\\"displayName\\", \\"description\\", \\"files\\"')
+
+    def test_can_get_asset_learning_objectives(self):
+        asset = self.setup_asset(self.repo_id, with_lo=True)
+        url = '{0}{1}/objectives/'.format(self.url,
+                                          unquote(str(asset.ident)))
+        req = self.client.get(url)
+        self.ok(req)
+        data = self.json(req)
+        self.assertEqual(
+            data['data']['count'],
+            1
+        )
+        self.assertEqual(
+            data['data']['results'][0]['id'],
+            self._lo
+        )
+
+    def test_getting_asset_los_when_has_none_returns_empty_list(self):
+        asset = self.setup_asset(self.repo_id, with_lo=False)
+        url = '{0}{1}/objectives/'.format(self.url,
+                                          unquote(str(asset.ident)))
+        req = self.client.get(url)
+        self.ok(req)
+        data = self.json(req)
+        self.assertEqual(
+            data['data']['count'],
+            0
+        )
 
 
 class BasicServiceTests(RepositoryTestCase):
@@ -1649,6 +1689,34 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
         self.assertEqual(
             str(Type(**EDX_COMPOSITION_GENUS_TYPES['error-deleted'])),
             data['data']['results'][0]['genusTypeId']
+        )
+
+    def test_can_get_composition_learning_objectives(self):
+        composition = self.setup_composition(self.repo_id, with_lo=True)
+        url = '{0}{1}/objectives/'.format(self.url,
+                                          unquote(str(composition.ident)))
+        req = self.client.get(url)
+        self.ok(req)
+        data = self.json(req)
+        self.assertEqual(
+            data['data']['count'],
+            1
+        )
+        self.assertEqual(
+            data['data']['results'][0]['id'],
+            self._lo
+        )
+
+    def test_getting_composition_los_when_has_none_returns_empty_list(self):
+        composition = self.setup_composition(self.repo_id, with_lo=False)
+        url = '{0}{1}/objectives/'.format(self.url,
+                                          unquote(str(composition.ident)))
+        req = self.client.get(url)
+        self.ok(req)
+        data = self.json(req)
+        self.assertEqual(
+            data['data']['count'],
+            0
         )
 
 
@@ -3016,7 +3084,7 @@ class RepositoryCrUDTests(AssessmentTestCase, RepositoryTestCase):
         course_run_repo = course_run_repos.next()
         course_run_repo = rm.get_repository(course_run_repo.ident)
         self.num_compositions(87, repo=course_run_repo)  # are these numbers accurate?
-        self.num_compositions(244, repo=course_run_repo, unsequestered=True)  # are these numbers accurate?
+        self.num_compositions(278, repo=course_run_repo, unsequestered=True)  # are these numbers accurate?
 
         course_run_repo.use_unsequestered_composition_view()
 

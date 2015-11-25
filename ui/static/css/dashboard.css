@@ -788,3 +788,42 @@ li.resortable.cut {
 #curate-faceted-search-header {
     margin-bottom: 10px;
 }
+
+.curate-search-result {
+    cursor: pointer;
+}
+
+.curate-search-result.active .vertical-footer span {
+    color: white;
+}
+
+#curate-learning-objectives {
+    flex: 1 1 auto;
+}
+
+.lo-wrapper {
+    display: flex;
+    display: -webkit-flex;
+}
+
+.lo-text-wrapper {
+    display: flex;
+    display: -webkit-flex;
+    flex-direction: column;
+    flex: 1 1 80%;
+}
+
+.lo-actions {
+    flex: 1 1 auto;
+    border-left: 1px solid gray;
+}
+
+.lo-display-name {
+    flex: 1 1 75px;
+    font-weight: bold;
+    border-bottom: 1px solid gray;
+}
+
+.lo-description {
+    flex: 1 1 100%;
+}

@@ -60,7 +60,7 @@ target/
 apache/django.wsgi
 
 # logs
-log/
+logs/
 
 # static files
 !ui/

@@ -301,6 +301,40 @@ class AssetsList(ProducerAPIViews):
             gutils.handle_exceptions(ex)
 
 
+class AssetObjectives(ProducerAPIViews):
+    """
+    Get asset learning objectives
+    api/v1/repository/assets/<asset_id>/objectives/
+
+    GET
+
+    Note that for RESTful calls, you need to set the request header
+    'content-type' to 'application/json'
+
+    Example (note the use of double quotes!!):
+       {"name" : "an updated item"}
+    """
+    def get(self, request, asset_id, format=None):
+        try:
+            repo = rutils.get_object_repository(self.rm,
+                                                asset_id,
+                                                object_type='asset',
+                                                repository_id=None)
+
+            asset = repo.get_asset(gutils.clean_id(asset_id))
+
+            ols = self.lm._instantiate_session(method_name='get_objective_lookup_session',
+                                               proxy=self.lm._proxy)
+            objectives = []
+            for obj_id in asset.get_learning_objective_ids():
+                objectives.append(ols.get_objective(obj_id))
+
+            data = gutils.extract_items(request, objectives)
+            return Response(data)
+        except (PermissionDenied, NotFound) as ex:
+            gutils.handle_exceptions(ex)
+
+
 class CompositionAssetsList(ProducerAPIViews):
     """
     Get or add assets to a repository
@@ -570,6 +604,43 @@ class CompositionDownload(ProducerAPIViews):
 
             return response
         except (PermissionDenied, InvalidArgument, NotFound) as ex:
+            gutils.handle_exceptions(ex)
+
+
+class CompositionObjectives(ProducerAPIViews):
+    """
+    Get a composition's learning objectives
+    api/v1/repository/compositions/<composition_id>/objectives/
+
+    GET
+
+    Note that for RESTful calls, you need to set the request header
+    'content-type' to 'application/json'
+
+    Example (note the use of double quotes!!):
+       {"name" : "an updated item"}
+    """
+    def get(self, request, composition_id, format=None):
+        try:
+            repo = rutils.get_object_repository(self.rm,
+                                                composition_id,
+                                                object_type='composition',
+                                                repository_id=None)
+
+            composition = repo.get_composition(gutils.clean_id(composition_id))
+
+            ols = self.lm._instantiate_session(method_name='get_objective_lookup_session',
+                                               proxy=self.lm._proxy)
+            objectives = []
+            try:
+                for obj_id in composition.get_learning_objective_ids():
+                    objectives.append(ols.get_objective(obj_id))
+            except (AttributeError, IllegalState):
+                pass
+
+            data = gutils.extract_items(request, objectives)
+            return Response(data)
+        except (PermissionDenied, NotFound) as ex:
             gutils.handle_exceptions(ex)
 
 

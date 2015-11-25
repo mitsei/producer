@@ -72,39 +72,44 @@ define(["app",
         // cancel current promises, if they exist
         cancel(currentFacetsPromise);
 
-        return $.ajax({
-            url: '/api/v1/repository/repositories/' + Utils.selectedDomainId() + '/queryplans/',
-            data: {
-                q: keywords,
-                selected_facets: getFacetTerms()
-            }
-        }).fail(function (xhr, status, msg) {
-            ProducerManager.vent.trigger('msg:error', xhr.responseText);
-        }).done(function (data) {
-            // pass the data on to the facet renderer region and the
-            // facet results region
-            // first, order the facets alphabetically
-            console.log('done with facets');
-            var totalObjects = _.sum(data.facets.course, function (obj) { return obj[1];});
-            if (Utils.isCurating()) {
-                ProducerManager.regions.curateFacetedSearchPagination.show(new View.PaginationView({
-                    total: totalObjects
-                }));
-                ProducerManager.regions.curateFacetedSearchFacets.show(new View.FacetsView(data));
-            } else {
-                ProducerManager.regions.facetedSearchPagination.show(new View.PaginationView({
-                    total: totalObjects
-                }));
-                ProducerManager.regions.facetedSearchFacets.show(new View.FacetsView(data));
-            }
-        }).always(function () {
-        });
+        if (Utils.selectedDomainId() !== null) {
+            return $.ajax({
+                url: '/api/v1/repository/repositories/' + Utils.selectedDomainId() + '/queryplans/',
+                data: {
+                    q: keywords,
+                    selected_facets: getFacetTerms()
+                }
+            }).fail(function (xhr, status, msg) {
+                ProducerManager.vent.trigger('msg:error', xhr.responseText);
+            }).done(function (data) {
+                // pass the data on to the facet renderer region and the
+                // facet results region
+                // first, order the facets alphabetically
+                console.log('done with facets');
+                var totalObjects = _.sum(data.facets.course, function (obj) {
+                    return obj[1];
+                });
+                if (Utils.isCurating()) {
+                    ProducerManager.regions.curateFacetedSearchPagination.show(new View.PaginationView({
+                        total: totalObjects
+                    }));
+                    ProducerManager.regions.curateFacetedSearchFacets.show(new View.FacetsView(data));
+                } else {
+                    ProducerManager.regions.facetedSearchPagination.show(new View.PaginationView({
+                        total: totalObjects
+                    }));
+                    ProducerManager.regions.facetedSearchFacets.show(new View.FacetsView(data));
+                }
+            }).always(function () {
+            });
+        }
     }
 
     function updateFacetsAndResults () {
         var keywords = $('.input-search').val();
 
-        if (Utils.selectedDomainId() !== "-1") {
+        if (Utils.selectedDomainId() !== "-1" &&
+            Utils.selectedDomainId() !== null) {
             // show spinner while searching
             $('.processing-spinner').removeClass('hidden');
             Utils.processing();
@@ -132,25 +137,27 @@ define(["app",
         // save the selected facets
         saveSelectedFacets();
 
-        return $.ajax({
-            url: '/api/v1/repository/repositories/' + Utils.selectedDomainId() + '/search/',
-            data: {
-                q: keywords,
-                selected_facets: getFacetTerms(),
-                limit: itemsPerPage,
-                page: page
-            }
-        }).fail(function (xhr, status, msg) {
-            ProducerManager.vent.trigger('msg:error', xhr.responseText);
-        }).done(function (data) {
-            // pass the data on to the facet results region
-            console.log('done with results');
-            if (Utils.isCurating()) {
-                ProducerManager.regions.curateFacetedSearchResults.show(new View.FacetResultsView(data));
-            } else {
-                ProducerManager.regions.facetedSearchResults.show(new View.FacetResultsView(data));
-            }
-        });
+        if (Utils.selectedDomainId() !== null) {
+            return $.ajax({
+                url: '/api/v1/repository/repositories/' + Utils.selectedDomainId() + '/search/',
+                data: {
+                    q: keywords,
+                    selected_facets: getFacetTerms(),
+                    limit: itemsPerPage,
+                    page: page
+                }
+            }).fail(function (xhr, status, msg) {
+                ProducerManager.vent.trigger('msg:error', xhr.responseText);
+            }).done(function (data) {
+                // pass the data on to the facet results region
+                console.log('done with results');
+                if (Utils.isCurating()) {
+                    ProducerManager.regions.curateFacetedSearchResults.show(new View.FacetResultsView(data));
+                } else {
+                    ProducerManager.regions.facetedSearchResults.show(new View.FacetResultsView(data));
+                }
+            });
+        }
     }
 
     View.HeaderView = Marionette.ItemView.extend({
@@ -352,7 +359,16 @@ define(["app",
             }
         },
         events: {
+            'click .curate-search-result': 'manageLearningObjectives',
             'click .show-preview': 'togglePreview'
+        },
+        manageLearningObjectives: function (e) {
+            if (!$(e.originalEvent.target).hasClass('show-preview')) {
+                $('.curate-search-result.active').removeClass('active');
+                $(e.currentTarget).addClass('active');
+                $('#curate-learning-objectives').removeClass('hidden');
+
+            }
         },
         togglePreview: function (e) {
             // If is a composition, open preview in a dialog window

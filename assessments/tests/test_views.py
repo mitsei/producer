@@ -26,14 +26,15 @@ class AssessmentTestCase(DjangoTestCase):
         assessment = bank.get_assessment(assessment.ident)
         return assessment
 
-    def create_item(self, bank):
+    def create_item(self, bank, with_lo=False):
         form = bank.get_item_form_for_create([])
         form.display_name = 'a test item!'
         form.description = 'for testing with'
 
-        self._lo = 'foo@bar:baz'
+        if with_lo:
+            self._lo = 'mc3-objective%3A9729%40MIT-OEIT'
+            form.set_learning_objectives([Id(self._lo)])
 
-        form.set_learning_objectives([Id(self._lo)])
         new_item = bank.create_item(form)
 
         question_form = bank.get_question_form_for_create(new_item.ident, [])
@@ -325,4 +326,32 @@ class AssessmentItemCrUDTests(AssessmentTestCase):
         self.assertEqual(
             data['data']['results'][0]['id'],
             str(item.ident)
+        )
+
+    def test_can_get_item_learning_objectives(self):
+        item = self.create_item(self.bank, with_lo=True)
+        url = '{0}items/{1}/objectives/'.format(self.url,
+                                                unquote(str(item.ident)))
+        req = self.client.get(url)
+        self.ok(req)
+        data = self.json(req)
+        self.assertEqual(
+            data['data']['count'],
+            1
+        )
+        self.assertEqual(
+            data['data']['results'][0]['id'],
+            self._lo
+        )
+
+    def test_getting_item_los_when_has_none_returns_empty_list(self):
+        item = self.create_item(self.bank, with_lo=False)
+        url = '{0}items/{1}/objectives/'.format(self.url,
+                                                unquote(str(item.ident)))
+        req = self.client.get(url)
+        self.ok(req)
+        data = self.json(req)
+        self.assertEqual(
+            data['data']['count'],
+            0
         )

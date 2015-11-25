@@ -407,3 +407,32 @@ class ItemDownload(ProducerAPIViews):
             return response
         except (PermissionDenied, InvalidArgument, NotFound) as ex:
             gutils.handle_exceptions(ex)
+
+
+class ItemObjectives(ProducerAPIViews):
+    """
+    Get item learning objectives for the given bank
+    api/v1/assessment/items/<item_id>/objectives/
+
+    GET
+
+    Note that for RESTful calls, you need to set the request header
+    'content-type' to 'application/json'
+
+    Example (note the use of double quotes!!):
+       {"name" : "an updated item"}
+    """
+    renderer_classes = (DLJSONRenderer, BrowsableAPIRenderer)
+
+    def get(self, request, item_id, format=None):
+        try:
+            bank = autils.get_object_bank(self.am,
+                                          item_id,
+                                          object_type='item',
+                                          bank_id=None)
+
+            item = bank.get_item(gutils.clean_id(item_id))
+            data = gutils.extract_items(request, item.get_learning_objectives())
+            return Response(data)
+        except (PermissionDenied, NotFound) as ex:
+            gutils.handle_exceptions(ex)

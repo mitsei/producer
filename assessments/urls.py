@@ -13,6 +13,8 @@ urlpatterns = patterns('',
         views.ItemDetails.as_view()),
     url(r'^items/(?P<item_id>[-.:@%\d\w]+)/download/?$',
         views.ItemDownload.as_view()),
+    url(r'^items/(?P<item_id>[-.:@%\d\w]+)/objectives/?$',
+        views.ItemObjectives.as_view()),
     url(r'^items/?$',
         views.ItemsList.as_view()),
 )

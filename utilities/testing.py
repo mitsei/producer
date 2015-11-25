@@ -267,6 +267,14 @@ def configure_test_bucket():
                     {'value': 'AWS_ADAPTER_1', 'priority': 1}
                 ]
             },
+            'learningProviderImpl': {
+                'syntax': 'STRING',
+                'displayName': 'Learning Provider Implementation',
+                'description': 'Implementation for learning service provider',
+                'values': [
+                    {'value': 'HANDCAR_SEI_DEV', 'priority': 1}
+                ]
+            },
             'assetContentRecordTypeForFiles': {
                 'syntax': 'TYPE',
                 'displayName': 'Asset Content Type for Files',

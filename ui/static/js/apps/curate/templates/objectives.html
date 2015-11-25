@@ -1,0 +1,30 @@
+<% if (los.length > 0) { %>
+    <% _.each(los, function (lo) { %>
+        <li class="list-group-item learning-objective">
+            <div class="lo-wrapper">
+                <div class="text-wrapper">
+                    <div class="lo-display-name">
+                        <%- lo.displayName.text %>
+                    </div>
+                    <div class="lo-description">
+                        <%- lo.description.text %>
+                    </div>
+                </div>
+                <div class="lo-actions">
+                    <div>
+                        <button class="btn btn-danger unlink-objective" title="Unlink objective">
+                            <i aria-hidden="true" class="fa fa-unlink"></i>
+                            <span class="sr-only">Unlink objective</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </li>
+    <% }); %>
+<% } else { %>
+    <li class="list-group-item none-found">
+        <div class="alert alert-danger">
+            None found...
+        </div>
+    </li>
+<% } %>
