@@ -157,6 +157,7 @@ define(["app",
 
             if (courseId !== 'create') {
                 ProducerManager.navigate("edit/" + courseId);
+                Cookies.set('courseId', courseId);
                 require(["apps/dashboard/domains/domain_controller"], function(DomainController){
                     DomainController.listUserCourseRuns(courseId);
                 });
@@ -288,6 +289,7 @@ define(["app",
 
             if (runId !== 'create') {
                 ProducerManager.navigate("edit/" + courseId + '/' + runId);
+                Cookies.set('runId', runId);
                 require(["apps/dashboard/domains/domain_controller"], function(DomainController){
                     DomainController.renderUserCourseRun(runId);
                 });

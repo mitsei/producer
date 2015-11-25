@@ -28,15 +28,9 @@
         <!-- Collect the nav links, forms, and other content for toggling -->
         <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
           <ul class="nav navbar-nav repository-navbar btn-group" role="group" aria-label="repository tools">
-              {% if 'admin' in privileges %}
-                <li class=""><button class="btn btn-lg add-new-domain repository-btn"><i aria-hidden="true" class="fa fa-plus-circle"></i> Create New Domain</button></li>
-                <li class=""><button class="btn btn-lg import-course repository-btn"><i aria-hidden="true" class="fa fa-cloud-upload"></i> Import Course</button></li>
-              {%  endif %}
+              <li class=""><button class="btn btn-lg sandbox repository-btn"><i aria-hidden="true" class="fa fa-cubes"></i> My Sandbox</button></li>
               {% if 'curate' in privileges %}
                 <li class=""><button class="btn btn-lg curate-objects repository-btn"><i aria-hidden="true" class="fa fa-cogs"></i> Curate Objects</button></li>
-              {% endif %}
-              {% if 'author' in privileges %}
-                <li class=""><button class="btn btn-lg download-from-library repository-btn"><i aria-hidden="true" class="fa fa-cloud-download"></i> Export From Library</button></li>
               {% endif %}
           </ul>
           <ul class="nav navbar-nav navbar-right">
@@ -53,9 +47,13 @@
                   <span class="caret"></span>
               </a>
               <ul class="dropdown-menu">
-                <li><a href="#">Action</a></li>
-                <li><a href="#">Another action</a></li>
-                <li><a href="#">Something else here</a></li>
+                {% if 'admin' in privileges %}
+                  <li class=""><a class="add-new-domain admin-action"><i aria-hidden="true" class="fa fa-plus-circle"></i> Create New Domain</a></li>
+                  <li class=""><a class="import-course admin-action"><i aria-hidden="true" class="fa fa-cloud-upload"></i> Import Course</a></li>
+                {%  endif %}
+                {% if 'author' in privileges %}
+                  <li class=""><a class="download-from-library admin-action"><i aria-hidden="true" class="fa fa-cloud-download"></i> Export From Library</a></li>
+                {% endif %}
                 <li role="separator" class="divider"></li>
                 <li><a href="/logout">Log out</a></li>
               </ul>

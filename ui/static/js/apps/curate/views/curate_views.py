@@ -1,1 +1,0 @@
-# apps/curate/views/curate_views.py

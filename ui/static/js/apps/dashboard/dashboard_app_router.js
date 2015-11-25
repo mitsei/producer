@@ -9,6 +9,7 @@ define(["app",
       appRoutes: {
         "": "initialize",
         "curate": "curateObjects",
+        "sandbox": "showMySandbox",
         "edit/:courseId": "showCourseRuns",
         "edit/:courseId/:runId": "editCourseRun"
       }
@@ -22,8 +23,9 @@ define(["app",
     var API = {
         curateObjects: function () {
             // placeholder for a dashboard for curating objects and applying tags
-            console.log('curating objects');
-
+            require(["apps/curate/curate_controller"], function(CurateController){
+                CurateController.showFacets();
+            });
         },
         editCourseRun: function (courseId, runId) {
             // placeholder for showing a course run in the edit canvas (on left)
@@ -59,8 +61,41 @@ define(["app",
                     });
                 }
             });
+        },
+        showMySandbox: function () {
+            require(["apps/dashboard/domains/domain_controller",
+                     "apps/edit-course/edit_course_controller"],
+                function (DomainController, EditCourseController) {
+                    executeAction(EditCourseController.renderCanvas);
+                    executeAction(DomainController.listUserCourses, Utils.userRepoId());
+            });
         }
     };
+
+    ProducerManager.on("curate", function(){
+        API.curateObjects();
+    });
+
+    ProducerManager.on("sandbox", function(){
+        if (Utils.cookie('courseId') === '-1' && Utils.cookie('runId') === '-1') {
+            API.showMySandbox();
+        } else if (Utils.cookie('runId') === '-1') {
+            // only have courseId
+            ProducerManager.navigate('edit/' + Utils.cookie('courseId'));
+            API.showCourseRuns(Utils.cookie('courseId'));
+        } else {
+            // has runId and courseId
+            var courseId = Utils.cookie('courseId'),
+                runId = Utils.cookie('runId');
+
+            ProducerManager.navigate('edit/' + courseId + '/' + runId);
+
+            Cookies.remove('courseId');
+            Cookies.remove('runId');
+
+            API.editCourseRun(courseId, runId);
+        }
+    });
 
     ProducerManager.on("userCourseRun:edit", function(courseId, runId){
         API.editCourseRun(courseId, runId);

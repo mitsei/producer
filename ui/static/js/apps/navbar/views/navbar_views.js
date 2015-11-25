@@ -23,8 +23,9 @@ define(["app",
         },
         events: {
             'click .add-new-domain': 'createNewDomain',
-            'click button.curate-objects': 'curateObjects',
-            'click button.import-course.repository-btn': 'importNewCourse'
+            'click .curate-objects': 'curateObjects',
+            'click .import-course': 'importNewCourse',
+            'click .sandbox': 'mySandbox'
         },
         closeDrawer: function () {
             // close the drawer if it is open
@@ -98,7 +99,8 @@ define(["app",
             });
         },
         curateObjects: function (e) {
-
+            ProducerManager.navigate("curate");
+            ProducerManager.trigger('curate');
         },
         importNewCourse: function () {
             var _this = this,
@@ -183,6 +185,10 @@ define(["app",
                 EditCourseController.renderCanvas();
                 DomainController.listUserCourses(Utils.userRepoId());
             });
+        },
+        mySandbox: function () {
+            ProducerManager.navigate("sandbox");
+            ProducerManager.trigger('sandbox');
         }
     });
 

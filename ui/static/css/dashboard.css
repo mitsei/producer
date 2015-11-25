@@ -2,6 +2,10 @@
     color: red;
 }
 
+.admin-action {
+    cursor: pointer;
+}
+
 #course-selector-region {
     width: 60%;
     display: inline-block;
