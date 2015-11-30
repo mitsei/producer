@@ -12,6 +12,10 @@ from utilities import assessment as autils
 from utilities import general as gutils
 from producer.views import ProducerAPIViews, DLJSONRenderer
 
+TOPIC_GENUS = Type('mc3-objective%3Amc3.learning.topic%40MIT-OEIT')
+OUTCOME_GENUS = Type('mc3-objective%3Amc3.learning.outcome%40MIT-OEIT')
+OUTCOME_GENERIC_GENUS = Type('mc3-objective%3Amc3.learning.generic.outcome%40MIT-OEIT')
+
 
 class ObjectiveBanksList(ProducerAPIViews):
     """
