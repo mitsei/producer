@@ -137,6 +137,9 @@ define(["app",
         // save the selected facets
         saveSelectedFacets();
 
+        // hide learning objectives, if present on screen
+        $('#curate-learning-objectives').addClass('hidden');
+
         if (Utils.selectedDomainId() !== null) {
             return $.ajax({
                 url: '/api/v1/repository/repositories/' + Utils.selectedDomainId() + '/search/',

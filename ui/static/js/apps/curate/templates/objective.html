@@ -1,15 +1,20 @@
-<li class="list-group-item learning-objective">
+<li class="list-group-item learning-objective" data-obj="<%- loMap %>">
     <div class="lo-wrapper">
-        <div class="text-wrapper">
+        <div class="lo-text-wrapper">
             <div class="lo-display-name">
-
+                <%- lo.displayName.text %>
             </div>
             <div class="lo-description">
-
+                <%- lo.description.text %>
             </div>
         </div>
         <div class="lo-actions">
-
+            <div>
+                <button class="btn btn-danger unlink-objective" title="Unlink objective">
+                    <i aria-hidden="true" class="fa fa-unlink"></i>
+                    <span class="sr-only">Unlink objective</span>
+                </button>
+            </div>
         </div>
     </div>
 </li>

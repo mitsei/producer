@@ -655,7 +655,7 @@ class CompositionObjectives(ProducerAPIViews):
             try:
                 for obj_id in composition.get_learning_objective_ids():
                     objectives.append(ols.get_objective(obj_id))
-            except (AttributeError, IllegalState):
+            except (AttributeError, IllegalState, KeyError):
                 pass
 
             data = gutils.extract_items(request, objectives)

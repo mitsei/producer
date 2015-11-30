@@ -819,7 +819,7 @@ li.resortable.cut {
 }
 
 .lo-display-name {
-    flex: 1 1 75px;
+    /*flex: 1 1 75px;*/
     font-weight: bold;
     border-bottom: 1px solid gray;
 }

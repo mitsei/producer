@@ -432,7 +432,10 @@ class ItemObjectives(ProducerAPIViews):
                                           bank_id=None)
 
             item = bank.get_item(gutils.clean_id(item_id))
-            data = gutils.extract_items(request, item.get_learning_objectives())
+            try:
+                data = gutils.extract_items(request, item.get_learning_objectives())
+            except KeyError:
+                pass
             return Response(data)
         except (PermissionDenied, NotFound) as ex:
             gutils.handle_exceptions(ex)

@@ -3,11 +3,16 @@
 </div>
 <ul class="list-group lo-list">
     <% if (los.length > 0) { %>
+        <li class="list-group-item none-found hidden">
+            <div class="alert alert-danger">
+                None currently linked...
+            </div>
+        </li>
         <% _.each(los, function (lo) { %>
             <% var loMap = JSON.stringify(lo); %>
             <li class="list-group-item learning-objective" data-obj="<%- loMap %>">
                 <div class="lo-wrapper">
-                    <div class="text-wrapper">
+                    <div class="lo-text-wrapper">
                         <div class="lo-display-name">
                             <%- lo.displayName.text %>
                         </div>
@@ -33,7 +38,7 @@
             </div>
         </li>
     <% } %>
-    <li class="list-group-item">
+    <li class="list-group-item link-objective-wrapper">
         <button class="btn btn-success link-objective" title="Link objective">
             <i aria-hidden="true" class="fa fa-link"></i>
             <span>Link objective</span>

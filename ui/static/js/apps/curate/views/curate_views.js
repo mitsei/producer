@@ -2,6 +2,7 @@
 
 define(["app",
         "apps/common/utilities",
+        "apps/curate/models/objective",
         "apps/curate/collections/banks",
         "apps/curate/collections/bank_objectives",
         "apps/curate/collections/objectives",
@@ -12,15 +13,19 @@ define(["app",
         "text!apps/curate/templates/objective_selector.html",
         "text!apps/curate/templates/objective_selector_none.html",
         "text!apps/curate/templates/objectives.html",
+        "text!apps/curate/templates/objective.html",
+        "text!apps/curate/templates/unlink_objective.html",
         "cookies",
         "jquery-ui",
         "bootstrap-drawer",
         "select2"],
-       function(ProducerManager, Utils, BanksCollection, BankObjectivesCollection,
+       function(ProducerManager, Utils, ObjectiveModel,
+                BanksCollection, BankObjectivesCollection,
                 ObjectivesCollection, AssetModel, CompositionModel,
                 CurateFacetsTemplate,
                 AddObjectiveTemplate, ObjectiveSelectorTemplate,
-                ObjectiveSelectorNoneTemplate, ObjectivesTemplate, Cookies){
+                ObjectiveSelectorNoneTemplate, ObjectivesTemplate,
+                ObjectiveTemplate, UnlinkObjectiveTemplate, Cookies){
   ProducerManager.module("CurateApp.View", function(View, ProducerManager, Backbone, Marionette, $, _){
     View.CurateView = Marionette.ItemView.extend({
         template: function () {
@@ -47,6 +52,7 @@ define(["app",
 
             if (preselectedId !== '-1') {
                 $e.trigger('change');
+                Utils.processing();
             }
         },
         events: {
@@ -79,6 +85,7 @@ define(["app",
                 });
 
             Utils.processing();
+            $t.find('option[value!="-1"]').remove();
 
             objectivesPromise.done(function (data) {
                 Cookies.set('bankId', bankId);
@@ -108,7 +115,8 @@ define(["app",
             });
         },
         events: {
-            'click .link-objective': 'linkObjective'
+            'click .link-objective': 'linkObjective',
+            'click .unlink-objective': 'unlinkObjective'
         },
         linkObjective: function (e) {
             var $e = $('.curate-search-result.active'),
@@ -151,7 +159,7 @@ define(["app",
                                     $(_this).dialog('close');
                                     console.log('No objective selected, no action taken.');
                                 } else {
-                                    if (objId.indexOf('repository.Composition') >= 0) {
+                                    if (originalObjectId.indexOf('repository.Composition') >= 0) {
                                         var objModel = new CompositionModel({id: originalObjectId});
                                     } else {
                                         // both assets and items are handled by the same model...
@@ -162,11 +170,29 @@ define(["app",
                                     los.push(objId);
 
                                     objModel.set('learningObjectiveIds', los);
+
+                                    Utils.processing();
+
                                     objModel.save(null, {
                                         success: function (data) {
                                             console.log('saved');
+                                            // update it in the UI, too
+                                            var $noObjectives = $('ul.lo-list li.none-found'),
+                                                $wrapper = $('ul.lo-list li.link-objective-wrapper'),
+                                                newObjective = new ObjectiveModel({id: objId}),
+                                                newObjectivePromise = newObjective.fetch();
+
+                                            newObjectivePromise.done(function (data) {
+                                                $noObjectives.addClass('hidden');
+                                                $wrapper.before(_.template(ObjectiveTemplate)({
+                                                    lo: data,
+                                                    loMap: JSON.stringify(data)
+                                                }));
+                                                Utils.doneProcessing();
+                                            });
                                         },
                                         error: function (xhr, status, msg) {
+                                            Utils.doneProcessing();
                                             ProducerManager.vent.trigger('msg:error', xhr.responseText);
                                         }
                                     });
@@ -181,8 +207,76 @@ define(["app",
                 Utils.bindDialogCloseEvents();
                 Utils.doneProcessing();
             });
+        },
+        unlinkObjective: function (e) {
+            var $e = $(e.currentTarget),
+                $lo = $e.closest('li.learning-objective'),
+                originalObjectId = $('li.curate-search-result.active').data('obj').id;
 
+            ProducerManager.regions.dialog.show(new View.UnlinkObjectiveView());
+            ProducerManager.regions.dialog.$el.dialog({
+                modal: true,
+                width: 500,
+                height: 450,
+                title: 'Unlink objective from an asset / composition / item',
+                buttons: [
+                    {
+                        text: "Cancel",
+                        class: 'btn btn-danger',
+                        click: function () {
+                            $(this).dialog("close");
+                        }
+                    },
+                    {
+                        text: "Unlink",
+                        class: 'btn btn-success',
+                        click: function () {
+                            var _this = this;
 
+                            if (originalObjectId.indexOf('repository.Composition') >= 0) {
+                                var objModel = new CompositionModel({id: originalObjectId});
+                            } else {
+                                // both assets and items are handled by the same model...
+                                var objModel = new AssetModel({id: originalObjectId});
+                            }
+                            $lo.remove();
+
+                            var los = Utils.currentLearningObjectives();
+                            los = _.pluck(los, 'id');
+
+                            objModel.set('learningObjectiveIds', los);
+
+                            Utils.processing();
+
+                            objModel.save(null, {
+                                success: function (data) {
+                                    console.log('saved');
+                                    // update it in the UI, too
+                                    var $noObjectives = $('ul.lo-list li.none-found');
+
+                                    if ($('ul.lo-list li.learning-objective').length === 0) {
+                                        $noObjectives.removeClass('hidden');
+                                    }
+                                    Utils.doneProcessing();
+                                },
+                                error: function (xhr, status, msg) {
+                                    Utils.doneProcessing();
+                                    ProducerManager.vent.trigger('msg:error', xhr.responseText);
+                                }
+                            });
+
+                            $(_this).dialog('close');
+                        }
+                    }
+                ]
+            });
+            Utils.bindDialogCloseEvents();
+        }
+    });
+
+    View.UnlinkObjectiveView = Marionette.ItemView.extend({
+        template: function () {
+            return _.template(UnlinkObjectiveTemplate)();
         }
     });
   });
