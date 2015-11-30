@@ -29,6 +29,24 @@
         </div>
       </div>
     <% }); %>
+    <div class="objective-facet-wrapper">
+        <div class="panel panel-default facet-panel">
+        <div class="panel-heading" role="tab" id="heading-learning_objectives">
+          <h4 class="panel-title">
+            <a class="accordion-toggle" role="button" data-toggle="collapse" href="#collapse-learning_objectives" aria-expanded="true" aria-controls="collapse-learning_objectives">
+              learning_objectives
+            </a>
+          </h4>
+        </div>
+        <div id="collapse-learning_objectives" data-facet-prefix="learning_objectives" class="panel-collapse collapse in facet-items" role="tabpanel" aria-labelledby="heading-learning_objectives">
+          <div class="panel-body">
+              <div class="form-group">
+                  <input class="form-control" type="text" name="lo-facet" placeholder="Learning objective keywords" />
+              </div>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="items-per-page-wrapper text-center">
         <select id="items-per-page" class="form-control">
             <% if (selectedItemsPerPage === 10) { %>
