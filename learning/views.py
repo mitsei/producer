@@ -12,7 +12,33 @@ from utilities import assessment as autils
 from utilities import general as gutils
 from producer.views import ProducerAPIViews, DLJSONRenderer
 
-OUTCOME_GENUS_TYPE = Type('mc3-objective%3Amc3.learning.outcome%40MIT-OEIT')
+
+class ObjectiveBanksList(ProducerAPIViews):
+    """
+    Return list of objective banks from MC3
+
+    api/v1/learning/objectivebanks/
+
+    GET
+
+    Note that for RESTful calls, you need to set the request header
+    'content-type' to 'application/json'
+
+    Example (note the use of double quotes!!):
+       {"displayName" : "a learning objective",
+        "description" : "Do XYZ"}
+   """
+    renderer_classes = (DLJSONRenderer,BrowsableAPIRenderer)
+
+    def get(self, request, format=None):
+        try:
+            banks = gutils.extract_items(request,
+                                         self.lm.objective_banks)
+            banks['data']['results'] = sorted(banks['data']['results'],
+                                              key=lambda k: k['displayName']['text'].lower())
+            return Response(banks)
+        except (PermissionDenied, IntegrityError) as ex:
+            gutils.handle_exceptions(ex)
 
 
 class ObjectivesList(ProducerAPIViews):
@@ -32,13 +58,21 @@ class ObjectivesList(ProducerAPIViews):
    """
     renderer_classes = (DLJSONRenderer,BrowsableAPIRenderer)
 
-    def get(self, request, format=None):
+    def get(self, request, bank_id=None, format=None):
         try:
-            objectives = []
-            for bank in self.lm.objective_banks:
-                objectives += list(bank.get_objectives_by_genus_type(OUTCOME_GENUS_TYPE))
+            if bank_id is None:
+                objectives = []
+                for bank in self.lm.objective_banks:
+                    objectives += list(bank.get_objectives())
 
-            objectives = gutils.extract_items(request, objectives)
+                objectives = gutils.extract_items(request, objectives)
+            else:
+                bank = self.lm.get_objective_bank(gutils.clean_id(bank_id))
+
+                objectives = gutils.extract_items(request,
+                                                  bank.get_objectives())
+            objectives['data']['results'] = sorted(objectives['data']['results'],
+                                                   key=lambda k: k['displayName']['text'])
             return Response(objectives)
         except (PermissionDenied, IntegrityError) as ex:
             gutils.handle_exceptions(ex)

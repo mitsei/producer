@@ -1,9 +1,13 @@
 // apps/curate/curate_controller.js
 
 define(["app",
+        "apps/common/utilities",
         "apps/curate/views/curate_views",
-        "apps/curate/collections/objectives"],
-    function(ProducerManager, CurateViews, ObjectivesCollection){
+        "apps/curate/collections/asset_objectives",
+        "apps/curate/collections/composition_objectives",
+        "apps/curate/collections/item_objectives"],
+    function(ProducerManager, Utils, CurateViews, AssetObjectivesCollection,
+             CompositionObjectivesCollection, ItemObjectivesCollection){
   ProducerManager.module("ProducerApp.Curate", function(Curate, ProducerManager, Backbone, Marionette, $, _){
     Curate.Controller = {
       showFacets: function () {
@@ -18,28 +22,31 @@ define(["app",
           });
       },
       showLearningObjectives: function (objectId) {
-          var objectives = new ObjectivesCollection([], {id: objectId}),
-                runsView = new DomainViews.RunsView({collection: runs}),
-                runsPromise = runsView.collection.fetch({
-                    reset: true,
-                    error: function (model, xhr, options) {
-                        ProducerManager.vent.trigger('msg:error', xhr.responseText);
-                        Utils.doneProcessing();
-                    }
-                });
+          if (objectId.indexOf('repository.Asset') >= 0) {
+              var objectives = new AssetObjectivesCollection([], {id: objectId});
+          } else if (objectId.indexOf('repository.Composition') >= 0) {
+              var objectives = new CompositionObjectivesCollection([], {id: objectId});
+          } else if (objectId.indexOf('assessment.Item') >= 0) {
+              var objectives = new ItemObjectivesCollection([], {id: objectId});
+          } else {
+              console.log('error in objectId: ' + objectId);
+          }
 
-            ProducerManager.regions.composition.empty();
-            ProducerManager.regions.preview.$el.html('');
-            $('div.action-menu').addClass('hidden');
+          var objectivesView = new CurateViews.ManageLearningObjectivesView({collection: objectives}),
+              objectivesPromise = objectivesView.collection.fetch({
+                  reset: true,
+                  error: function (model, xhr, options) {
+                      ProducerManager.vent.trigger('msg:error', xhr.responseText);
+                      Utils.doneProcessing();
+                  }
+              });
 
             Utils.processing();
 
-            runsPromise.done(function (data) {
-                ProducerManager.regions.run.show(runsView);
-                ProducerManager.regions.preview.$el.html('');
+            objectivesPromise.done(function (data) {
+                ProducerManager.regions.curateLearningObjectives.show(objectivesView);
                 Utils.doneProcessing();
             });
-          ProducerManager.regions.curateLearningObjectives.show(new CurateViews.LearningObjectiveView({}));
       }
     }
   });

@@ -262,7 +262,8 @@ def extract_items(request, a_list, bank=None, section=None):
         not isinstance(a_list, abc_grading_objects.GradeSystemList) and
         not isinstance(a_list, abc_grading_objects.GradebookColumnList) and
         not isinstance(a_list, abc_grading_objects.GradeEntryList) and
-        not isinstance(a_list, abc_learning_objects.ObjectiveList)):
+        not isinstance(a_list, abc_learning_objects.ObjectiveList) and
+        not isinstance(a_list, abc_learning_objects.ObjectiveBankList)):
         a_list = [a_list]
     try:
         list_len = a_list.available()

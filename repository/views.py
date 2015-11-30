@@ -333,8 +333,13 @@ class AssetObjectives(ProducerAPIViews):
             ols = self.lm._instantiate_session(method_name='get_objective_lookup_session',
                                                proxy=self.lm._proxy)
             objectives = []
-            for obj_id in asset.get_learning_objective_ids():
-                objectives.append(ols.get_objective(obj_id))
+            # TODO: may need to manually add the field into MongoDB?
+            # instead of this hack?
+            try:
+                for obj_id in asset.get_learning_objective_ids():
+                    objectives.append(ols.get_objective(obj_id))
+            except KeyError:  # this means the asset was not initialized with learningObjectId in its map
+                pass
 
             data = gutils.extract_items(request, objectives)
             return Response(data)

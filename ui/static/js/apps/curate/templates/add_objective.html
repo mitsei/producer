@@ -1,6 +1,31 @@
 <div>
-    <button class="btn btn-success add-objective-btn">
-        <i aria-hidden="true" class="fa fa-plus-circle"></i>
-        Add Objective
-    </button>
+    <div class="form-group">
+        <label for="bank-selector">Please select a collection</label>
+        <select class="form-control" id="bank-selector">
+            <option value="-1"></option>
+            <% _.each(banks, function (bank) { %>
+                <% if (bank.id === preselectedId) { %>
+                    <option selected value="<%- bank.id %>"><%- bank.displayName.text %></option>
+                <% } else { %>
+                    <option value="<%- bank.id %>"><%- bank.displayName.text %></option>
+                <% } %>
+            <% }); %>
+        </select>
+    </div>
+    <div class="form-group objective-selector-wrapper hidden">
+        <label for="objective-selector">Please select an objective to link</label>
+        <select class="form-control" id="objective-selector">
+            <option value="-1"></option>
+        </select>
+    </div>
+    <div class="objective-selector-preview hidden">
+        <div class="text-wrapper">
+            <span class="text-label">Display Name:</span>
+            <span class="display-name text"></span>
+        </div>
+        <div class="text-wrapper">
+            <span class="text-label">Description:</span>
+            <span class="description text"></span>
+        </div>
+    </div>
 </div>

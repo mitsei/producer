@@ -243,7 +243,7 @@ ul.repository-navbar button.repository-btn {
 
 ul.repository-navbar button.repository-btn.active,
 ul.repository-navbar button.repository-btn:hover {
-    background-color: blue;
+    background-color: #337ab7;
     color: white;
 }
 
@@ -798,7 +798,7 @@ li.resortable.cut {
 }
 
 #curate-learning-objectives {
-    flex: 1 1 auto;
+    flex: 1 1 33%;
 }
 
 .lo-wrapper {
@@ -815,7 +815,7 @@ li.resortable.cut {
 
 .lo-actions {
     flex: 1 1 auto;
-    border-left: 1px solid gray;
+    margin-left: 10px;
 }
 
 .lo-display-name {
@@ -826,4 +826,36 @@ li.resortable.cut {
 
 .lo-description {
     flex: 1 1 100%;
+}
+
+.link-objective {
+    width: 100%;
+}
+
+#dialog-region .select2-container {
+    width: 100% !important;
+}
+
+span.select2-container--open {
+    z-index: 4000;
+}
+
+.objective-selector-preview {
+    display: flex;
+    display: -webkit-flex;
+    flex-direction: column;
+}
+
+.objective-selector-preview .text-wrapper {
+    display: flex;
+    display: -webkit-flex;
+}
+
+.objective-selector-preview .text-label {
+    flex: 1 1 200px;
+    font-weight: bold;
+}
+
+.objective-selector-preview .text {
+    flex: 1 1 80%;
 }

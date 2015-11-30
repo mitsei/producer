@@ -364,10 +364,14 @@ define(["app",
         },
         manageLearningObjectives: function (e) {
             if (!$(e.originalEvent.target).hasClass('show-preview')) {
-                $('.curate-search-result.active').removeClass('active');
-                $(e.currentTarget).addClass('active');
-                $('#curate-learning-objectives').removeClass('hidden');
+                var $e = $(e.currentTarget);
 
+                $('.curate-search-result.active').removeClass('active');
+                $e.addClass('active');
+                $('#curate-learning-objectives').removeClass('hidden');
+                require(["apps/curate/curate_controller"], function(CurateController){
+                    CurateController.showLearningObjectives($e.data('obj').id);
+                });
             }
         },
         togglePreview: function (e) {

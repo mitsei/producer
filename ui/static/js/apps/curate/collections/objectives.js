@@ -6,7 +6,6 @@ define(["backbone",
 
     var Objectives = Backbone.Collection.extend({
         initialize: function (models, options) {
-            this.id = options.id;
         },
         model: ObjectiveModel,
         url: function () {
