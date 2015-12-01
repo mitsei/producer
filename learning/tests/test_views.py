@@ -81,5 +81,6 @@ class ObjectivesCrUDTests(LearningTestCase):
                  'mc3-objective%3Amc3.learning.subject%40MIT-OEIT',  # MIToces only...should not really be here
                  'mc3-objective%3Amc3.learning.department%40MIT-OEIT',  # MIToces only...should not really be here
                  'mc3-objective%3Amc3.learning.program%40MIT-OEIT',  # MIToces only...should not really be here
+                 'mc3-objective%3Amc3.learning.faculty%40MIT-OEIT',  # MIToces only...should not really be here
                  ]
             )
