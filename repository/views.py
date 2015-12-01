@@ -1097,7 +1097,10 @@ class QueryHelpersMixin(object):
 
         ols = self.lm._instantiate_session(method_name='get_objective_lookup_session',
                                            proxy=self.lm._proxy)
-        return ols.get_objectives_by_ids([gutils.clean_id(i) for i in los])
+
+        results = ols.get_objectives_by_ids([gutils.clean_id(i) for i in los])
+
+        return results
 
     def _construct_count_queries(self, repo, composition_id=None, with_los=False, with_types=False):
         bank = self.am.get_bank(repo.ident)
@@ -1158,10 +1161,8 @@ class QueryHelpersMixin(object):
                                                                                          composition_id,
                                                                                          with_types=True)
 
-        all_los = list(self._get_current_los(repo))
-
         self._count_los(lo_counts,
-                        all_los,
+                        self.current_los,
                         asset_querier,
                         repo,
                         'clear_match_learning_objective',
@@ -1169,7 +1170,7 @@ class QueryHelpersMixin(object):
                         'get_assets_by_query')
 
         self._count_los(lo_counts,
-                        all_los,
+                        self.current_los,
                         composition_querier,
                         repo,
                         'clear_match_learning_objective',
@@ -1177,7 +1178,7 @@ class QueryHelpersMixin(object):
                         'get_compositions_by_query')
 
         self._count_los(lo_counts,
-                        all_los,
+                        self.current_los,
                         item_querier,
                         bank,
                         'clear_learning_objective_id_terms',
@@ -1512,7 +1513,10 @@ class RepositoryQueryPlansAvailable(ProducerAPIViews, QueryHelpersMixin):
             if domain_repo.genus_type not in [DOMAIN_REPO_GENUS, USER_REPO_GENUS]:
                 raise InvalidArgument('You can only get query plans for domains or user repos.')
 
+            self.current_los = list(self._get_current_los(domain_repo))
+
             run_map = self._get_run_map(domain_repo)
+
             # first for each repository, get count of its total objects that
             # meet the keyword filter requirement and other facet requirements
             for run_identifier, run_name in run_map.iteritems():
@@ -1529,9 +1533,11 @@ class RepositoryQueryPlansAvailable(ProducerAPIViews, QueryHelpersMixin):
                     self._count_objects(run_id,
                                         asset_counts,
                                         domain_repo)
-                    self._count_by_learning_objectives(run_id,
-                                                       learning_objective_counts,
-                                                       domain_repo)
+
+                    if settings.ENABLE_OBJECTIVE_FACETS:
+                        self._count_by_learning_objectives(run_id,
+                                                           learning_objective_counts,
+                                                           domain_repo)
                 else:
                     # only do courses that have been selected
                     if any(run_identifier in course for course in self.facet_course_runs):
@@ -1545,9 +1551,11 @@ class RepositoryQueryPlansAvailable(ProducerAPIViews, QueryHelpersMixin):
                         self._count_objects(run_id,
                                             asset_counts,
                                             domain_repo)
-                        self._count_by_learning_objectives(run_id,
-                                                           learning_objective_counts,
-                                                           domain_repo)
+
+                        if settings.ENABLE_OBJECTIVE_FACETS:
+                            self._count_by_learning_objectives(run_id,
+                                                               learning_objective_counts,
+                                                               domain_repo)
 
             count_cases = [(asset_counts, 'resource_type', False),
                            (course_run_counts, 'course', False),
