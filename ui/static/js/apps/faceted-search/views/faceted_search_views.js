@@ -9,6 +9,7 @@ define(["app",
         "text!apps/faceted-search/templates/curate_facet_results.html",
         "text!apps/faceted-search/templates/facet_pagination.html",
         "text!apps/faceted-search/templates/domain_selector.html",
+        "text!apps/faceted-search/templates/lo_facet.html",
         "cookies",
         "bootstrap",
         "bootstrap-drawer",
@@ -17,7 +18,8 @@ define(["app",
         "select2"],
        function(ProducerManager, Utils, PreviewViews, DomainsCollection,
                 FacetsTemplate, FacetResultsTemplate, CurateFacetResultsTemplate,
-                FacetPaginationTemplate, DomainSelectorTemplate, Cookies){
+                FacetPaginationTemplate, DomainSelectorTemplate, LOFacetTemplate,
+                Cookies){
   ProducerManager.module("FacetedSearchApp.View", function(View, ProducerManager, Backbone, Marionette, $, _){
     var selectedFacets = [],
         selectedItemsPerPage = 10,
@@ -262,7 +264,17 @@ define(["app",
         },
         onShow: function () {
             $('select.learning-objective-selector').select2({
-                placeholder: 'Objectives...'
+                placeholder: 'Objectives...',
+                templateResult: function (lo) {
+                    if ($(lo.element).data('counts') != null) {
+                        return $(_.template(LOFacetTemplate)({
+                            displayName: lo.text,
+                            counts: $(lo.element).data('counts')
+                        }));
+                    } else {
+                        return lo.text;
+                    }
+                }
             });
         },
         events: {

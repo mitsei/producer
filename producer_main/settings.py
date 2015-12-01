@@ -95,6 +95,7 @@ RABBITMQ_PWD = settings_credentials.__dict__.get('RABBITMQ_PWD', True)
 RABBITMQ_VHOST = settings_credentials.__dict__.get('RABBITMQ_VHOST', '')
 
 ENABLE_NOTIFICATIONS = settings_credentials.__dict__.get('ENABLE_NOTIFICATIONS', False)
+ENABLE_OBJECTIVE_FACETS = settings_credentials.__dict__.get('ENABLE_OBJECTIVE_FACETS', False)
 
 if "default" not in DATABASES or "PASSWORD" not in DATABASES["default"] or DATABASES["default"]["PASSWORD"]=="":
     print msg_credentials()

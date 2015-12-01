@@ -15,12 +15,11 @@
                     <select class="form-control learning-objective-selector" multiple aria-multiselectable="true">
                         <% _.each(cluster, function (item) { %>
                             <% if (selectedFacets.indexOf(item[2]) >= 0) { %>
-                                <option selected value="<%- item[2] %>">
+                                <option selected value="<%- item[2] %>" data-counts="<%- item[1] %>">
                             <% } else { %>
-                                <option value="<%- item[2] %>">
+                                <option value="<%- item[2] %>" data-counts="<%- item[1] %>">
                             <% } %>
                               <%- item[0] %>
-                              (<%- item[1] %>)
                               </option>
                         <% }); %>
                     </select>
