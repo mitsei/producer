@@ -13,7 +13,8 @@ define(["app",
         "bootstrap",
         "bootstrap-drawer",
         "jquery-bootpag",
-        "jquery-sortable"],
+        "jquery-sortable",
+        "select2"],
        function(ProducerManager, Utils, PreviewViews, DomainsCollection,
                 FacetsTemplate, FacetResultsTemplate, CurateFacetResultsTemplate,
                 FacetPaginationTemplate, DomainSelectorTemplate, Cookies){
@@ -42,6 +43,16 @@ define(["app",
                 _.each($checkedFacets, function (checkedFacet) {
                     facetTerms.push(prefix + ':' + $(checkedFacet).val());
                 });
+            }
+
+            if (prefix == 'learning_objective_exact') {
+                var $selectedLos = $(cluster).find('select.learning-objective-selector option:selected');
+
+                if ($selectedLos.length > 0) {
+                    _.each($selectedLos, function (selectedLo) {
+                        facetTerms.push(prefix + ':' + $(selectedLo).val());
+                    });
+                }
             }
         });
 
@@ -249,10 +260,16 @@ define(["app",
         onRender: function () {
 //            this.passToPaginator(this.options);
         },
+        onShow: function () {
+            $('select.learning-objective-selector').select2({
+                placeholder: 'Objectives...'
+            });
+        },
         events: {
             'change #items-per-page': 'updateFacetResults',
             // on click of a facet, update the results region
             // by passing it a filtered "objects" list
+            'change .learning-objective-selector': 'updateFacetsAndResults',
             'click .facet-checkbox': 'updateFacetsAndResults'
         },
         updateFacetsAndResults: function (e) {

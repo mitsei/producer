@@ -1071,7 +1071,35 @@ class RepositoryDownload(ProducerAPIViews):
 
 
 class QueryHelpersMixin(object):
-    def _construct_count_queries(self, repo, composition_id=None):
+    def _get_current_los(self, repo):
+        bank = self.am.get_bank(repo.ident)
+        bank.use_federated_bank_view()
+        repo.use_federated_repository_view()
+        repo.use_unsequestered_composition_view()
+
+        asset_querier = repo.get_asset_query()
+        composition_querier = repo.get_composition_query()
+        item_querier = bank.get_item_query()
+
+        asset_querier.match_any_learning_objective(True)
+        composition_querier.match_any_learning_objective(True)
+        item_querier.match_any_learning_objective(True)
+
+        assets = repo.get_assets_by_query(asset_querier)
+        compositions = repo.get_compositions_by_query(composition_querier)
+        items = bank.get_items_by_query(item_querier)
+
+        los = [str(lo) for a in assets for lo in a.get_learning_objective_ids()]
+        los += [str(lo) for c in compositions for lo in c.get_learning_objective_ids()]
+        los += [str(lo) for i in items for lo in i.get_learning_objective_ids()]
+
+        los = list(set(los))
+
+        ols = self.lm._instantiate_session(method_name='get_objective_lookup_session',
+                                           proxy=self.lm._proxy)
+        return ols.get_objectives_by_ids([gutils.clean_id(i) for i in los])
+
+    def _construct_count_queries(self, repo, composition_id=None, with_los=False, with_types=False):
         bank = self.am.get_bank(repo.ident)
         bank.use_federated_bank_view()
 
@@ -1084,6 +1112,27 @@ class QueryHelpersMixin(object):
                 asset_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
                 composition_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
                 item_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
+
+        # match learning objectives
+        if with_los:
+            if self.facet_learning_objectives is not None and self.facet_learning_objectives != ['']:
+                for objective_id in self.facet_learning_objectives:
+                    asset_querier.match_learning_objective(objective_id, True)
+                    composition_querier.match_learning_objective(objective_id, True)
+                    item_querier.match_learning_objective_id(objective_id, True)
+
+        # match the selected genus types:
+        if with_types:
+            if self.facet_resource_types is not None:
+                for resource_type in self.facet_resource_types:
+                    resource_genus_type = Type(resource_type)
+                    if resource_type in EDX_COMPOSITION_GENUS_TYPES_STR:
+                        composition_querier.match_genus_type(resource_genus_type, True)
+                    elif resource_type == 'edx-assessment-item%3Aproblem%40EDX.ORG':
+                        pass  # already have an item query from above
+                    else:
+                        asset_querier.match_asset_content_genus_type(resource_genus_type, True)
+
         if composition_id is not None:
             # match the composition descendants
             asset_querier.match_composition_descendants(composition_id, repo.ident, True)
@@ -1092,6 +1141,75 @@ class QueryHelpersMixin(object):
 
         return asset_querier, composition_querier, item_querier
 
+    def _count_by_learning_objectives(self, run_identifier, lo_counts, domain_repo):
+        if isinstance(run_identifier, basestring):
+            run_identifier = gutils.clean_id(run_identifier)
+        if 'repository.Repository' in str(run_identifier):
+            repo = self.rm.get_repository(gutils.clean_id(run_identifier))
+            composition_id = None
+        else:
+            repo = domain_repo
+            composition_id = run_identifier
+
+        bank = self.am.get_bank(repo.ident)
+        bank.use_federated_bank_view()
+
+        asset_querier, composition_querier, item_querier = self._construct_count_queries(repo,
+                                                                                         composition_id,
+                                                                                         with_types=True)
+
+        all_los = list(self._get_current_los(repo))
+
+        self._count_los(lo_counts,
+                        all_los,
+                        asset_querier,
+                        repo,
+                        'clear_match_learning_objective',
+                        'match_learning_objective',
+                        'get_assets_by_query')
+
+        self._count_los(lo_counts,
+                        all_los,
+                        composition_querier,
+                        repo,
+                        'clear_match_learning_objective',
+                        'match_learning_objective',
+                        'get_compositions_by_query')
+
+        self._count_los(lo_counts,
+                        all_los,
+                        item_querier,
+                        bank,
+                        'clear_learning_objective_id_terms',
+                        'match_learning_objective_id',
+                        'get_items_by_query')
+
+    def _count_los(self, counts, iterator, querier, catalog, clear_method, match_method, get_method):
+        for objective in iterator:
+            objective_id = objective.ident
+            objective_name = objective.display_name.text
+            if self.facet_learning_objectives is not None and self.facet_learning_objectives != ['']:
+                if str(objective_id) in self.facet_learning_objectives:
+                    getattr(querier, clear_method)()
+                    getattr(querier, match_method)(objective_id, True)
+                    if str(objective_id) not in counts:
+                        counts.update({
+                            str(objective_id): [getattr(catalog, get_method)(querier).available(), str(objective_name)]
+                        })
+                    else:
+                        counts[str(objective_id)][0] += getattr(catalog, get_method)(querier).available()
+                else:
+                    if str(objective_id) not in counts:
+                        counts[str(objective_id)] = [0, str(objective_name)]
+            else:
+                getattr(querier, clear_method)()
+                getattr(querier, match_method)(objective_id, True)
+                if str(objective_id) not in counts:
+                    counts.update({
+                        str(objective_id): [getattr(catalog, get_method)(querier).available(), str(objective_name)]
+                    })
+                else:
+                    counts[str(objective_id)][0] += getattr(catalog, get_method)(querier).available()
 
     def _count_type(self, counts, iterator, querier, catalog, clear_method, match_method, get_method):
         for genus in iterator:
@@ -1137,7 +1255,8 @@ class QueryHelpersMixin(object):
         item_genus_types = EDX_ASSESSMENT_GENUS_TYPES_FOR_FACETS
 
         asset_querier, composition_querier, item_querier = self._construct_count_queries(repo,
-                                                                                         composition_id)
+                                                                                         composition_id,
+                                                                                         with_los=True)
 
         self._count_type(asset_counts,
                          asset_genus_types,
@@ -1234,6 +1353,16 @@ class QueryHelpersMixin(object):
                 if item_querier is not None:
                     item_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
 
+        # match learning objectives
+        if self.facet_learning_objectives is not None and self.facet_learning_objectives != ['']:
+            for objective_id in self.facet_learning_objectives:
+                if asset_querier is not None:
+                    asset_querier.match_learning_objective(objective_id, True)
+                if composition_querier is not None:
+                    composition_querier.match_learning_objective(objective_id, True)
+                if item_querier is not None:
+                    item_querier.match_learning_objective_id(objective_id, True)
+
         # run query
         if asset_querier is not None:
             all_assets = repo.get_assets_by_query(asset_querier)
@@ -1297,6 +1426,16 @@ class QueryHelpersMixin(object):
                 if item_querier is not None:
                     item_querier.match_keyword(term, gutils.WORDIGNORECASE_STRING_MATCH_TYPE, True)
 
+        # match learning objectives
+        if self.facet_learning_objectives is not None and self.facet_learning_objectives != ['']:
+            for objective_id in self.facet_learning_objectives:
+                if asset_querier is not None:
+                    asset_querier.match_learning_objective(objective_id, True)
+                if composition_querier is not None:
+                    composition_querier.match_learning_objective(objective_id, True)
+                if item_querier is not None:
+                    item_querier.match_learning_objective_id(objective_id, True)
+
         # run query
         if asset_querier is not None:
             all_assets = repo.get_assets_by_query(asset_querier)
@@ -1355,14 +1494,17 @@ class RepositoryQueryPlansAvailable(ProducerAPIViews, QueryHelpersMixin):
         try:
             self.facet_resource_types = get_facets_values(self.data, 'resource_type_exact')
             self.facet_course_runs = get_facets_values(self.data, 'course_exact')
+            self.facet_learning_objectives = get_facets_values(self.data, 'learning_objective_exact')
             self.query_params = get_query_values(self.data.get('q', None))
 
             facets = {
                 'course': [],
+                'learning_objective': [],
                 'resource_type': []
             }
 
             course_run_counts = {}
+            learning_objective_counts = {}
             asset_counts = {}
 
             domain_repo = self.rm.get_repository(gutils.clean_id(repository_id))
@@ -1387,6 +1529,9 @@ class RepositoryQueryPlansAvailable(ProducerAPIViews, QueryHelpersMixin):
                     self._count_objects(run_id,
                                         asset_counts,
                                         domain_repo)
+                    self._count_by_learning_objectives(run_id,
+                                                       learning_objective_counts,
+                                                       domain_repo)
                 else:
                     # only do courses that have been selected
                     if any(run_identifier in course for course in self.facet_course_runs):
@@ -1400,14 +1545,21 @@ class RepositoryQueryPlansAvailable(ProducerAPIViews, QueryHelpersMixin):
                         self._count_objects(run_id,
                                             asset_counts,
                                             domain_repo)
+                        self._count_by_learning_objectives(run_id,
+                                                           learning_objective_counts,
+                                                           domain_repo)
 
-            count_cases = [(asset_counts, 'resource_type'),
-                           (course_run_counts, 'course')]
+            count_cases = [(asset_counts, 'resource_type', False),
+                           (course_run_counts, 'course', False),
+                           (learning_objective_counts, 'learning_objective', True)]
             for case in count_cases:
                 _counts = []
                 for k, v in case[0].iteritems():
                     if isinstance(v, tuple) or isinstance(v, list):
-                        _counts.append((k, v[0], v[1]))
+                        if case[2]:  # flip the order of v[1] and k
+                            _counts.append((v[1], v[0], k))
+                        else:
+                            _counts.append((k, v[0], v[1]))
                     else:
                         _counts.append((k, v))
                 facets[case[1]] = sorted(_counts, key=lambda tup: tup[0])
@@ -1432,6 +1584,8 @@ class RepositorySearch(ProducerAPIViews, QueryHelpersMixin):
         try:
             self.facet_resource_types = get_facets_values(self.data, 'resource_type_exact')
             self.facet_course_runs = get_facets_values(self.data, 'course_exact')
+            self.facet_learning_objectives = get_facets_values(self.data, 'learning_objective_exact')
+
             self.query_params = get_query_values(self.data.get('q', None))
             self.cursor_limits = get_page_and_limits(self.data)
             object_list = []

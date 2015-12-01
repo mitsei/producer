@@ -10,43 +10,42 @@
         </div>
         <div id="collapse-<%- ind %>" data-facet-prefix="<%- ind %>" class="panel-collapse collapse in facet-items" role="tabpanel" aria-labelledby="heading-<%- ind %>">
           <div class="panel-body">
-              <% _.each(cluster, function (item) { %>
-                <div class="checkbox">
-                  <label>
-                    <% if (selectedFacets.indexOf(item[2]) >= 0) { %>
-                        <input type="checkbox" class="facet-checkbox" checked value="<%- item[2] %>">
-                    <% } else { %>
-                        <input type="checkbox" class="facet-checkbox" value="<%- item[2] %>">
-                    <% } %>
-                      <%- item[0] %>
-                      <span class="badge pull-right">
-                          <%- item[1] %>
-                      </span>
-                  </label>
+              <% if (ind === 'learning_objective') { %>
+                <div class="form-group">
+                    <select class="form-control learning-objective-selector" multiple aria-multiselectable="true">
+                        <% _.each(cluster, function (item) { %>
+                            <% if (selectedFacets.indexOf(item[2]) >= 0) { %>
+                                <option selected value="<%- item[2] %>">
+                            <% } else { %>
+                                <option value="<%- item[2] %>">
+                            <% } %>
+                              <%- item[0] %>
+                              (<%- item[1] %>)
+                              </option>
+                        <% }); %>
+                    </select>
                 </div>
-              <% }); %>
+              <% } else { %>
+                  <% _.each(cluster, function (item) { %>
+                    <div class="checkbox">
+                      <label>
+                        <% if (selectedFacets.indexOf(item[2]) >= 0) { %>
+                            <input type="checkbox" class="facet-checkbox" checked value="<%- item[2] %>">
+                        <% } else { %>
+                            <input type="checkbox" class="facet-checkbox" value="<%- item[2] %>">
+                        <% } %>
+                          <%- item[0] %>
+                          <span class="badge pull-right">
+                              <%- item[1] %>
+                          </span>
+                      </label>
+                    </div>
+                  <% }); %>
+              <% } %>
           </div>
         </div>
       </div>
     <% }); %>
-    <div class="objective-facet-wrapper">
-        <div class="panel panel-default facet-panel">
-        <div class="panel-heading" role="tab" id="heading-learning_objectives">
-          <h4 class="panel-title">
-            <a class="accordion-toggle" role="button" data-toggle="collapse" href="#collapse-learning_objectives" aria-expanded="true" aria-controls="collapse-learning_objectives">
-              learning_objectives
-            </a>
-          </h4>
-        </div>
-        <div id="collapse-learning_objectives" data-facet-prefix="learning_objectives" class="panel-collapse collapse in facet-items" role="tabpanel" aria-labelledby="heading-learning_objectives">
-          <div class="panel-body">
-              <div class="form-group">
-                  <input class="form-control" type="text" name="lo-facet" placeholder="Learning objective keywords" />
-              </div>
-          </div>
-        </div>
-      </div>
-    </div>
     <div class="items-per-page-wrapper text-center">
         <select id="items-per-page" class="form-control">
             <% if (selectedItemsPerPage === 10) { %>
