@@ -2825,7 +2825,6 @@ class RepositoryCrUDTests(AssessmentTestCase, RepositoryTestCase):
             payload['genusTypeId']
         )
 
-
     def test_creating_course_run_repository_requires_parent_id(self):
         payload = {
             'displayName': 'my new repository',
