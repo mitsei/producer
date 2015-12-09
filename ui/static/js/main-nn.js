@@ -20,6 +20,7 @@ requirejs.config({
         'jquery-ui'             : 'vendor/jqueryui/jquery-ui.min',
         'marionette'            : 'vendor/marionette/lib/backbone.marionette.min',
         'mathjax'               : 'https://edx-static.s3.amazonaws.com/mathjax-MathJax-727332c/MathJax.js?config=TeX-MML-AM_HTMLorMML-full',
+        'select2'               : 'vendor/select2/dist/js/select2.min',
         'underscore'            : 'vendor/lodash/lodash.min'
     },
     shim: {
@@ -65,6 +66,9 @@ requirejs.config({
         },
         'mathjax': {
             exports: 'MathJax'
+        },
+        'select2': {
+            deps: ['jquery']
         }
     }
 });
