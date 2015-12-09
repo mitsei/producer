@@ -986,7 +986,7 @@ class CompositionCrUDTests(AssessmentTestCase, RepositoryTestCase):
 
         self.assertEqual(
             assets[0]['genusTypeId'],
-            'assessment%3AAssessment%40osid.org'
+            'assessment%3AAssessment%40OSID.ORG'
         )
 
         self.num_assets(1)
