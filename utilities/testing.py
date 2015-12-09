@@ -22,7 +22,7 @@ PROJECT_PATH = os.path.dirname(os.path.abspath(__file__))
 ABS_PATH = os.path.abspath(os.path.join(PROJECT_PATH, os.pardir))
 
 
-@override_settings(DLKIT_MONGO_DB_PREFIX='test_',
+@override_settings(DLKIT_MONGO_DB_PREFIX='test_producer_',
                    CLOUDFRONT_DISTRO='d1v4o60a4yrgi8.cloudfront.net',
                    CLOUDFRONT_DISTRO_ID='E1OEKZHRUO35M9',
                    S3_BUCKET='mitodl-repository-test',
@@ -89,9 +89,9 @@ class DjangoTestCase(APITestCase, MockTestCase):
         self.assertEqual(_req.status_code, 200)
 
     def setUp(self):
-        envoy.run('mongo test_assessment --eval "db.dropDatabase()"')
-        envoy.run('mongo test_grading --eval "db.dropDatabase()"')
-        envoy.run('mongo test_repository --eval "db.dropDatabase()"')
+        envoy.run('mongo test_producer_assessment --eval "db.dropDatabase()"')
+        envoy.run('mongo test_producer_grading --eval "db.dropDatabase()"')
+        envoy.run('mongo test_producer_repository --eval "db.dropDatabase()"')
 
         configure_test_bucket()
         self.base_url = '/api/v1/'
@@ -107,9 +107,9 @@ class DjangoTestCase(APITestCase, MockTestCase):
         gutils.activate_managers(self.req)
 
     def tearDown(self):
-        envoy.run('mongo test_assessment --eval "db.dropDatabase()"')
-        envoy.run('mongo test_grading --eval "db.dropDatabase()"')
-        envoy.run('mongo test_repository --eval "db.dropDatabase()"')
+        envoy.run('mongo test_producer_assessment --eval "db.dropDatabase()"')
+        envoy.run('mongo test_producer_grading --eval "db.dropDatabase()"')
+        envoy.run('mongo test_producer_repository --eval "db.dropDatabase()"')
 
     def updated(self, _req):
         self.code(_req, 202)

@@ -1,5 +1,4 @@
 import boto
-import envoy
 
 from assessments.tests.test_views import AssessmentTestCase
 
