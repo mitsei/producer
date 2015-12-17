@@ -801,6 +801,10 @@ li.resortable.cut {
     flex: 1 1 33%;
 }
 
+#curate-faceted-search-facets {
+    max-width: 350px;
+}
+
 .lo-wrapper {
     display: flex;
     display: -webkit-flex;
