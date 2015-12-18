@@ -287,6 +287,14 @@ def configure_test_bucket():
                     }), 'priority': 1}
                 ]
             },
+            'recordsRegistry': {
+                'syntax': 'STRING',
+                'displayName': 'Python path to the extension records registry file',
+                'description': 'dot-separated path to the extension records registry file',
+                'values': [
+                    {'value': 'records.registry', 'priority': 1}
+                ]
+            }
         }
     }
 

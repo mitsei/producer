@@ -5,11 +5,11 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.http import HttpResponseRedirect, Http404
 
-from dlkit.mongo.records.types import REPOSITORY_GENUS_TYPES
-
 from dlkit_django.primitives import Type
 
 from dysonx.dysonx import get_or_create_user_repo
+
+from records.registry import REPOSITORY_GENUS_TYPES
 
 from utilities.general import log_error, activate_managers, get_session_data, extract_items
 

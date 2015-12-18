@@ -7,3 +7,6 @@
 [submodule "dysonx"]
 	path = dysonx
 	url = https://sei-jenkins@bitbucket.org/cjshaw/dysonx.git 
+[submodule "records"]
+	path = records
+	url = https://sei-jenkins@bitbucket.org/cjshaw/records.git
