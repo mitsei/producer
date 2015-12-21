@@ -4,7 +4,7 @@ import json
 
 from assessments.types import *
 
-from dlkit.mongo.records.types import ANSWER_GENUS_TYPES, ANSWER_RECORD_TYPES
+from records.registry import ANSWER_GENUS_TYPES, ANSWER_RECORD_TYPES
 
 from dlkit_django import PROXY_SESSION, RUNTIME
 from dlkit_django.errors import NotFound, InvalidArgument, Unsupported, NullArgument

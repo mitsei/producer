@@ -15,9 +15,9 @@ from dlkit.abstract_osid.repository.objects import Asset
 from dlkit_django.errors import PermissionDenied, InvalidArgument, IllegalState,\
     NotFound, NoAccess, AlreadyExists
 from dlkit_django.primordium import Type
-from dlkit.mongo.records.types import EDX_COMPOSITION_GENUS_TYPES,\
+from records.registry import COMPOSITION_GENUS_TYPES,\
     COMPOSITION_RECORD_TYPES, REPOSITORY_GENUS_TYPES, OSID_OBJECT_RECORD_TYPES,\
-    EDX_ASSET_CONTENTS_GENUS_TYPES, EDX_ASSESSMENT_ITEM_GENUS_TYPES, REPOSITORY_RECORD_TYPES
+    ASSET_CONTENT_GENUS_TYPES, ITEM_GENUS_TYPES, REPOSITORY_RECORD_TYPES
 
 from dysonx.dysonx import get_or_create_user_repo, _get_genus_type,\
     _get_asset_content_genus_type
@@ -35,20 +35,20 @@ DOMAIN_REPO_GENUS = Type(**REPOSITORY_GENUS_TYPES['domain-repo'])
 COURSE_REPO_GENUS = Type(**REPOSITORY_GENUS_TYPES['course-repo'])
 COURSE_RUN_REPO_GENUS = Type(**REPOSITORY_GENUS_TYPES['course-run-repo'])
 USER_REPO_GENUS = Type(**REPOSITORY_GENUS_TYPES['user-repo'])
-COURSE_NODE_GENUS_TYPE = Type(**EDX_COMPOSITION_GENUS_TYPES['course'])
+COURSE_NODE_GENUS_TYPE = Type(**COMPOSITION_GENUS_TYPES['course'])
 
 EDX_COMPOSITION_RECORD_TYPE = Type(**COMPOSITION_RECORD_TYPES['edx-composition'])
 USER_OFFERING_COMPOSITION_RECORD_TYPE = Type(**COMPOSITION_RECORD_TYPES['edx-course-run'])
-EDX_COMPOSITION_GENUS_TYPES_STR = [str(Type(**genus_type))
-                                   for k, genus_type in EDX_COMPOSITION_GENUS_TYPES.iteritems()]
-EDX_COMPOSITION_TYPES = EDX_COMPOSITION_GENUS_TYPES.keys()
-EDX_COMPOSITION_GENUS_TYPES_FOR_FACETS = [str(Type(**genus_type))
-    for k, genus_type in EDX_COMPOSITION_GENUS_TYPES.iteritems()
+COMPOSITION_GENUS_TYPES_STR = [str(Type(**genus_type))
+                                   for k, genus_type in COMPOSITION_GENUS_TYPES.iteritems()]
+EDX_COMPOSITION_TYPES = COMPOSITION_GENUS_TYPES.keys()
+COMPOSITION_GENUS_TYPES_FOR_FACETS = [str(Type(**genus_type))
+    for k, genus_type in COMPOSITION_GENUS_TYPES.iteritems()
     if k in ['chapter', 'sequential', 'split_test', 'vertical']]
 EDX_ASSET_CONTENT_GENUS_TYPES_FOR_FACETS = [str(Type(**genus_type))
-    for k, genus_type in EDX_ASSET_CONTENTS_GENUS_TYPES.iteritems()]
+    for k, genus_type in ASSET_CONTENT_GENUS_TYPES.iteritems()]
 EDX_ASSESSMENT_GENUS_TYPES_FOR_FACETS = [str(Type(**genus_type))
-    for k, genus_type in EDX_ASSESSMENT_ITEM_GENUS_TYPES.iteritems()]
+    for k, genus_type in ITEM_GENUS_TYPES.iteritems()]
 
 ENCLOSURE_TYPE = Type(**OSID_OBJECT_RECORD_TYPES['enclosure'])
 
@@ -540,7 +540,7 @@ class CompositionDetails(ProducerAPIViews, CompositionMapMixin):
 
             composition = repository.get_composition(gutils.clean_id(composition_id))
 
-            if str(composition.genus_type) in EDX_COMPOSITION_GENUS_TYPES_STR:
+            if str(composition.genus_type) in COMPOSITION_GENUS_TYPES_STR:
                 if 'startDate' in self.data:
                     try:
                         form = rutils.update_edx_composition_date(form, 'start', self.data['startDate'])
@@ -610,7 +610,7 @@ class CompositionDownload(ProducerAPIViews):
             repository.use_unsequestered_composition_view()
             composition = repository.get_composition(gutils.clean_id(composition_id))
 
-            if str(composition.genus_type) != str(Type(**EDX_COMPOSITION_GENUS_TYPES['offering'])):
+            if str(composition.genus_type) != str(Type(**COMPOSITION_GENUS_TYPES['offering'])):
                 # raise InvalidArgument('You can only download run repositories.')
                 filename, olx = composition.export_standalone_olx()
             else:
@@ -753,7 +753,7 @@ class CompositionsList(ProducerAPIViews, CompositionMapMixin):
                                     composition_query_session.use_unsequestered_composition_view()
                                 compositions += list(
                                     composition_query_session.get_compositions_by_genus_type(
-                                        str(Type(**EDX_COMPOSITION_GENUS_TYPES[genus_val]))))
+                                        str(Type(**COMPOSITION_GENUS_TYPES[genus_val]))))
                             except KeyError:
                                 raise IllegalState('Invalid query genus type provided. Only "course", ' +
                                                    '"chapter", "sequential", "split_test", and "vertical" ' +
@@ -784,7 +784,7 @@ class CompositionsList(ProducerAPIViews, CompositionMapMixin):
                 else:
                     form = repository.get_composition_form_for_create([EDX_COMPOSITION_RECORD_TYPE])
                 try:
-                    if edx_type not in EDX_COMPOSITION_GENUS_TYPES_STR:
+                    if edx_type not in COMPOSITION_GENUS_TYPES_STR:
                         raise KeyError
                     form.set_genus_type(Type(edx_type))
 
@@ -1129,7 +1129,7 @@ class QueryHelpersMixin(object):
             if self.facet_resource_types is not None:
                 for resource_type in self.facet_resource_types:
                     resource_genus_type = Type(resource_type)
-                    if resource_type in EDX_COMPOSITION_GENUS_TYPES_STR:
+                    if resource_type in COMPOSITION_GENUS_TYPES_STR:
                         composition_querier.match_genus_type(resource_genus_type, True)
                     elif resource_type == 'edx-assessment-item%3Aproblem%40EDX.ORG':
                         pass  # already have an item query from above
@@ -1160,7 +1160,6 @@ class QueryHelpersMixin(object):
         asset_querier, composition_querier, item_querier = self._construct_count_queries(repo,
                                                                                          composition_id,
                                                                                          with_types=True)
-
         self._count_los(lo_counts,
                         self.current_los,
                         asset_querier,
@@ -1252,7 +1251,7 @@ class QueryHelpersMixin(object):
         bank.use_federated_bank_view()
 
         asset_genus_types = EDX_ASSET_CONTENT_GENUS_TYPES_FOR_FACETS
-        composition_genus_types = EDX_COMPOSITION_GENUS_TYPES_FOR_FACETS
+        composition_genus_types = COMPOSITION_GENUS_TYPES_FOR_FACETS
         item_genus_types = EDX_ASSESSMENT_GENUS_TYPES_FOR_FACETS
 
         asset_querier, composition_querier, item_querier = self._construct_count_queries(repo,
@@ -1314,7 +1313,7 @@ class QueryHelpersMixin(object):
         # match facet selected types
         if self.facet_resource_types is not None:
             for resource_type in self.facet_resource_types:
-                if resource_type in EDX_COMPOSITION_GENUS_TYPES_STR:
+                if resource_type in COMPOSITION_GENUS_TYPES_STR:
                     if composition_querier is None:
                         composition_querier = repo.get_composition_query()
                     genus_type = Type(resource_type)
@@ -1395,7 +1394,7 @@ class QueryHelpersMixin(object):
         # match facet selected types
         if self.facet_resource_types is not None:
             for resource_type in self.facet_resource_types:
-                if resource_type in EDX_COMPOSITION_GENUS_TYPES_STR:
+                if resource_type in COMPOSITION_GENUS_TYPES_STR:
                     if composition_querier is None:
                         composition_querier = repo.get_composition_query()
                     genus_type = Type(resource_type)
@@ -1467,7 +1466,7 @@ class QueryHelpersMixin(object):
         # else:
         #     repository.use_unsequestered_composition_view()
         #     querier = repository.get_composition_query()
-        #     querier.match_genus_type(Type(**EDX_COMPOSITION_GENUS_TYPES['course']), True)
+        #     querier.match_genus_type(Type(**COMPOSITION_GENUS_TYPES['course']), True)
         #     course_compositions = repository.get_compositions_by_query(querier)
         #     runs = []
         #     for course in course_compositions:

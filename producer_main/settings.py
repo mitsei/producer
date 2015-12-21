@@ -217,6 +217,7 @@ INSTALLED_APPS = (
     'dlkit',
     'corsheaders',
     'compressor',
+    'records'
 )
 
 SOUTH_TESTS_MIGRATE = False

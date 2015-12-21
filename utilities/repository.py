@@ -1,6 +1,6 @@
 import time
 
-from dlkit.mongo.records.types import EDX_COMPOSITION_GENUS_TYPES,\
+from records.registry import COMPOSITION_GENUS_TYPES,\
     COMPOSITION_RECORD_TYPES, REPOSITORY_GENUS_TYPES, REPOSITORY_RECORD_TYPES
 
 from dlkit_django import RUNTIME, PROXY_SESSION
@@ -18,7 +18,7 @@ DOMAIN_REPO_GENUS = Type(**REPOSITORY_GENUS_TYPES['domain-repo'])
 
 
 def _get_genus_type(type_label):
-    return Type(**EDX_COMPOSITION_GENUS_TYPES[type_label])
+    return Type(**COMPOSITION_GENUS_TYPES[type_label])
 
 
 def activate_managers(request):

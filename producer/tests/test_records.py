@@ -1,6 +1,6 @@
 import json
 
-from dlkit.mongo.records.types import COMPOSITION_RECORD_TYPES, OSID_OBJECT_RECORD_TYPES
+from records.registry import COMPOSITION_RECORD_TYPES, OSID_OBJECT_RECORD_TYPES
 from dlkit.primordium.type.primitives import Type
 from dlkit_django.proxy_example import User
 
