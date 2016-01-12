@@ -272,7 +272,7 @@ def configure_test_bucket():
                 'displayName': 'Learning Provider Implementation',
                 'description': 'Implementation for learning service provider',
                 'values': [
-                    {'value': 'HANDCAR_SEI_DEV', 'priority': 1}
+                    {'value': 'HANDCAR_MC3_DEV', 'priority': 1}
                 ]
             },
             'assetContentRecordTypeForFiles': {
