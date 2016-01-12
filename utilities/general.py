@@ -169,7 +169,7 @@ def clean_up_dl_objects(data):
         results = {}
         for key, value in data.iteritems():
             if (isinstance(value, abc_assessment_objects.Bank) or
-                isinstance(value, abc_assessment_objects.Assessment)):
+                    isinstance(value, abc_assessment_objects.Assessment)):
                 results[key] = convert_dl_object(value)
             else:
                 results[key] = value
