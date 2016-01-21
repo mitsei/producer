@@ -448,7 +448,7 @@ define(["app",
 
             // prepend a hidden li.resortable.no-children chapter object
             // so can sort the chapters
-            var hiddenChapter = $('<li></li>').addClass('resortable hidden composition');
+            var hiddenChapter = $('<li></li>').addClass('resortable hidden no-children composition');
 
             this.$el.prepend(hiddenChapter.clone());
 
