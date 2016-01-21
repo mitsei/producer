@@ -570,11 +570,19 @@ define(["app",
             _this.cancelCutPaste();
             _this.refreshNoChildrenWarning();
         },
+        toggleHidePreview: function ($ele) {
+            var $preview = $ele.find('span.preview'),
+                $hidePreview = $ele.find('span.hide-preview');
+
+            $preview.toggleClass('hidden');
+            $hidePreview.toggleClass('hidden');
+        },
         events: {
             'change .switch-genus-type': 'changeCompositionGenusType',
             'click .cut-component': 'cutObject',
             'click .export-composition': 'export',
             'click .export-resource': 'export',
+            'click .hide-preview': 'hidePreview',
             'click .object-wrapper': 'selectObject',
             'click .toggle-composition-children': 'toggleCompositionChildren',
             'click .unlock-composition': 'unlockComposition',
@@ -633,6 +641,14 @@ define(["app",
         hideNoChildren: function (el) {
             $(el).siblings('li.no-children').addClass('hidden');
         },
+        hidePreview: function (e) {
+            var $wrapper = $(e.currentTarget).closest('div.object-wrapper');
+
+            this.clearActiveElement();
+            this.toggleHidePreview($wrapper);
+            ProducerManager.regions.preview.$el.html('');
+            e.stopPropagation();
+        },
         pasteObject: function (e) {
             var _this = this,
                 $target = $(e.currentTarget);
@@ -654,6 +670,8 @@ define(["app",
                     objId: objId
                 }));
             }
+
+            this.toggleHidePreview($wrapper);
         },
         refreshNoChildrenWarning: function () {
             _.each(this.$el.find('ul.children-compositions'), function (childList) {
@@ -716,11 +734,13 @@ define(["app",
                                         updateCompositionChildrenAndAssets($noChildrenObject);
                                         $(_this).dialog("close");
                                         Utils.doneProcessing();
+                                        ProducerManager.regions.preview.$el.html('');
                                     },
                                     error: function (model, response) {
                                         ProducerManager.vent.trigger('msg:error', response.responseText);
                                         $(_this).dialog("close");
                                         Utils.doneProcessing();
+                                        ProducerManager.regions.preview.$el.html('');
                                     }
                                 });
                             } else if (obj.type === 'Composition') {
@@ -730,6 +750,7 @@ define(["app",
                                 updateCompositionChildrenAndAssets($noChildrenObject);
                                 $(_this).dialog("close");
                                 Utils.doneProcessing();
+                                ProducerManager.regions.preview.$el.html('');
                             } else if (obj.canEdit == true) {
                                 // if is an editable Asset or Item, delete it
                                 // from the service, then call updateCompositionChildrenAndAssets
@@ -759,6 +780,7 @@ define(["app",
                                 updateCompositionChildrenAndAssets($noChildrenObject);
                                 $(_this).dialog("close");
                                 Utils.doneProcessing();
+                                ProducerManager.regions.preview.$el.html('');
                             }
                         }
                     }
