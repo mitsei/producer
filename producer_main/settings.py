@@ -1,5 +1,8 @@
 # Django settings for VideoSearch project.
 # From NB: https://github.com/nbproject/nbproject/blob/master/apps/settings.py
+import random
+import string
+
 from os.path import abspath, dirname, basename
 import os
 from django.conf.global_settings import TEMPLATE_CONTEXT_PROCESSORS
@@ -9,6 +12,9 @@ def msg_credentials():
     msg = "*** Please edit the %s file with the required settings for authentication. ***" %(FN_CREDENTIALS, )
     stars = "*" * len(msg)
     return "\n\n%s\n%s\n%s\n\n" %(stars, msg, stars)
+
+def rand_generator(size=24, chars=string.ascii_uppercase + string.digits):
+    return ''.join(random.choice(chars) for x in range(size))
 
 try:
     import settings_credentials
@@ -97,6 +103,8 @@ ENABLE_NOTIFICATIONS = settings_credentials.__dict__.get('ENABLE_NOTIFICATIONS',
 ENABLE_OBJECTIVE_FACETS = settings_credentials.__dict__.get('ENABLE_OBJECTIVE_FACETS', False)
 FORCE_TLSV1 = settings_credentials.__dict__.get('FORCE_TLSV1', False)
 
+SECRET_KEY = settings_credentials.__dict__.get('SECRET_KEY', rand_generator())
+
 if "default" not in DATABASES or "PASSWORD" not in DATABASES["default"] or DATABASES["default"]["PASSWORD"]=="":
     print msg_credentials()
     exit(1)
@@ -138,8 +146,6 @@ STATICFILES_FINDERS = (
     'compressor.finders.CompressorFinder',
 )
 
-# Make this unique, and don't share it with anybody.
-SECRET_KEY = '5#75$niX*(DSFh1fc!5%nzbn9o_!2tijqih*6uyomtb+bjlq$^n!ww'
 
 # List of callables that know how to import templates from various sources.
 TEMPLATE_LOADERS = (
