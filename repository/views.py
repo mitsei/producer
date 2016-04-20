@@ -123,6 +123,7 @@ class CompositionMapMixin(object):
             obj_map['children'].append(child_map)
         return obj_map
 
+
 class AssetDetails(ProducerAPIViews):
     """
     Get asset details
