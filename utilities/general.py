@@ -22,14 +22,14 @@ from dlkit.abstract_osid.repository import objects as abc_repository_objects
 from dlkit.abstract_osid.type import objects as abc_type_objects
 from dlkit.abstract_osid.grading import objects as abc_grading_objects
 from dlkit.abstract_osid.resource import objects as abc_resource_objects
-from dlkit.mongo.locale.types import String
+from dlkit.json_.locale.types import String
 
-from dlkit_django import PROXY_SESSION, RUNTIME
-from dlkit_django.primordium import Id, Type
-from dlkit_django.errors import (
+from dlkit.runtime import PROXY_SESSION, RUNTIME
+from dlkit.runtime.primordium import Id, Type
+from dlkit.runtime.errors import (
     PermissionDenied, InvalidArgument, NotFound, NoAccess, Unsupported, IllegalState
 )
-from dlkit_django.proxy_example import TestRequest
+from dlkit.runtime.proxy_example import SimpleRequest
 
 from dysonx.dysonx import DysonXUtil, ABS_PATH
 
@@ -91,6 +91,7 @@ class DLSerializer(DefaultObjectSerializer):
                 results.append(item)
         return results
 
+
 class DLPaginationSerializer(PaginationSerializer):
     """To return an object's object_map instead of the __dict__ or dir() values that
     the built-in serializer returns
@@ -98,6 +99,7 @@ class DLPaginationSerializer(PaginationSerializer):
     """
     class Meta:
         object_serializer_class = DLSerializer
+
 
 def activate_managers(request):
     """
@@ -120,10 +122,12 @@ def activate_managers(request):
                                                                             proxy=proxy))
     return request
 
+
 def append_slash(url):
     if url[-1] != '/':
         url += '/'
     return url
+
 
 def build_safe_uri(request):
     """
@@ -145,6 +149,7 @@ def build_safe_uri(request):
 
     return append_slash(uri)
 
+
 def clean_id(_id):
     """
     Django seems to un-url-safe the IDs passed in to the rest framework views,
@@ -157,6 +162,7 @@ def clean_id(_id):
             return Id(_id)
     else:
         return _id
+
 
 def clean_up_dl_objects(data):
     """
@@ -177,6 +183,7 @@ def clean_up_dl_objects(data):
     else:
         return data
 
+
 def clean_up_post(bank, item):
     if bank and item:
         if isinstance(item, abc_assessment_objects.Item):
@@ -186,8 +193,10 @@ def clean_up_post(bank, item):
         elif isinstance(item, abc_assessment_objects.Answer):
             bank.delete_answer(item.ident)
 
+
 def clean_up_path(path):
     return path.replace('//', '/')
+
 
 def config_osid_object_querier(querier, params):
     for param, value in params.iteritems():
@@ -210,6 +219,7 @@ def config_osid_object_querier(querier, params):
             pass
     return querier
 
+
 def convert_dl_object(obj):
     """
     convert a DLKit object into a "real" json-able object
@@ -220,11 +230,13 @@ def convert_dl_object(obj):
     except:
         return obj
 
+
 def convert_to_osid_id(id):
     if isinstance(id, basestring):
         return Id(id)
     else:
         return id
+
 
 def dl_dumps(obj):
     try:
@@ -232,6 +244,7 @@ def dl_dumps(obj):
         return json.dumps(clean_obj)
     except:
         return pickle.dumps(obj)
+
 
 def extract_items(request, a_list, bank=None, section=None):
     from .assessment import get_question_status  # import here to prevent circular imports
@@ -327,6 +340,7 @@ def extract_items(request, a_list, bank=None, section=None):
         results['data'] = {'count': 0, 'next': None, 'results': [], 'previous': None}
     return results
 
+
 def get_data_from_request(request):
     """
     Because data might be in bad JSON form, might be in a string...
@@ -395,6 +409,7 @@ def get_data_from_request(request):
 
     return data
 
+
 def get_session_data(request, item_type):
     # get a manager
     try:
@@ -404,6 +419,7 @@ def get_session_data(request, item_type):
             return None
     except Exception as ex:
         log_error('utilities.get_session_data()', ex)
+
 
 def handle_exceptions(ex):
     log_error(traceback.format_exc(10), ex)
@@ -437,8 +453,10 @@ def handle_exceptions(ex):
     else:
         raise exceptions.APIException(ex.args)
 
+
 def id_generator(size=8, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for x in range(size))
+
 
 def log_error(module, ex):
     import logging
@@ -447,6 +465,7 @@ def log_error(module, ex):
     logging.info(message)
     return message
 
+
 def manage_lti_headers(request):
     if ('HTTP_LTI_USER_ID' in request.META and
         'HTTP_LTI_TOOL_CONSUMER_INSTANCE_GUID' in request.META and
@@ -454,11 +473,13 @@ def manage_lti_headers(request):
         'HTTP_LTI_BANK' in request.META):
         store_lti_user(request)
 
+
 def my_unquote(str):
     if '%40' in str:
         return unquote(str)
     else:
         return str
+
 
 def paginate(data, request, items_per_page=10):
     # http://www.django-rest-framework.org/api-guide/pagination
@@ -482,6 +503,7 @@ def paginate(data, request, items_per_page=10):
 
     return serializer.data
 
+
 def set_form_basics(form, data):
     if 'displayName' in data:
         if isinstance(data['displayName'], basestring):
@@ -504,9 +526,11 @@ def set_form_basics(form, data):
 
     return form
 
+
 def set_session_data(request, item_type, data):
     request.session[item_type] = pickle.dumps(data)
     request.session.modified = True
+
 
 def set_user(request):
     """
@@ -551,6 +575,7 @@ def set_user(request):
                 raise PermissionDenied()
         else:
             raise PermissionDenied()
+
 
 def strip_object_ids(obj):
     """
@@ -618,9 +643,10 @@ def update_links(request, obj):
             'summary': uri('summary')
         })
 
+
 def upload_class(path, domain_repo, user):
     """use DysonX to parse and upload the class"""
-    request = TestRequest(username=user.username)
+    request = SimpleRequest(username=user.username)
 
     if not settings.TEST and settings.MEDIA_ROOT not in path:
         if '/' != path[0]:
@@ -629,6 +655,7 @@ def upload_class(path, domain_repo, user):
     path = clean_up_path(path)
     dyson = DysonXUtil(request=request)
     return dyson.vacuum(path, domain_repo=domain_repo, user=user)
+
 
 def verify_at_least_one_key_present(_data, _keys_list):
     """

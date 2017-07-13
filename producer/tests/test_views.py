@@ -1,4 +1,4 @@
-from dlkit_django.proxy_example import User
+from dlkit.runtime.proxy_example import User
 
 from repository.tests.test_views import RepositoryTestCase
 
@@ -16,7 +16,6 @@ class ImportTests(RepositoryTestCase):
         self.test_file_path = ABS_PATH + '/producer/tests/files/content-mit-1805x-master.zip'
 
         self.user = User(username='cjshaw@mit.edu', authenticated=True)
-
 
     def tearDown(self):
         super(ImportTests, self).tearDown()

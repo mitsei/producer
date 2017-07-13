@@ -1,5 +1,5 @@
 from dlkit.services.primitives import Type
-from dlkit.mongo.locale.types import String
+from dlkit.json_.locale.types import String
 
 EDX_ITEM_RECORD_TYPE = Type(**{
     'authority': 'ODL.MIT.EDU',

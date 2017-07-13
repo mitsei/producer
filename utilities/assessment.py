@@ -4,12 +4,12 @@ import json
 
 from assessments.types import *
 
-from records.registry import ANSWER_GENUS_TYPES, ANSWER_RECORD_TYPES
+from dlkit.records.registry import ANSWER_GENUS_TYPES, ANSWER_RECORD_TYPES
 
-from dlkit_django import PROXY_SESSION, RUNTIME
-from dlkit_django.errors import NotFound, InvalidArgument, Unsupported, NullArgument
-from dlkit_django.primitives import Type, DataInputStream, Id
-from dlkit_django.proxy_example import TestRequest
+from dlkit.runtime import PROXY_SESSION, RUNTIME
+from dlkit.runtime.errors import NotFound, InvalidArgument, Unsupported, NullArgument
+from dlkit.runtime.primitives import Type, DataInputStream, Id
+from dlkit.runtime.proxy_example import SimpleRequest
 
 from django.utils.http import quote
 
@@ -204,7 +204,7 @@ def get_object_bank_from_request(request):
     valid_params = ['/assessment/items/']
     path = request.path
     if any(p in path for p in valid_params):
-        test_request = TestRequest(username=request.user.username)
+        test_request = SimpleRequest(username=request.user.username)
         condition = PROXY_SESSION.get_proxy_condition()
         condition.set_http_request(test_request)
         proxy = PROXY_SESSION.get_proxy(condition)
@@ -273,7 +273,10 @@ def get_response_submissions(response):
 
 def get_session(manager, object_type, session_type):
     """get session type for object, using the manager"""
-    session = getattr(manager, 'get_{0}_{1}_session'.format(object_type, session_type))()
+    if manager._proxy is not None:
+        session = getattr(manager, 'get_{0}_{1}_session'.format(object_type, session_type))(proxy=manager._proxy)
+    else:
+        session = getattr(manager, 'get_{0}_{1}_session'.format(object_type, session_type))()
     session.use_federated_bank_view()
     return session
 

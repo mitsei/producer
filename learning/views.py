@@ -2,8 +2,8 @@ import json
 
 from django.db import IntegrityError
 
-from dlkit_django.errors import *
-from dlkit_django.primitives import Type
+from dlkit.runtime.errors import *
+from dlkit.runtime.primitives import Type
 
 from rest_framework.response import Response
 from rest_framework.renderers import BrowsableAPIRenderer

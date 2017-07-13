@@ -4,7 +4,7 @@ received properly. But we can at least make sure no exceptions thrown"""
 import unittest
 
 from django.test.utils import override_settings
-from dlkit_django.proxy_example import TestRequest
+from dlkit.runtime.proxy_example import SimpleRequest
 
 from utilities.testing import DjangoTestCase
 
@@ -15,7 +15,7 @@ class RabbitMQReceiverTest(DjangoTestCase):
     def setUp(self):
         super(RabbitMQReceiverTest, self).setUp()
 
-        req = TestRequest(username='cjshaw@mit.edu')
+        req = SimpleRequest(username='cjshaw@mit.edu')
         self.mq = RabbitMQReceiver(req)
 
     def tearDown(self):

@@ -78,6 +78,7 @@ ALLOWED_HOSTS = settings_credentials.__dict__.get('ALLOWED_HOSTS')
 STATICFILES_DIRS = settings_credentials.__dict__.get('STATICFILES_DIRS')
 
 # because dlkit runtime needs all these fields, even if I don't use them...
+HANDCAR_IMPL = settings_credentials.__dict__.get('HANDCAR_IMPL')
 MC3_HANDCAR_APP_KEY = settings_credentials.__dict__.get('MC3_HANDCAR_APP_KEY')
 MC3_DEMO_HANDCAR_APP_KEY = settings_credentials.__dict__.get('MC3_DEMO_HANDCAR_APP_KEY')
 MC3_DEV_HANDCAR_APP_KEY = settings_credentials.__dict__.get('MC3_DEV_HANDCAR_APP_KEY')
@@ -219,11 +220,8 @@ INSTALLED_APPS = (
     'utilities',
     'south',
     'rest_framework',
-    'dlkit_django',
-    'dlkit',
     'corsheaders',
-    'compressor',
-    'records'
+    'compressor'
 )
 
 SOUTH_TESTS_MIGRATE = False

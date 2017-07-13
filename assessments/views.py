@@ -4,8 +4,8 @@ import json
 from django.db import IntegrityError
 from django.http import HttpResponse
 
-from dlkit_django.errors import *
-from dlkit_django.primitives import Type
+from dlkit.runtime.errors import *
+from dlkit.runtime.primitives import Type
 
 from rest_framework.response import Response
 from rest_framework.renderers import BrowsableAPIRenderer
@@ -432,9 +432,18 @@ class ItemObjectives(ProducerAPIViews):
                                           bank_id=None)
 
             item = bank.get_item(gutils.clean_id(item_id))
+            data = {
+                'data': {
+                    'data': [],
+                    'count': 0
+                }
+            }
             try:
                 data = gutils.extract_items(request, item.get_learning_objectives())
             except KeyError:
+                pass
+            except IllegalState:
+                # no learning objectives
                 pass
             return Response(data)
         except (PermissionDenied, NotFound) as ex:

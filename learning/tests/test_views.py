@@ -3,7 +3,7 @@ from django.utils.http import unquote
 from utilities import general as gutils
 from utilities.testing import DjangoTestCase
 
-from dlkit_django.primordium import Id
+from dlkit.runtime.primordium import Id
 
 
 class LearningTestCase(DjangoTestCase):

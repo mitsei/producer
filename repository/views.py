@@ -12,10 +12,10 @@ from django.http import HttpResponse
 
 from dlkit.abstract_osid.assessment.objects import Item
 from dlkit.abstract_osid.repository.objects import Asset
-from dlkit_django.errors import PermissionDenied, InvalidArgument, IllegalState,\
+from dlkit.runtime.errors import PermissionDenied, InvalidArgument, IllegalState,\
     NotFound, NoAccess, AlreadyExists
-from dlkit_django.primordium import Type
-from records.registry import COMPOSITION_GENUS_TYPES,\
+from dlkit.runtime.primordium import Type
+from dlkit.records.registry import COMPOSITION_GENUS_TYPES,\
     COMPOSITION_RECORD_TYPES, REPOSITORY_GENUS_TYPES, OSID_OBJECT_RECORD_TYPES,\
     ASSET_CONTENT_GENUS_TYPES, ITEM_GENUS_TYPES, REPOSITORY_RECORD_TYPES
 
@@ -753,7 +753,7 @@ class CompositionsList(ProducerAPIViews, CompositionMapMixin):
                                 if genus_val == 'course':
                                     composition_query_session.use_unsequestered_composition_view()
                                 compositions += list(
-                                    composition_query_session.get_compositions_by_genus_type(
+                                    composition_lookup_session.get_compositions_by_genus_type(
                                         str(Type(**COMPOSITION_GENUS_TYPES[genus_val]))))
                             except KeyError:
                                 raise IllegalState('Invalid query genus type provided. Only "course", ' +

@@ -1,12 +1,7 @@
 import inflection
 
-from dlkit_django import RUNTIME, PROXY_SESSION
-from dlkit_django.errors import IllegalState
-
-#####
-# for creating a proxy agent
-#####
-from dlkit_django.proxy_example import TestRequest
+from dlkit.runtime import RUNTIME, PROXY_SESSION
+from dlkit.runtime.errors import IllegalState
 
 from .general import *
 
@@ -64,7 +59,10 @@ def get_object_gradebook(manager, object_id, object_type='gradebook_column', gra
 
 def get_session(manager, object_type, session_type):
     """get session type for object, using the manager"""
-    session = getattr(manager, 'get_{0}_{1}_session'.format(object_type, session_type))()
+    if manager._proxy is not None:
+        session = getattr(manager, 'get_{0}_{1}_session'.format(object_type, session_type))(proxy=manager._proxy)
+    else:
+        session = getattr(manager, 'get_{0}_{1}_session'.format(object_type, session_type))()
     session.use_federated_gradebook_view()
     return session
 

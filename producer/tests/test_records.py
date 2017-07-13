@@ -1,8 +1,8 @@
 import json
 
-from records.registry import COMPOSITION_RECORD_TYPES, OSID_OBJECT_RECORD_TYPES
+from dlkit.records.registry import COMPOSITION_RECORD_TYPES, OSID_OBJECT_RECORD_TYPES
 from dlkit.primordium.type.primitives import Type
-from dlkit_django.proxy_example import User
+from dlkit.runtime.proxy_example import User
 
 from dysonx.dysonx import get_or_create_user_repo, _get_genus_type, get_enclosed_object_asset
 
