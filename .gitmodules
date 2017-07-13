@@ -2,7 +2,7 @@
 	path = dlkit
 	url = https://sei-jenkins@bitbucket.org/cjshaw/dlkit.git 
 [submodule "dlkit_django"]
-	path = dlkit_django
+	path = dlkit_configs
 	url = https://sei-jenkins@bitbucket.org/cjshaw/dlkit_django.git
 [submodule "dysonx"]
 	path = dysonx
