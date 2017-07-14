@@ -291,9 +291,9 @@ class ItemDetails(ProducerAPIViews):
 
             gutils.update_links(request, data)
 
-            if 'fileIds' in data:
+            if 'fileIds' in data and bool(data['fileIds']):
                 data['files'] = item.get_files()
-            if data['question'] and 'fileIds' in data['question']:
+            if data['question'] and 'fileIds' in data['question'] and bool(data['question']['fileIds']):
                 data['question']['files'] = item.get_question().get_files()
 
             try:
