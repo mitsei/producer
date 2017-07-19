@@ -407,7 +407,7 @@ class GradebookCrUDTests(AssessmentTestCase, GradingTestCase):
         self.url = self.base_url + 'grading/gradebooks/'
         # also need a test assessment bank here to do orchestration with
         self.assessment_bank = self.create_assessment_bank()
-        self.bad_gradebook_id = 'assessment.Bank%3A55203f0be7dde0815228bb41%40bazzim.MIT.EDU'
+        self.bad_gradebook_id = 'assessment.Bank%3A55203f0be7dde0815228bb41%40ODL.MIT.EDU'
 
         self.login()
 
