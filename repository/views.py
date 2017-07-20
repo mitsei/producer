@@ -1096,8 +1096,9 @@ class QueryHelpersMixin(object):
 
         los = list(set(los))
 
-        ols = self.lm._instantiate_session(method_name='get_objective_lookup_session',
-                                           proxy=self.lm._proxy)
+        # ols = self.lm._instantiate_session(method_name='get_objective_lookup_session',
+        #                                    proxy=self.lm._proxy)
+        ols = self.lm.get_objective_lookup_session(proxy=self.lm._proxy)
 
         results = ols.get_objectives_by_ids([gutils.clean_id(i) for i in los])
 
