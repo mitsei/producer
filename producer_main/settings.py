@@ -82,6 +82,13 @@ HANDCAR_IMPL = settings_credentials.__dict__.get('HANDCAR_IMPL')
 MC3_HANDCAR_APP_KEY = settings_credentials.__dict__.get('MC3_HANDCAR_APP_KEY')
 MC3_DEMO_HANDCAR_APP_KEY = settings_credentials.__dict__.get('MC3_DEMO_HANDCAR_APP_KEY')
 MC3_DEV_HANDCAR_APP_KEY = settings_credentials.__dict__.get('MC3_DEV_HANDCAR_APP_KEY')
+
+APP_KEYS = {
+    'mc3-demo.mit.edu': MC3_DEMO_HANDCAR_APP_KEY,
+    'mc3-dev.mit.edu': MC3_DEV_HANDCAR_APP_KEY,
+    'mc3.mit.edu': MC3_HANDCAR_APP_KEY
+}
+
 DLKIT_MONGO_DB_PREFIX = settings_credentials.__dict__.get('DLKIT_MONGO_DB_PREFIX')
 MONGO_HOST_URI = settings_credentials.__dict__.get('MONGO_HOST_URI')
 DLKIT_AUTHORITY = settings_credentials.__dict__.get('DLKIT_AUTHORITY')
