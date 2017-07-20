@@ -1,7 +1,7 @@
 from bson.errors import InvalidId
 
-from dlkit_django.errors import PermissionDenied, InvalidArgument, IllegalState, NotFound
-from dlkit_django.primordium import Id
+from dlkit.runtime.errors import PermissionDenied, InvalidArgument, IllegalState, NotFound
+from dlkit.runtime.primordium import Id
 
 from producer.views import ProducerAPIViews
 

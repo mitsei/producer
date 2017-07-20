@@ -10,7 +10,7 @@ from celery import Task
 from django.core.files.storage import default_storage
 from django.conf import settings
 
-from dlkit_django.proxy_example import TestRequest
+from dlkit.runtime.proxy_example import SimpleRequest
 
 from producer.receivers import RabbitMQReceiver
 from producer_main.celery_app import app
@@ -30,7 +30,7 @@ class ErrorHandlingTask(Task):
         :return:
         """
         if not settings.TEST and settings.ENABLE_NOTIFICATIONS:
-            test_request = TestRequest(username=targs[2].username)
+            test_request = SimpleRequest(username=targs[2].username)
             rabbit = RabbitMQReceiver(request=test_request)
             msg = 'Import of {0} raised exception: {1!r}'.format(targs[0].split('/')[-1],
                                                                  str(exc))
@@ -54,7 +54,7 @@ class ErrorHandlingTask(Task):
         :return:
         """
         if not settings.TEST and settings.ENABLE_NOTIFICATIONS:
-            test_request = TestRequest(username=targs[2].username)
+            test_request = SimpleRequest(username=targs[2].username)
             rabbit = RabbitMQReceiver(request=test_request)
             rabbit._pub_wrapper('new',
                                 obj_type='repositories',

@@ -1,11 +1,11 @@
 import time
 
-from records.registry import COMPOSITION_GENUS_TYPES,\
+from dlkit.records.registry import COMPOSITION_GENUS_TYPES,\
     COMPOSITION_RECORD_TYPES, REPOSITORY_GENUS_TYPES, REPOSITORY_RECORD_TYPES
 
-from dlkit_django import RUNTIME, PROXY_SESSION
-from dlkit_django.primordium import DataInputStream, DateTime
-from dlkit_django.errors import IllegalState, AlreadyExists
+from dlkit.runtime import RUNTIME, PROXY_SESSION
+from dlkit.runtime.primordium import DataInputStream, DateTime
+from dlkit.runtime.errors import IllegalState, AlreadyExists
 
 from dysonx.dysonx import get_or_create_user_repo, get_enclosed_object_asset,\
     _get_or_create_root_repo
@@ -71,7 +71,10 @@ def clean_up_dangling_references(rm, composition_id):
     # check all repositories for references to this composition, and remove
     # the composition_id from child_ids
     # may not work for all parent compositions, depending on authorizations
-    cqs = rm.get_composition_query_session()
+    if rm._proxy is not None:
+        cqs = rm.get_composition_query_session(proxy=rm._proxy)
+    else:
+        cqs = rm.get_composition_query_session()
     cqs.use_federated_repository_view()
     cqs.use_unsequestered_composition_view()
     querier = cqs.get_composition_query()
@@ -151,7 +154,7 @@ def create_resource_wrapper(repository, resource):
 def get_asset_content_type_from_runtime(repository):
     type_list = []
     try:
-        config = repository._runtime.get_configuration()
+        config = repository._catalog._runtime.get_configuration()
         parameter_id = Id('parameter:assetContentRecordTypeForFiles@mongo')
         type_list.append(
             config.get_value_by_parameter(parameter_id).get_type_value())
@@ -202,7 +205,10 @@ def get_object_repository(manager, object_id, object_type='asset', repository_id
 
 def get_session(manager, object_type, session_type):
     """get session type for object, using the manager"""
-    session = getattr(manager, 'get_{0}_{1}_session'.format(object_type, session_type))()
+    if manager._proxy is not None:
+        session = getattr(manager, 'get_{0}_{1}_session'.format(object_type, session_type))(proxy=manager._proxy)
+    else:
+        session = getattr(manager, 'get_{0}_{1}_session'.format(object_type, session_type))()
     session.use_federated_repository_view()
     return session
 

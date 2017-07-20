@@ -3,13 +3,13 @@ import os
 import json
 import envoy
 
-import dlkit_django.configs
+import dlkit_configs.configs
 
 from django.conf import settings
 from django.test.utils import override_settings
 from django.contrib.auth.models import User
 
-from dlkit_django.primordium import Type, Id
+from dlkit.runtime.primordium import Type, Id
 
 from minimocktest import MockTestCase
 
@@ -91,6 +91,8 @@ class DjangoTestCase(APITestCase, MockTestCase):
     def setUp(self):
         envoy.run('mongo test_producer_assessment --eval "db.dropDatabase()"')
         envoy.run('mongo test_producer_grading --eval "db.dropDatabase()"')
+        envoy.run('mongo test_producer_hierarchy --eval "db.dropDatabase()"')
+        envoy.run('mongo test_producer_relationship --eval "db.dropDatabase()"')
         envoy.run('mongo test_producer_repository --eval "db.dropDatabase()"')
 
         configure_test_bucket()
@@ -109,6 +111,8 @@ class DjangoTestCase(APITestCase, MockTestCase):
     def tearDown(self):
         envoy.run('mongo test_producer_assessment --eval "db.dropDatabase()"')
         envoy.run('mongo test_producer_grading --eval "db.dropDatabase()"')
+        envoy.run('mongo test_producer_hierarchy --eval "db.dropDatabase()"')
+        envoy.run('mongo test_producer_relationship --eval "db.dropDatabase()"')
         envoy.run('mongo test_producer_repository --eval "db.dropDatabase()"')
 
     def updated(self, _req):
@@ -126,7 +130,7 @@ def calculate_signature(auth, headers, method, path):
 
 def configure_test_bucket():
     """use test settings, not the production settings"""
-    dlkit_django.configs.AWS_ADAPTER_1 = {
+    dlkit_configs.configs.AWS_ADAPTER_1 = {
         'id': 'aws_adapter_configuration_1',
         'displayName': 'AWS Adapter Configuration',
         'description': 'Configuration for AWS Adapter',
@@ -216,23 +220,23 @@ def configure_test_bucket():
                 'displayName': 'Repository Provider Implementation',
                 'description': 'Implementation for repository service provider',
                 'values': [
-                    {'value': 'MONGO_1', 'priority': 1}
+                    {'value': 'JSON_1', 'priority': 1}
                 ]
             },
         }
     }
 
-    dlkit_django.configs.MONGO_1 = {
-        'id': 'mongo_configuration_1',
-        'displayName': 'Mongo Configuration',
-        'description': 'Configuration for Mongo Implementation',
+    dlkit_configs.configs.JSON_1 = {
+        'id': 'json_configuration_1',
+        'displayName': 'JSON Configuration',
+        'description': 'Configuration for JSON Implementation',
         'parameters': {
             'implKey': {
                 'syntax': 'STRING',
                 'displayName': 'Implementation Key',
                 'description': 'Implementation key used by Runtime for class loading',
                 'values': [
-                    {'value': 'mongo', 'priority': 1}
+                    {'value': 'json', 'priority': 1}
                 ]
             },
             'authority': {
@@ -248,7 +252,7 @@ def configure_test_bucket():
                 'displayName': 'Mongo DB Name Prefix',
                 'description': 'Prefix for naming mongo databases.',
                 'values': [
-                    {'value': settings.DLKIT_MONGO_DB_PREFIX, 'priority': 1}
+                    {'value': 'test_producer_', 'priority': 1}
                 ]
             },
             'mongoHostURI': {
@@ -292,9 +296,25 @@ def configure_test_bucket():
                 'displayName': 'Python path to the extension records registry file',
                 'description': 'dot-separated path to the extension records registry file',
                 'values': [
-                    {'value': 'records.registry', 'priority': 1}
+                    {'value': 'dlkit.records.registry', 'priority': 1}
                 ]
-            }
+            },
+            'localImpl': {
+                'syntax': 'STRING',
+                'displayName': 'Implementation identifier for local service provider',
+                'description': 'Implementation identifier for local service provider.  Typically the same identifier as the Mongo configuration',
+                'values': [
+                    {'value': 'JSON_1', 'priority': 1}
+                ]
+            },
+            'useCachingForQualifierIds': {
+                'syntax': 'BOOLEAN',
+                'displayName': 'Flag to use memcached for authz qualifier_ids or not',
+                'description': 'Flag to use memcached for authz qualifier_ids or not',
+                'values': [
+                    {'value': True, 'priority': 1}
+                ]
+            },
         }
     }
 

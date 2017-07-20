@@ -6,12 +6,12 @@ from boto.s3.key import Key
 
 from copy import deepcopy
 
-from records.registry import COMPOSITION_RECORD_TYPES, COMPOSITION_GENUS_TYPES,\
+from dlkit.records.registry import COMPOSITION_RECORD_TYPES, COMPOSITION_GENUS_TYPES,\
     REPOSITORY_GENUS_TYPES, REPOSITORY_RECORD_TYPES, ASSET_RECORD_TYPES,\
-    ASSET_CONTENT_RECORD_TYPES, ITEM_RECORD_TYPES
+    ASSET_CONTENT_RECORD_TYPES, ITEM_RECORD_TYPES, ASSESSMENT_RECORD_TYPES
 
-from dlkit_django.errors import NotFound
-from dlkit_django.primordium import Id, DataInputStream, Type
+from dlkit.runtime.errors import NotFound
+from dlkit.runtime.primordium import Id, DataInputStream, Type
 
 from django.conf import settings
 from django.test.utils import override_settings
@@ -34,6 +34,9 @@ EDX_CHAPTER = Type(**COMPOSITION_GENUS_TYPES['chapter'])
 EDX_ASSET = Type(**ASSET_RECORD_TYPES['edx-asset'])
 EDX_ASSET_CONTENT = Type(**ASSET_CONTENT_RECORD_TYPES['edx-asset-content-text-files'])
 EDX_ITEM = Type(**ITEM_RECORD_TYPES['edx_item'])
+
+ASSESSMENT_FORM_SIMPLE_SEQUENCING = Type(**ASSESSMENT_RECORD_TYPES['simple-child-sequencing'])
+
 
 class RepositoryTestCase(DjangoTestCase):
     """
@@ -144,7 +147,7 @@ class RepositoryTestCase(DjangoTestCase):
         # now add the new data
         asset_content_type_list = [EDX_ASSET_CONTENT]
         try:
-            config = repo._runtime.get_configuration()
+            config = repo._catalog._runtime.get_configuration()
             parameter_id = Id('parameter:assetContentRecordTypeForFiles@mongo')
             asset_content_type_list.append(
                 config.get_value_by_parameter(parameter_id).get_type_value())
@@ -2391,7 +2394,7 @@ class EdXItemUnitTests(AssessmentTestCase, RepositoryTestCase):
         form.display_name = 'item'
         item = self.bank.create_item(form)
 
-        form = self.bank.get_assessment_form_for_create([])
+        form = self.bank.get_assessment_form_for_create([ASSESSMENT_FORM_SIMPLE_SEQUENCING])
         form.display_name = 'assessment'
         assessment = self.bank.create_assessment(form)
         self.bank.add_item(assessment.ident, item.ident)
@@ -2407,7 +2410,7 @@ class EdXItemUnitTests(AssessmentTestCase, RepositoryTestCase):
         form.display_name = 'item2'
         item2 = self.bank.create_item(form)
 
-        form = self.bank.get_assessment_form_for_create([])
+        form = self.bank.get_assessment_form_for_create([ASSESSMENT_FORM_SIMPLE_SEQUENCING])
         form.display_name = 'assessment2'
         assessment2 = self.bank.create_assessment(form)
         self.bank.add_item(assessment2.ident, item2.ident)
@@ -2761,7 +2764,7 @@ class RepositoryCrUDTests(AssessmentTestCase, RepositoryTestCase):
         super(RepositoryCrUDTests, self).setUp()
         # also need a test assessment bank here to do orchestration with
         self.assessment_bank = self.create_assessment_bank()
-        self.bad_repo_id = 'assessment.Bank%3A55203f0be7dde0815228bb41%40EDX.ORG'
+        self.bad_repo_id = 'assessment.Bank%3A55203f0be7dde0815228bb41%40ODL.MIT.EDU'
         self.login()
         self.url = self.base_url + 'repository/repositories/'
 
@@ -2848,7 +2851,7 @@ class RepositoryCrUDTests(AssessmentTestCase, RepositoryTestCase):
         )
         self.assertEqual(
             repo['description']['text'],
-            'Orchestrated Repository for the assessment service'
+            'Orchestrated assessment Repository'
         )
         self.assertEqual(
             self.assessment_bank.ident.identifier,

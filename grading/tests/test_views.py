@@ -4,7 +4,7 @@ from assessments.tests.test_views import AssessmentTestCase
 
 from copy import deepcopy
 
-from dlkit_django.primordium import Id
+from dlkit.runtime.primordium import Id
 
 from django.utils.http import unquote
 
@@ -407,7 +407,7 @@ class GradebookCrUDTests(AssessmentTestCase, GradingTestCase):
         self.url = self.base_url + 'grading/gradebooks/'
         # also need a test assessment bank here to do orchestration with
         self.assessment_bank = self.create_assessment_bank()
-        self.bad_gradebook_id = 'assessment.Bank%3A55203f0be7dde0815228bb41%40bazzim.MIT.EDU'
+        self.bad_gradebook_id = 'assessment.Bank%3A55203f0be7dde0815228bb41%40ODL.MIT.EDU'
 
         self.login()
 
@@ -446,7 +446,7 @@ class GradebookCrUDTests(AssessmentTestCase, GradingTestCase):
         )
         self.assertEqual(
             gradebook['description']['text'],
-            'Orchestrated Gradebook for the assessment service'
+            'Orchestrated assessment Gradebook'
         )
         self.assertEqual(
             self.assessment_bank.ident.identifier,
@@ -1044,10 +1044,10 @@ class GradeEntryCrUDTests(AssessmentTestCase, GradingTestCase):
         )
         self.assertEqual(
             data['resourceId'],
-            entry.get_key_resource_id()
+            str(entry.get_key_resource_id())
         )
         self.assertEqual(
-            data['ignoredForCalculations'],
+            bool(data['ignoredForCalculations']),
             entry.is_ignored_for_calculations()
         )
 
