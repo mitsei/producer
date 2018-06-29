@@ -65,7 +65,7 @@ class DjangoTestCase(APITestCase, MockTestCase):
             _url
         )
 
-        expected_params = ['?Expires=','&Signature=','&Key-Pair-Id=APKAIGRK7FPIAJR675NA']
+        expected_params = ['?Expires=','&Signature=','&Key-Pair-Id=APKAJNOKQILWTYL37W3A']
 
         for param in expected_params:
             self.assertIn(
