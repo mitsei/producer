@@ -17,7 +17,7 @@ boto==2.38.0
 celery==3.1.18
 cffi==1.1.2
 characteristic==14.3.0
-cryptography==0.9.3
+cryptography==3.2
 django-appconf==1.0.1
 django-compressor==1.5
 django-cors-headers==1.1.0
