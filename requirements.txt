@@ -58,7 +58,7 @@ shutilwhich==1.1.0
 six==1.9.0
 treq==15.0.0
 txaio==1.0.2
-urllib3==1.11
+urllib3==1.26.5
 wsgiref==0.1.2
 -e git+https://github.com/mitsei/xbundle@e7cb769db9126e548b623a829f9a7040464982d0#egg=xbundle-master
 zope.interface==4.1.2
