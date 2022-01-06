@@ -14,7 +14,7 @@ autobahn==0.10.5.post2
 beautifulsoup4==4.4.0
 billiard==3.3.0.20
 boto==2.38.0
-celery==3.1.18
+celery==5.2.2
 cffi==1.1.2
 characteristic==14.3.0
 cryptography==0.9.3
